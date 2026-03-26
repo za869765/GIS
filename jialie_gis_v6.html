@@ -1547,8 +1547,7 @@ function renderVilLayers(){
     const layer=L.geoJSON(f,{
       style:{fillColor:col.fill,fillOpacity:opacity,color:col.border,weight,opacity:dm?1:.3},
       onEachFeature:(_,lyr)=>{
-        const cnt=cases.filter(c=>c.village===name).length;
-        lyr.bindTooltip(`<b>${name}</b><small style="color:#888"> ${dist||''}</small><br><span style="font-size:10px">個案：${cnt} 件</span>`,{sticky:true,className:'tip-own'});
+        lyr.bindTooltip(`<b>${name}</b><small style="color:#888;margin-left:4px">${dist||''}</small>`,{sticky:true,className:'tip-own'});
         lyr.on('click',()=>clickVil(name));
         lyr.on('mouseover',()=>lyr.setStyle({fillOpacity:Math.min(opacity+.2,.75)}));
         lyr.on('mouseout',()=>lyr.setStyle({fillOpacity:opacity}));
@@ -3384,7 +3383,7 @@ let _lastSelLat = null, _lastSelLng = null, _lastSelLabel = '';
 // 半徑控制列 — 置於地圖左側（Zoom 按鈕正下方）
 const _radiusBar = document.createElement('div');
 _radiusBar.id = 'radius-bar';
-_radiusBar.style.cssText = 'position:fixed;left:14px;top:calc(var(--topbar-h,56px) + 58px);z-index:549;display:flex;flex-direction:column;gap:4px;';
+_radiusBar.style.cssText = 'position:fixed;left:14px;top:calc(var(--topbar-h,56px) + 130px);z-index:549;display:flex;flex-direction:column;gap:4px;';
 _radiusBar.innerHTML = `
   <div style="background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:5px 8px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:3px;align-items:stretch">
     <span style="font-size:10px;color:var(--text3);text-align:center;font-weight:600;letter-spacing:.5px">方圓</span>
@@ -3626,7 +3625,39 @@ _modeBtn.addEventListener('click',()=>{
    MAP CLICK
 ══════════════════════════════════════════════════════════ */
 let _radiusShownAt = 0;
-map.on('click', (e)=>{
+
+/* ── WMS GetFeatureInfo 查詢地號 ── */
+async function _queryLandParcelWMS(lat, lng){
+  if(!_cadLayerOn || !navigator.onLine) return null;
+  try{
+    const sz=map.getSize();
+    const cp=map.latLngToContainerPoint([lat,lng]);
+    const b=map.getBounds();
+    const bbox=`${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
+    const url=`https://wms.nlsc.gov.tw/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo`+
+      `&LAYERS=CADSTRAL&QUERY_LAYERS=CADSTRAL&INFO_FORMAT=application/json`+
+      `&SRS=EPSG:4326&BBOX=${bbox}&WIDTH=${sz.x}&HEIGHT=${sz.y}`+
+      `&X=${Math.round(cp.x)}&Y=${Math.round(cp.y)}&FEATURE_COUNT=1`;
+    const res=await fetch(url,{signal:AbortSignal.timeout(5000)});
+    const ct=res.headers.get('content-type')||'';
+    if(ct.includes('json')){
+      const d=await res.json();
+      if(d.features&&d.features.length){
+        const p=d.features[0].properties;
+        // 嘗試常見欄位名稱
+        return p['地號']||p['PARNO']||p['parno']||p['LandNo']||p['LANDNO']||JSON.stringify(p).substring(0,60);
+      }
+    } else {
+      const txt=await res.text();
+      // 解析文字格式回應中的地號
+      const m=txt.match(/地號[=:「「\s]*([0-9\-]+)/);
+      if(m) return m[1];
+    }
+  }catch(e){console.warn('WMS GetFeatureInfo:',e);}
+  return null;
+}
+
+map.on('click', async (e)=>{
   if(_selectMode){
     const lat=e.latlng.lat, lng=e.latlng.lng;
     const cosLat=Math.cos(lat*Math.PI/180);
@@ -3644,19 +3675,27 @@ map.on('click', (e)=>{
       // 點擊到門牌位置
       mkLat=nearDoor[0];mkLng=nearDoor[1];
       label=nearDoor[2].replace('臺南市佳里區','').replace('台南市佳里區','');
+      _placePin(mkLat,mkLng,label);
+      show50mList(mkLat,mkLng,label);
     } else {
-      // 非門牌位置 → 找最近地號
-      if(typeof LAND_DB!=='undefined'){
+      // 非門牌位置 → 先放暫時標記
+      _placePin(lat,lng,'查詢中…');
+      // 1. 嘗試 WMS GetFeatureInfo 查詢確切地號
+      const wmsResult = await _queryLandParcelWMS(lat,lng);
+      if(wmsResult){
+        label = `佳里段 ${wmsResult}`;
+      } else if(typeof LAND_DB!=='undefined'){
+        // 2. fallback：找最近 LAND_DB（不限距離）
         let nearLand=null,minLand=99999;
         Object.entries(LAND_DB).forEach(([key,val])=>{
           const d=Math.sqrt(Math.pow(val[0]-lat,2)+Math.pow((val[1]-lng)*cosLat,2))*111000;
           if(d<minLand){minLand=d;nearLand={key,val};}
         });
-        if(nearLand && minLand<40) label=`佳里段 ${nearLand.key}`;
+        if(nearLand) label=`佳里段 ${nearLand.key}${minLand>100?' (約'+Math.round(minLand)+'m)':''}`;
       }
+      _placePin(lat,lng,label||'此位置');
+      show50mList(lat,lng,label);
     }
-    _placePin(mkLat,mkLng,label||'此位置');
-    show50mList(mkLat,mkLng,label);
     return;
   }
   // 移動模式：關閉搜尋結果
@@ -3694,22 +3733,44 @@ function toggleLandLayerLeg(){
   if(btn){btn.textContent=_landLayerOn?'地號 ON':'地號 OFF';btn.style.background=_landLayerOn?'var(--teal)':'var(--surface2)';btn.style.color=_landLayerOn?'#fff':'var(--text2)';btn.style.borderColor=_landLayerOn?'var(--teal)':'var(--border2)';}
 }
 
-/* ── NLSC 地籍圖 WMS ── */
+/* ── NLSC 地籍圖 WMS（限佳里區範圍） ── */
 let _cadLayerOn = false;
 let _cadLayer = null;
+// 佳里區邊界 bbox（僅在此範圍內顯示地籍圖）
+const _JIALI_SW = [23.082, 120.072];
+const _JIALI_NE = [23.240, 120.285];
+
+function _updateCadClip(){
+  const pane = map.getPane('cadPane');
+  if(!pane) return;
+  const sw = map.latLngToContainerPoint(_JIALI_SW); // left-bottom
+  const ne = map.latLngToContainerPoint(_JIALI_NE); // right-top
+  // CSS polygon：左上→右上→右下→左下
+  pane.style.clipPath = `polygon(${sw.x}px ${ne.y}px, ${ne.x}px ${ne.y}px, ${ne.x}px ${sw.y}px, ${sw.x}px ${sw.y}px)`;
+}
+
 function toggleCadLayer(){
   _cadLayerOn = !_cadLayerOn;
   const btn=document.getElementById('cad-leg-btn');
   if(_cadLayerOn){
+    // 建立專屬 pane（不影響底圖）
+    if(!map.getPane('cadPane')){
+      map.createPane('cadPane');
+      map.getPane('cadPane').style.zIndex = 250; // 底圖(200) 上方，標記(400) 下方
+    }
     if(!_cadLayer){
       _cadLayer = L.tileLayer.wms('https://wms.nlsc.gov.tw/wms',{
-        layers:'LUIMAP',format:'image/png',transparent:true,
-        opacity:0.7,version:'1.1.1',attribution:'© NLSC'
+        layers:'CADSTRAL',format:'image/png',transparent:true,
+        opacity:0.88,version:'1.1.1',attribution:'© NLSC 地籍圖',
+        pane:'cadPane'
       });
     }
     _cadLayer.addTo(map);
+    _updateCadClip();
+    map.on('move zoom viewreset', _updateCadClip);
     if(btn){btn.textContent='地籍 ON';btn.style.background='#8e44ad';btn.style.color='#fff';btn.style.borderColor='#8e44ad';}
   } else {
+    map.off('move zoom viewreset', _updateCadClip);
     if(_cadLayer) map.removeLayer(_cadLayer);
     if(btn){btn.textContent='地籍 OFF';btn.style.background='var(--surface2)';btn.style.color='var(--text2)';btn.style.borderColor='var(--border2)';}
   }
@@ -3743,12 +3804,10 @@ function _refreshDoorLayer(){
       fillOpacity: 0.85, weight: 1.5
     });
     const disp = r[2].replace('\u81fa\u5357\u5e02\u4f73\u91cc\u5340','').replace('\u53f0\u5357\u5e02\u4f73\u91cc\u5340','');
-    cm.bindPopup('<b style="font-size:13px">'+disp+'</b>',{maxWidth:280});
     cm.on('click',(ev)=>{
       L.DomEvent.stopPropagation(ev);
-      const vt=_vilTag(r[0],r[1]);
       if(isApt){
-        // 公寓：找同一座標所有樓層
+        // 公寓：找同一座標所有樓層，顯示在搜尋結果列
         const cosLat=Math.cos(r[0]*Math.PI/180);
         const units=[];
         for(let j=0;j<DOOR_DB.length;j++){
@@ -3757,14 +3816,16 @@ function _refreshDoorLayer(){
           if(d<4) units.push(q[2].replace('臺南市佳里區','').replace('台南市佳里區',''));
         }
         units.sort();
-        const rows=units.map(u=>`<div style="padding:4px 8px;font-size:12px;border-bottom:1px solid #eee;cursor:pointer" onclick="show50mList(${r[0]},${r[1]},'${u.replace(/'/g,"\\'")}');this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">${vt}${u}</div>`).join('');
-        cm.setPopupContent(`<div style="font-size:12px;font-weight:700;padding:6px 8px;background:#f0f9f0;border-bottom:1px solid #ccc">${vt}共 ${units.length} 戶</div>${rows}`);
-        cm.openPopup();
-        // 放置箭頭標記
         _placePin(r[0],r[1],units[0]||disp);
+        // 在搜尋結果區顯示樓層清單
+        const resultsEl=document.getElementById('map-search-results');
+        const vt=_vilTag(r[0],r[1]);
+        const rows=units.map(u=>`<div class="msr-item" onclick="_placePin(${r[0]},${r[1]},'${u.replace(/'/g,"\\'")}');show50mList(${r[0]},${r[1]},'${u.replace(/'/g,"\\'")}');document.getElementById('map-search-results').style.display='none'">
+          <span class="msr-icon">🏢</span><span class="msr-main"><span class="msr-name">${vt}${u}</span></span></div>`).join('');
+        resultsEl.innerHTML=`<div class="msr-section">📌 同棟共 ${units.length} 戶</div>${rows}`;
+        resultsEl.style.display='block';
+        _radiusShownAt=Date.now();
       } else {
-        cm.setPopupContent(`<b style="font-size:13px">${vt}${disp}</b>`);
-        cm.openPopup();
         _placePin(r[0],r[1],disp);
         show50mList(r[0],r[1],disp);
       }

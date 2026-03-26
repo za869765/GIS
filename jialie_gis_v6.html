@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.332</title>
+<title>佳里 GIS v6.333</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -793,28 +793,10 @@ input,select,textarea,button{font-family:inherit}
           原住民人口：合計 266 人（平地原住民 140 · 山地原住民 126）
         </div>
       </div>
-      <div class="map-tab-hd">
-        <div class="map-tab-title">🏛 公共設施圖層</div>
-        <button class="map-tab-add" style="background:var(--surface);color:var(--blue);border:1.5px solid var(--blue)" onclick="refreshAllFac()">🔄 更新</button>
+      <!-- 公共設施圖層（待資料補充後啟用） -->
+      <div style="font-size:11px;color:var(--text3);padding:12px 10px;background:var(--surface2);border-radius:8px;text-align:center;margin-top:4px">
+        🏗 公共設施資料建置中，待資料完善後上線
       </div>
-      <div class="fac-section">
-        <div class="fac-section-label">📋 官方資料（本機，離線可用）</div>
-        <div class="fac-grid">
-          <button class="fac-btn" id="fb-gov"      onclick="gisFac('gov')">🏛<br>公務機關</button>
-          <button class="fac-btn" id="fb-police"   onclick="gisFac('police')">👮<br>派出所</button>
-          <button class="fac-btn" id="fb-school"   onclick="gisFac('school')">🏫<br>學校</button>
-          <button class="fac-btn" id="fb-medical"  onclick="gisFac('medical')">🏥<br>醫療</button>
-          <button class="fac-btn" id="fb-pharmacy" onclick="gisFac('pharmacy')">💊<br>藥局</button>
-          <button class="fac-btn" id="fb-market"   onclick="gisFac('market')">🛒<br>市場</button>
-          <button class="fac-btn" id="fb-other"    onclick="gisFac('other')">🏢<br>其他</button>
-          <button class="fac-btn" id="fb-dental"   onclick="gisFac('dental')">🦷<br>牙醫</button>
-          <button class="fac-btn" id="fb-tcm"      onclick="gisFac('tcm')">🏯<br>中醫</button>
-        </div>
-      </div>
-      <div style="font-size:10px;color:#8e44ad;background:#f5eeff;border-radius:6px;padding:6px 10px;margin-bottom:8px">
-        ⭐ 牙醫圖層中標註 <b>115年全口假牙合約</b> 者即為免費裝置合約院所
-      </div>
-      <div class="fac-status" id="fac-status"></div>
     </div><!-- /tab-fac -->
 
     <!-- ══ 地段里別 TAB ══ -->

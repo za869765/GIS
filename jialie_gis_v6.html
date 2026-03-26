@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.330</title>
+<title>佳里 GIS v6.331</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -3407,7 +3407,44 @@ function _highlightParcel(geometry){
   }catch(e){console.warn('highlight parcel:',e);}
 }
 
-/* ── WMS GetFeatureInfo 查詢地號（回傳 {label, geometry}） ── */
+/* ── WFS GetFeature 查詢地號幾何（回傳 GeoJSON geometry or null） ── */
+async function _queryParcelWFS(lat, lng){
+  if(!navigator.onLine) return null;
+  try{
+    const d=0.0008; // ~90m 範圍
+    const bbox=`${lng-d},${lat-d},${lng+d},${lat+d}`;
+    const url=`https://wms.nlsc.gov.tw/wms?SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature`+
+      `&TYPENAME=CADSTRAL&OUTPUTFORMAT=application/json&BBOX=${bbox}`;
+    const res=await fetch(url,{signal:AbortSignal.timeout(7000)});
+    const ct=res.headers.get('content-type')||'';
+    if(!ct.includes('json')) return null;
+    const d2=await res.json();
+    if(!d2.features||!d2.features.length) return null;
+    // 找包含點擊位置的 feature
+    const pt={type:'Point',coordinates:[lng,lat]};
+    for(const f of d2.features){
+      if(f.geometry && _ptInGeoJSON(lat,lng,f.geometry)) return f;
+    }
+    return d2.features[0]; // 退而取最近
+  }catch(e){console.warn('WFS:',e);}
+  return null;
+}
+function _ptInGeoJSON(lat,lng,geom){
+  try{
+    const polys=geom.type==='Polygon'?[geom.coordinates]:geom.type==='MultiPolygon'?geom.coordinates:[];
+    for(const poly of polys){
+      let inside=false;const ring=poly[0];
+      for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+        const xi=ring[i][1],yi=ring[i][0],xj=ring[j][1],yj=ring[j][0];
+        if(((yi>lng)!==(yj>lng))&&(lat<(xj-xi)*(lng-yi)/(yj-yi)+xi))inside=!inside;
+      }
+      if(inside)return true;
+    }
+  }catch{}
+  return false;
+}
+
+/* ── WMS GetFeatureInfo 查詢地號 label（回傳 string or null） ── */
 async function _queryLandParcelWMS(lat, lng){
   if(!navigator.onLine) return null;
   try{
@@ -3424,18 +3461,26 @@ async function _queryLandParcelWMS(lat, lng){
     if(ct.includes('json')){
       const d=await res.json();
       if(d.features&&d.features.length){
-        const f=d.features[0];
-        const p=f.properties||{};
-        const label=p['地號']||p['PARNO']||p['parno']||p['LandNo']||p['LANDNO']||Object.values(p)[0]||null;
-        return {label, geometry: f.geometry||null};
+        const p=d.features[0].properties||{};
+        return p['地號']||p['PARNO']||p['parno']||p['LandNo']||p['LANDNO']||Object.values(p)[0]||null;
       }
     } else {
       const txt=await res.text();
       const m=txt.match(/地號[=:「\s]*([0-9\-]+)/);
-      if(m) return {label:m[1], geometry:null};
+      if(m) return m[1];
     }
   }catch(e){console.warn('WMS GetFeatureInfo:',e);}
   return null;
+}
+
+/* ── 用 LAND_DB 面積畫近似圓圈（fallback） ── */
+function _highlightParcelApprox(lat, lng, areaM2){
+  if(_parcelHighlight){map.removeLayer(_parcelHighlight);_parcelHighlight=null;}
+  const r=areaM2>0 ? Math.sqrt(areaM2/Math.PI) : 30;
+  _parcelHighlight=L.circle([lat,lng],{
+    radius:r, color:'#e74c3c', weight:2.5, dashArray:'8,5',
+    fillOpacity:0.08, fillColor:'#e74c3c'
+  }).addTo(map);
 }
 
 map.on('click', async (e)=>{
@@ -3459,23 +3504,37 @@ map.on('click', async (e)=>{
       _placePin(mkLat,mkLng,label);
       show50mList(mkLat,mkLng,label);
     } else {
-      // 非門牌位置 → 先放暫時標記 + 立即 LAND_DB fallback
+      // 非門牌位置
+      // 1. 立即：LAND_DB 最近地號 + 面積近似圓圈
+      let nearLand=null,nearLandArea=0;
       if(typeof LAND_DB!=='undefined'){
-        let nearLand=null,minLand=99999;
+        let minLand=99999;
         Object.entries(LAND_DB).forEach(([key,val])=>{
           const d=Math.sqrt(Math.pow(val[0]-lat,2)+Math.pow((val[1]-lng)*cosLat,2))*111000;
           if(d<minLand){minLand=d;nearLand={key,val};}
         });
-        if(nearLand) label=`佳里段 ${nearLand.key}`;
+        if(nearLand){
+          label=`佳里段 ${nearLand.key}`;
+          nearLandArea=parseFloat(nearLand.val[2])||0;
+          _highlightParcelApprox(lat,lng,nearLandArea);
+        }
       }
       _placePin(lat,lng,label||'查詢中…');
       show50mList(lat,lng,label);
-      // 背景查 WMS 取得確切地號 + 幾何邊界
-      const wmsResult = await _queryLandParcelWMS(lat,lng);
-      if(wmsResult){
-        if(wmsResult.label) label=`佳里段 ${wmsResult.label}`;
+      if(!navigator.onLine) return;
+      // 2. 背景：WFS 取真實多邊形
+      const wfsFeature = await _queryParcelWFS(lat,lng);
+      if(wfsFeature && wfsFeature.geometry){
+        const p=wfsFeature.properties||{};
+        const wfsLabel=p['地號']||p['PARNO']||p['parno']||p['LandNo']||p['LANDNO']||null;
+        if(wfsLabel) label=`佳里段 ${wfsLabel}`;
         _placePin(lat,lng,label);
-        _highlightParcel(wmsResult.geometry);
+        _highlightParcel(wfsFeature.geometry);
+      } else {
+        // 3. 備援：WMS GetFeatureInfo 取地號文字
+        const wmsLabel = await _queryLandParcelWMS(lat,lng);
+        if(wmsLabel){ label=`佳里段 ${wmsLabel}`; _placePin(lat,lng,label); }
+        // 近似圓圈維持（已畫）
       }
     }
     return;

@@ -728,7 +728,7 @@ input,select,textarea,button{font-family:inherit}
   </div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border)">
     <span style="font-size:11px;color:var(--text2)">📐 地號範圍</span>
-    <button id="cad-leg-btn" onclick="toggleCadLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">地號 OFF</button>
+    <button id="cad-leg-btn" onclick="toggleCadLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid #8e44ad;background:#8e44ad;color:#fff;cursor:pointer">地號 ON</button>
   </div>
   <div id="leg-desktop-body" style="overflow-y:auto;flex:1"></div>
 </div>
@@ -3715,13 +3715,16 @@ function toggleCadLayer(){
     _cadLayer.addTo(map);
     _updateCadClip();
     map.on('move zoom viewreset', _updateCadClip);
-    if(btn){btn.textContent='地籍 ON';btn.style.background='#8e44ad';btn.style.color='#fff';btn.style.borderColor='#8e44ad';}
+    if(btn){btn.textContent='地號 ON';btn.style.background='#8e44ad';btn.style.color='#fff';btn.style.borderColor='#8e44ad';}
   } else {
     map.off('move zoom viewreset', _updateCadClip);
     if(_cadLayer) map.removeLayer(_cadLayer);
-    if(btn){btn.textContent='地籍 OFF';btn.style.background='var(--surface2)';btn.style.color='var(--text2)';btn.style.borderColor='var(--border2)';}
+    if(btn){btn.textContent='地號 OFF';btn.style.background='var(--surface2)';btn.style.color='var(--text2)';btn.style.borderColor='var(--border2)';}
   }
 }
+
+// 地號範圍預設開啟
+setTimeout(()=>{ if(!_cadLayerOn) toggleCadLayer(); }, 800);
 
 function _clearDoorLayer(){
   if(_doorLayerGroup){ map.removeLayer(_doorLayerGroup); _doorLayerGroup=null; }

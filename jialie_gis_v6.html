@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.334</title>
+<title>佳里 GIS v6.335</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -750,13 +750,13 @@ input,select,textarea,button{font-family:inherit}
 
   <!-- Desktop tab bar -->
   <div id="bottom-nav-desktop" style="display:none">
-    <button class="dbnav active" onclick="switchMap('fac')">🏛 公共設施</button>
+    <button class="dbnav active" onclick="switchMap('fac')">📋 基本資訊</button>
   </div>
 
   <div id="sheet-content">
 
 
-    <!-- ══ 公共設施 TAB ══ -->
+    <!-- ══ 基本資訊 TAB ══ -->
     <div class="tab-pane active" id="tab-fac">
       <!-- 佳里區官方統計資訊卡 -->
       <div id="jialie-stats-card" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px">
@@ -806,7 +806,7 @@ input,select,textarea,button{font-family:inherit}
     <!-- Mobile bottom nav -->
   <nav id="bottom-nav">
     <button class="bnav-item active" data-tab="fac" onclick="switchMap('fac');expandSheet('peek')">
-      <span class="bnav-icon">🏛</span><span class="bnav-lbl">設施</span>
+      <span class="bnav-icon">📋</span><span class="bnav-lbl">基本資訊</span>
     </button>
 </div>
 

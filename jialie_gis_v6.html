@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.329</title>
+<title>佳里 GIS v6.330</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -3389,9 +3389,27 @@ _modeBtn.addEventListener('click',()=>{
 ══════════════════════════════════════════════════════════ */
 let _radiusShownAt = 0;
 
-/* ── WMS GetFeatureInfo 查詢地號 ── */
+/* ── 地段高亮紅色虛線邊界 ── */
+let _parcelHighlight = null;
+function _highlightParcel(geometry){
+  if(_parcelHighlight){map.removeLayer(_parcelHighlight);_parcelHighlight=null;}
+  if(!geometry) return;
+  try{
+    let latlngs;
+    if(geometry.type==='Polygon'){
+      latlngs=[geometry.coordinates[0].map(c=>[c[1],c[0]])];
+    } else if(geometry.type==='MultiPolygon'){
+      latlngs=geometry.coordinates.map(poly=>poly[0].map(c=>[c[1],c[0]]));
+    } else return;
+    _parcelHighlight=L.polygon(latlngs,{
+      color:'#e74c3c',weight:2.5,dashArray:'8,5',fillOpacity:0.08,fillColor:'#e74c3c'
+    }).addTo(map);
+  }catch(e){console.warn('highlight parcel:',e);}
+}
+
+/* ── WMS GetFeatureInfo 查詢地號（回傳 {label, geometry}） ── */
 async function _queryLandParcelWMS(lat, lng){
-  if(!_cadLayerOn || !navigator.onLine) return null;
+  if(!navigator.onLine) return null;
   try{
     const sz=map.getSize();
     const cp=map.latLngToContainerPoint([lat,lng]);
@@ -3401,20 +3419,20 @@ async function _queryLandParcelWMS(lat, lng){
       `&LAYERS=CADSTRAL&QUERY_LAYERS=CADSTRAL&INFO_FORMAT=application/json`+
       `&SRS=EPSG:4326&BBOX=${bbox}&WIDTH=${sz.x}&HEIGHT=${sz.y}`+
       `&X=${Math.round(cp.x)}&Y=${Math.round(cp.y)}&FEATURE_COUNT=1`;
-    const res=await fetch(url,{signal:AbortSignal.timeout(5000)});
+    const res=await fetch(url,{signal:AbortSignal.timeout(6000)});
     const ct=res.headers.get('content-type')||'';
     if(ct.includes('json')){
       const d=await res.json();
       if(d.features&&d.features.length){
-        const p=d.features[0].properties;
-        // 嘗試常見欄位名稱
-        return p['地號']||p['PARNO']||p['parno']||p['LandNo']||p['LANDNO']||JSON.stringify(p).substring(0,60);
+        const f=d.features[0];
+        const p=f.properties||{};
+        const label=p['地號']||p['PARNO']||p['parno']||p['LandNo']||p['LANDNO']||Object.values(p)[0]||null;
+        return {label, geometry: f.geometry||null};
       }
     } else {
       const txt=await res.text();
-      // 解析文字格式回應中的地號
-      const m=txt.match(/地號[=:「「\s]*([0-9\-]+)/);
-      if(m) return m[1];
+      const m=txt.match(/地號[=:「\s]*([0-9\-]+)/);
+      if(m) return {label:m[1], geometry:null};
     }
   }catch(e){console.warn('WMS GetFeatureInfo:',e);}
   return null;
@@ -3441,23 +3459,24 @@ map.on('click', async (e)=>{
       _placePin(mkLat,mkLng,label);
       show50mList(mkLat,mkLng,label);
     } else {
-      // 非門牌位置 → 先放暫時標記
-      _placePin(lat,lng,'查詢中…');
-      // 1. 嘗試 WMS GetFeatureInfo 查詢確切地號
-      const wmsResult = await _queryLandParcelWMS(lat,lng);
-      if(wmsResult){
-        label = `佳里段 ${wmsResult}`;
-      } else if(typeof LAND_DB!=='undefined'){
-        // 2. fallback：找最近 LAND_DB（不限距離）
+      // 非門牌位置 → 先放暫時標記 + 立即 LAND_DB fallback
+      if(typeof LAND_DB!=='undefined'){
         let nearLand=null,minLand=99999;
         Object.entries(LAND_DB).forEach(([key,val])=>{
           const d=Math.sqrt(Math.pow(val[0]-lat,2)+Math.pow((val[1]-lng)*cosLat,2))*111000;
           if(d<minLand){minLand=d;nearLand={key,val};}
         });
-        if(nearLand) label=`佳里段 ${nearLand.key}${minLand>100?' (約'+Math.round(minLand)+'m)':''}`;
+        if(nearLand) label=`佳里段 ${nearLand.key}`;
       }
-      _placePin(lat,lng,label||'此位置');
+      _placePin(lat,lng,label||'查詢中…');
       show50mList(lat,lng,label);
+      // 背景查 WMS 取得確切地號 + 幾何邊界
+      const wmsResult = await _queryLandParcelWMS(lat,lng);
+      if(wmsResult){
+        if(wmsResult.label) label=`佳里段 ${wmsResult.label}`;
+        _placePin(lat,lng,label);
+        _highlightParcel(wmsResult.geometry);
+      }
     }
     return;
   }

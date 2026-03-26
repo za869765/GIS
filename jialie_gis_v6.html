@@ -679,9 +679,6 @@ input,select,textarea,button{font-family:inherit}
 <!-- ── 右側欄收起按鈕 ── -->
 <div id="sheet-toggle-btn" onclick="toggleSheetPanel()" title="收起/展開側欄">▶</div>
 
-<!-- ── DISTRICT CHIPS ── -->
-<div id="dist-strip"></div>
-
 <!-- search bar moved into #sheet below -->
 
 <!-- ── FAB ── -->
@@ -753,210 +750,14 @@ input,select,textarea,button{font-family:inherit}
 
   <!-- Desktop tab bar -->
   <div id="bottom-nav-desktop" style="display:none">
-    <button class="dbnav active" onclick="switchMap('cases')">📍 個案地圖</button>
-    <button class="dbnav" onclick="switchMap('fac')">🏛 公共設施</button>
-    <button class="dbnav" onclick="switchMap('district')">👤 地段里別</button>
+    <button class="dbnav active" onclick="switchMap('fac')">🏛 公共設施</button>
   </div>
 
   <div id="sheet-content">
 
-    <!-- ══ 個案地圖 TAB ══ -->
-    <div class="tab-pane active" id="tab-cases">
-      <div class="sub-nav">
-        <button class="snav active" onclick="caseSubTab('list')">📋 列表</button>
-        <button class="snav" onclick="caseSubTab('detail')">📄 詳情</button>
-        <button class="snav" onclick="caseSubTab('add')">✏️ 新增/編輯</button>
-      </div>
-
-      <div class="sub-pane active" id="sub-list">
-        <div class="search-wrap">
-          <input id="search-box" placeholder="🔍 搜尋姓名、路名、里別…" oninput="renderList()">
-          <div class="filter-scroll" style="margin-top:8px">
-            <span class="fchip active" data-status="all" onclick="setFilter(this)">全部</span>
-            <span class="fchip" data-status="active" onclick="setFilter(this)">進行中</span>
-            <span class="fchip" data-status="followup" onclick="setFilter(this)">追蹤中</span>
-            <span class="fchip" data-status="pending" onclick="setFilter(this)">待處理</span>
-            <span class="fchip" data-status="closed" onclick="setFilter(this)">已結案</span>
-          </div>
-          <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:8px 0 4px">類型篩選</div>
-          <div class="filter-scroll" id="type-filter-row">
-            <span class="fchip type-chip tc-on" data-type="all" onclick="setTypeFilter(this,'all')">全部</span>
-            <span class="fchip type-chip" data-type="一般個案" onclick="setTypeFilter(this,'一般個案')">📍 一般</span>
-            <span class="fchip type-chip" data-type="TB結核" onclick="setTypeFilter(this,'TB結核')">🫁 TB</span>
-            <span class="fchip type-chip" data-type="精神衛生" onclick="setTypeFilter(this,'精神衛生')">🧠 精神</span>
-            <span class="fchip type-chip" data-type="登革熱" onclick="setTypeFilter(this,'登革熱')">🦟 登革熱</span>
-            <span class="fchip type-chip" data-type="長期照護" onclick="setTypeFilter(this,'長期照護')">❤️ 長照</span>
-            <span class="fchip type-chip" data-type="腸道篩檢" onclick="setTypeFilter(this,'腸道篩檢')">🔬 腸篩</span>
-            <span class="fchip type-chip" data-type="慢性病管理" onclick="setTypeFilter(this,'慢性病管理')">💊 慢性病</span>
-          </div>
-          <div id="vil-filter-row" style="margin-top:6px"></div>
-        </div>
-        <div id="case-list"></div>
-      </div>
-
-      <div class="sub-pane" id="sub-detail">
-        <div id="detail-content"><div class="empty-state">請從列表選取個案</div></div>
-      </div>
-
-      <div class="sub-pane" id="sub-add">
-      <div class="fg"><label>姓名 *</label><input id="f-name" placeholder="個案姓名" inputmode="text"></div>
-      <div class="frow2">
-        <div class="fg"><label>案件類型</label>
-          <select id="f-type">
-            <option>腸道篩檢</option><option>胃部篩檢</option><option>慢性病管理</option>
-            <option>長期照護</option><option>精神衛生</option><option>其他</option>
-          </select></div>
-        <div class="fg"><label>狀態</label>
-          <select id="f-status">
-            <option value="active">進行中</option><option value="followup">追蹤中</option>
-            <option value="pending">待處理</option><option value="closed">已結案</option>
-          </select></div>
-      </div>
-      <div class="frow2">
-        <div class="fg"><label>出生年次（民國）</label><input id="f-birth" placeholder="65" inputmode="numeric"></div>
-        <div class="fg"><label>聯絡電話</label><input id="f-phone" placeholder="09xx-xxxxxx" inputmode="tel"></div>
-      </div>
-      <div class="frow2">
-        <div class="fg"><label>負責人員</label><input id="f-worker" placeholder="承辦人員"></div>
-        <div class="fg"><label>所屬里</label>
-          <select id="f-village" onchange="onVillageChange()">
-            <option value="">（自動偵測）</option>
-          </select></div>
-      </div>
-      <div class="dist-info-box" id="dist-info-box">
-        <div class="dist-name" id="dist-info-name"></div>
-        <div class="dist-note" id="dist-info-note"></div>
-      </div>
-
-      <!-- ═══ 門牌地址 (step-by-step) ═══ -->
-      <div class="addr-card" id="addr-card">
-        <!-- Header -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <span style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">門牌地址</span>
-          <span id="addr-db-badge" style="font-size:10px;background:#d5f5e3;color:#1a7a44;padding:2px 8px;border-radius:8px;font-weight:700">📍 門牌DB</span>
-          <span id="addr-db-missing" style="display:none"></span>
-        </div>
-
-        <!-- STEP 1 路名 -->
-        <div class="addr-step" id="step1-wrap">
-          <div class="addr-step-label">
-            <span class="step-num">1</span>路名
-          </div>
-          <input id="f-road-search" placeholder="🔍 輸入關鍵字過濾，例：進學" autocomplete="off"
-            style="width:100%;border:1.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;margin-bottom:5px"
-            oninput="filterRoadSelect(this.value)">
-          <select id="f-road-sel"
-            style="width:100%;border:1.5px solid var(--blue);border-radius:7px;padding:9px 11px;font-size:13px;font-weight:600;background:var(--surface);color:var(--text1)"
-            onchange="onRoadSelChange()" size="1">
-            <option value="">— 選擇路名 —</option>
-          </select>
-          <input id="f-road" type="hidden">
-        </div>
-
-        <!-- STEP 2 巷弄 (hidden until road selected) -->
-        <div class="addr-step" id="step2-wrap" style="display:none">
-          <div class="addr-step-label">
-            <span class="step-num">2</span>巷弄
-            <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">（若無請直接跳步驟3）</span>
-          </div>
-          <!-- DB chips -->
-          <div id="lane-chips-wrap" style="display:none;flex-wrap:wrap;gap:5px;margin-bottom:6px"></div>
-          <!-- Manual input -->
-          <div style="display:flex;gap:6px;align-items:center">
-            <select id="f-lane-sel"
-              style="flex:1;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--surface)"
-              onchange="onLaneSelChange()">
-              <option value="">無巷弄</option>
-            </select>
-            <input id="f-lane" placeholder="或手動" inputmode="text"
-              style="flex:1;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px"
-              oninput="onLaneManualInput()">
-          </div>
-          <button onclick="goToStep3()" style="width:100%;margin-top:6px;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;padding:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--blue)">
-            ↓ 繼續選號碼
-          </button>
-        </div>
-
-        <!-- STEP 3 門牌號 (hidden until step 2 done) -->
-        <div class="addr-step" id="step3-wrap" style="display:none">
-          <div class="addr-step-label">
-            <span class="step-num">3</span>門牌號
-          </div>
-          <!-- DB number grid -->
-          <div id="num-grid" style="display:flex;flex-wrap:wrap;gap:5px;max-height:140px;overflow-y:auto;padding:2px 0 6px;margin-bottom:4px"></div>
-          <!-- Manual fallback -->
-          <div style="font-size:10px;color:var(--text3);margin-bottom:5px">或手動輸入：</div>
-          <div style="display:flex;gap:5px;align-items:center">
-            <input id="f-num" placeholder="號" inputmode="numeric"
-              style="flex:2;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:14px;font-weight:600"
-              oninput="buildFullAddr()">
-            <span style="color:var(--text3);font-size:11px;white-space:nowrap">之</span>
-            <input id="f-numext" placeholder="之" inputmode="numeric"
-              style="flex:1;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px"
-              oninput="buildFullAddr()">
-            <span style="color:var(--text3);font-size:11px;white-space:nowrap">樓</span>
-            <input id="f-floor" placeholder="樓" inputmode="numeric"
-              style="flex:1;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px"
-              oninput="buildFullAddr()">
-          </div>
-        </div>
-
-        <!-- 完整地址 + 定位 -->
-        <div style="display:flex;gap:6px;align-items:flex-end;margin-top:10px">
-          <div style="flex:1">
-            <div style="font-size:10px;color:var(--text3);margin-bottom:3px">組合結果</div>
-            <input id="f-addr-full" readonly placeholder="選擇路名開始…"
-              style="width:100%;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:12px;color:var(--text1);background:#f5f7fa;font-weight:600">
-          </div>
-          <button class="geo-btn" id="geo-btn" onclick="geocodeAddr()" style="flex-shrink:0;height:40px;font-size:12px;padding:0 12px">
-            📍 定位
-          </button>
-        </div>
-        <div id="geo-msg" class="geo-msg" style="margin-top:5px"></div>
-        <input type="hidden" id="ac-drop"><!-- keep for compat -->
-      </div>
-
-
-      <div class="fg"><label>備註</label><textarea id="f-notes" placeholder="案件說明、處置記錄…"></textarea></div>
-      <div class="coord-hint" id="coord-hint">💡 輸入路名選巷弄→點號碼自動定位 ｜ 或直接在地圖點選位置</div>
-      <input type="hidden" id="f-lat"><input type="hidden" id="f-lng"><input type="hidden" id="f-id">
-      <button class="form-submit" onclick="saveCase()">✓ 儲存個案</button>
-      <button class="form-cancel" onclick="cancelAdd()">取消</button>
-      </div>
-    </div><!-- /tab-cases -->
 
     <!-- ══ 公共設施 TAB ══ -->
-    <div class="tab-pane" id="tab-fac">
-      <div class="map-tab-hd">
-        <div class="map-tab-title">🏛 公共設施圖層</div>
-        <button class="map-tab-add" style="background:var(--surface);color:var(--blue);border:1.5px solid var(--blue)" onclick="refreshAllFac()">🔄 更新</button>
-      </div>
-      <div class="fac-section">
-        <div class="fac-section-label">📋 官方資料（本機，離線可用）</div>
-        <div class="fac-grid">
-          <button class="fac-btn" id="fb-gov"      onclick="gisFac('gov')">🏛<br>公務機關</button>
-          <button class="fac-btn" id="fb-police"   onclick="gisFac('police')">👮<br>派出所</button>
-          <button class="fac-btn" id="fb-school"   onclick="gisFac('school')">🏫<br>學校</button>
-          <button class="fac-btn" id="fb-medical"  onclick="gisFac('medical')">🏥<br>醫療</button>
-          <button class="fac-btn" id="fb-pharmacy" onclick="gisFac('pharmacy')">💊<br>藥局</button>
-          <button class="fac-btn" id="fb-market"   onclick="gisFac('market')">🛒<br>市場</button>
-          <button class="fac-btn" id="fb-other"    onclick="gisFac('other')">🏢<br>其他</button>
-          <button class="fac-btn" id="fb-dental"   onclick="gisFac('dental')">🦷<br>牙醫</button>
-          <button class="fac-btn" id="fb-tcm"      onclick="gisFac('tcm')">🏯<br>中醫</button>
-        </div>
-      </div>
-      <div style="font-size:10px;color:#8e44ad;background:#f5eeff;border-radius:6px;padding:6px 10px;margin-bottom:8px">
-        ⭐ 牙醫圖層中標註 <b>115年全口假牙合約</b> 者即為免費裝置合約院所
-      </div>
-      <div class="fac-status" id="fac-status"></div>
-    </div><!-- /tab-fac -->
-
-    <!-- ══ 地段里別 TAB ══ -->
-    <div class="tab-pane" id="tab-district">
-      <div class="map-tab-hd">
-        <div class="map-tab-title">👤 地段里別</div>
-        <button class="map-tab-add" onclick="openDistSettings()">⚙️ 編輯</button>
-      </div>
+    <div class="tab-pane active" id="tab-fac">
       <!-- 佳里區官方統計資訊卡 -->
       <div id="jialie-stats-card" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px">
         <div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📊 佳里區基本統計（官方資料）</div>
@@ -992,26 +793,39 @@ input,select,textarea,button{font-family:inherit}
           原住民人口：合計 266 人（平地原住民 140 · 山地原住民 126）
         </div>
       </div>
-
-      <div style="font-size:11px;color:var(--text3);margin-top:4px;padding:8px 10px;background:var(--surface2);border-radius:7px;line-height:1.7">
-        💡 點選右下角里別圖例可顯示里界並縮放至該里範圍
+      <div class="map-tab-hd">
+        <div class="map-tab-title">🏛 公共設施圖層</div>
+        <button class="map-tab-add" style="background:var(--surface);color:var(--blue);border:1.5px solid var(--blue)" onclick="refreshAllFac()">🔄 更新</button>
       </div>
-    </div><!-- /tab-district -->
+      <div class="fac-section">
+        <div class="fac-section-label">📋 官方資料（本機，離線可用）</div>
+        <div class="fac-grid">
+          <button class="fac-btn" id="fb-gov"      onclick="gisFac('gov')">🏛<br>公務機關</button>
+          <button class="fac-btn" id="fb-police"   onclick="gisFac('police')">👮<br>派出所</button>
+          <button class="fac-btn" id="fb-school"   onclick="gisFac('school')">🏫<br>學校</button>
+          <button class="fac-btn" id="fb-medical"  onclick="gisFac('medical')">🏥<br>醫療</button>
+          <button class="fac-btn" id="fb-pharmacy" onclick="gisFac('pharmacy')">💊<br>藥局</button>
+          <button class="fac-btn" id="fb-market"   onclick="gisFac('market')">🛒<br>市場</button>
+          <button class="fac-btn" id="fb-other"    onclick="gisFac('other')">🏢<br>其他</button>
+          <button class="fac-btn" id="fb-dental"   onclick="gisFac('dental')">🦷<br>牙醫</button>
+          <button class="fac-btn" id="fb-tcm"      onclick="gisFac('tcm')">🏯<br>中醫</button>
+        </div>
+      </div>
+      <div style="font-size:10px;color:#8e44ad;background:#f5eeff;border-radius:6px;padding:6px 10px;margin-bottom:8px">
+        ⭐ 牙醫圖層中標註 <b>115年全口假牙合約</b> 者即為免費裝置合約院所
+      </div>
+      <div class="fac-status" id="fac-status"></div>
+    </div><!-- /tab-fac -->
+
+    <!-- ══ 地段里別 TAB ══ -->
 
   </div><!-- /sheet-content -->
 
     <!-- Mobile bottom nav -->
   <nav id="bottom-nav">
-    <button class="bnav-item active" data-tab="cases" onclick="switchMap('cases');expandSheet('peek')">
-      <span class="bnav-icon">📍</span><span class="bnav-lbl">個案</span>
-    </button>
-    <button class="bnav-item" data-tab="fac" onclick="switchMap('fac');expandSheet('peek')">
+    <button class="bnav-item active" data-tab="fac" onclick="switchMap('fac');expandSheet('peek')">
       <span class="bnav-icon">🏛</span><span class="bnav-lbl">設施</span>
     </button>
-    <button class="bnav-item" data-tab="district" onclick="switchMap('district');expandSheet('peek')">
-      <span class="bnav-icon">👤</span><span class="bnav-lbl">地段</span>
-    </button>
-  </nav>
 </div>
 
 <!-- ── TILE DOWNLOADER MODAL ── -->
@@ -1290,7 +1104,7 @@ function renderLegend(){
    DISTRICT STRIP
 ═══════════════════════════════════════════ */
 function buildDistStrip(){
-  const strip=document.getElementById('dist-strip');strip.innerHTML='';
+  const strip=document.getElementById("dist-strip");if(!strip)return;strip.innerHTML="";
   const all=document.createElement('div');all.className='ds-chip';
   const isAll=filterDist==='all';
   all.style.cssText=isAll?'background:#1b4f72;color:#fff;border-color:#1b4f72':'color:#1b4f72;border-color:#1b4f72';
@@ -3330,7 +3144,7 @@ let _lastSelLat = null, _lastSelLng = null, _lastSelLabel = '';
 // 半徑控制列 — 置於地圖左側（Zoom 按鈕正下方）
 const _radiusBar = document.createElement('div');
 _radiusBar.id = 'radius-bar';
-_radiusBar.style.cssText = 'position:fixed;left:14px;top:calc(var(--topbar-h,56px) + 130px);z-index:549;display:flex;flex-direction:column;gap:4px;';
+_radiusBar.style.cssText = 'position:fixed;left:14px;top:calc(var(--topbar-h,56px) + 210px);z-index:549;display:flex;flex-direction:column;gap:4px;';
 _radiusBar.innerHTML = `
   <div style="background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:5px 8px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:3px;align-items:stretch">
     <span style="font-size:10px;color:var(--text3);text-align:center;font-weight:600;letter-spacing:.5px">方圓</span>
@@ -3992,7 +3806,7 @@ var OSM_FAC = {
 };
 
 var _facOn={}, _facGrp={};
-var _typeFilter='all', _gvil=true, _curMap='cases';
+var _typeFilter='all', _gvil=true, _curMap='fac';
 
 /* ── switchMap ── */
 function switchTab(n){ switchMap(n); }
@@ -4314,7 +4128,7 @@ function renderDistTable(staff){
 }
 
 function jumpToVil(vil){
-  switchMap('cases');
+  switchMap('fac');
   caseSubTab('list');
   setTimeout(function(){
     var row=document.getElementById('vil-filter-row');

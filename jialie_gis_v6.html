@@ -399,7 +399,25 @@ input,select,textarea,button{font-family:inherit}
   #fab{display:none}
   #leg-toggle{display:none}
   #dist-strip{top:calc(env(safe-area-inset-top,0px) + 68px)}
-  #sheet-content{height:calc(100vh - 56px);overflow-y:auto}
+  /* Search bar inside right panel on desktop */
+  #map-search-bar{
+    position:relative !important;top:auto !important;left:auto !important;
+    right:auto !important;transform:none !important;width:auto !important;
+    z-index:auto !important;padding:8px 12px 4px;flex-shrink:0;
+    border-bottom:1px solid var(--border);
+  }
+  #map-search-inner{
+    border-radius:10px !important;
+    background:var(--surface2) !important;
+    backdrop-filter:none !important;-webkit-backdrop-filter:none !important;
+    border:1px solid var(--border) !important;
+    box-shadow:none !important;padding:7px 12px !important;
+  }
+  #map-search-results{
+    border-radius:8px !important;margin:4px 0 !important;
+    max-height:220px !important;box-shadow:0 2px 10px rgba(0,0,0,.12) !important;
+  }
+  #sheet-content{flex:1;overflow-y:auto;height:auto;min-height:0}
   .tab-pane{padding:8px 16px 24px}
   /* Desktop inline legend */
   #legend-desktop{
@@ -563,6 +581,15 @@ input,select,textarea,button{font-family:inherit}
 .msr-badge.green{background:#d5f5e3;color:#1a7a44}
 /* Radius ring */
 #radius-ring{display:none}
+/* 箭頭標記旁的地址標籤 */
+.pin-label{
+  background:rgba(255,255,255,.95)!important;
+  border:1.5px solid #e74c3c!important;border-radius:6px!important;
+  padding:3px 8px!important;font-size:13px!important;font-weight:700!important;
+  color:var(--text1)!important;box-shadow:0 2px 10px rgba(0,0,0,.2)!important;
+  white-space:nowrap!important;pointer-events:none!important;
+}
+.pin-label::before{display:none!important}
 
 /* ═══════════════════════════════════════════
    LEAFLET OVERRIDES
@@ -655,16 +682,7 @@ input,select,textarea,button{font-family:inherit}
 <!-- ── DISTRICT CHIPS ── -->
 <div id="dist-strip"></div>
 
-<!-- ── MAP ADDRESS SEARCH BAR ── -->
-<div id="map-search-bar">
-  <div id="map-search-inner">
-    <span style="font-size:16px;line-height:1;flex-shrink:0">🔍</span>
-    <input id="map-search-input" placeholder="搜尋地址或路名…" autocomplete="off"
-      oninput="onMapSearch()" onkeydown="onMapSearchKey(event)">
-    <button id="map-search-clear" onclick="clearMapSearch()" style="display:none">✕</button>
-  </div>
-  <div id="map-search-results"></div>
-</div>
+<!-- search bar moved into #sheet below -->
 
 <!-- ── FAB ── -->
 <button id="fab" onclick="startAddMode()">＋</button>
@@ -704,9 +722,17 @@ input,select,textarea,button{font-family:inherit}
 
 <!-- ── DESKTOP LEGEND ── -->
 <div id="legend-desktop" style="display:none;flex-direction:column">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border)">
     <span style="font-size:11px;font-weight:700;color:var(--text1)">里別圖例</span>
     <button id="vil-layer-btn" onclick="toggleVilLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">里界 OFF</button>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border)">
+    <span style="font-size:11px;color:var(--text2)">📌 地號圖層</span>
+    <button id="land-leg-btn" onclick="toggleLandLayerLeg()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">地號 OFF</button>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border)">
+    <span style="font-size:11px;color:var(--text2)">🗺 地籍圖</span>
+    <button id="cad-leg-btn" onclick="toggleCadLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">地籍 OFF</button>
   </div>
   <div id="leg-desktop-body" style="overflow-y:auto;flex:1"></div>
 </div>
@@ -716,6 +742,17 @@ input,select,textarea,button{font-family:inherit}
   <!-- drag handle -->
   <div id="sheet-handle" ontouchstart="sheetDragStart(event)" ontouchmove="sheetDragMove(event)" ontouchend="sheetDragEnd(event)" onmousedown="sheetMouseStart(event)">
     <div class="handle-pill"></div>
+  </div>
+
+  <!-- Search bar (inside panel on desktop, fixed on mobile) -->
+  <div id="map-search-bar">
+    <div id="map-search-inner">
+      <span style="font-size:16px;line-height:1;flex-shrink:0">🔍</span>
+      <input id="map-search-input" placeholder="搜尋地址或路名…" autocomplete="off"
+        oninput="onMapSearch()" onkeydown="onMapSearchKey(event)">
+      <button id="map-search-clear" onclick="clearMapSearch()" style="display:none">✕</button>
+    </div>
+    <div id="map-search-results"></div>
   </div>
 
   <!-- Desktop tab bar -->
@@ -3289,14 +3326,31 @@ async function mapSearchSelectRoad(name){
   if(navigator.onLine) geocodeMapSearch(`臺南市佳里區${name}`);
 }
 
-function mapSearchSelectPoint(lat, lng, label, doRadius=true){
+/* ── 箭頭/圖釘圖示（類政府門牌系統風格） ── */
+function _pinIcon(color='#e74c3c'){
+  return L.divIcon({
+    html:`<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
+      <path d="M14 0C6.3 0 0 6.3 0 14c0 9.8 14 24 14 24S28 23.8 28 14C28 6.3 21.7 0 14 0z" fill="${color}" opacity=".93"/>
+      <circle cx="14" cy="13" r="5.5" fill="white" opacity=".9"/>
+    </svg>`,
+    iconSize:[28,38], iconAnchor:[14,38], popupAnchor:[0,-40], className:''
+  });
+}
+
+function _placePin(lat, lng, labelText){
   if(_searchMarker) map.removeLayer(_searchMarker);
-  _searchMarker = L.marker([lat,lng],{
-    icon: L.divIcon({
-      html:`<div style="width:22px;height:22px;border-radius:50%;background:#e74c3c;border:3px solid #fff;box-shadow:0 0 0 2px #e74c3c,0 3px 10px rgba(0,0,0,.3)"></div>`,
-      iconSize:[22,22],iconAnchor:[11,11],className:''
-    })
-  }).addTo(map).bindPopup(`<b>${label}</b>`).openPopup();
+  const shortLabel = labelText.replace('臺南市佳里區','').replace('台南市佳里區','');
+  const vt = _vilTag ? _vilTag(lat,lng) : '';
+  _searchMarker = L.marker([lat,lng],{icon:_pinIcon(),zIndexOffset:1000})
+    .addTo(map)
+    .bindTooltip(`${vt?vt.replace(/<[^>]+>/g,'')+'　':''}${shortLabel}`,
+      {permanent:true, direction:'right', className:'pin-label'})
+    .openTooltip();
+  return _searchMarker;
+}
+
+function mapSearchSelectPoint(lat, lng, label, doRadius=true){
+  _placePin(lat, lng, label);
   map.setView([lat,lng], 17);
   document.getElementById('map-search-results').style.display='none';
   const dispLabel = label.replace('臺南市佳里區','').replace('台南市佳里區','');
@@ -3327,28 +3381,19 @@ let RADIUS_M = 50;
 let _radiusOn = false;  // 預設：單點地址模式
 let _lastSelLat = null, _lastSelLng = null, _lastSelLabel = '';
 
-// 半徑控制列（搜尋列下方）
+// 半徑控制列 — 置於地圖左側（Zoom 按鈕正下方）
 const _radiusBar = document.createElement('div');
 _radiusBar.id = 'radius-bar';
-_radiusBar.style.cssText = 'position:fixed;z-index:549;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.88);backdrop-filter:blur(8px);border-radius:20px;padding:5px 12px;box-shadow:0 2px 10px rgba(0,0,0,.15);border:1px solid rgba(27,79,114,.15);';
+_radiusBar.style.cssText = 'position:fixed;left:14px;top:calc(var(--topbar-h,56px) + 58px);z-index:549;display:flex;flex-direction:column;gap:4px;';
 _radiusBar.innerHTML = `
-  <span style="font-size:11px;color:var(--text2);white-space:nowrap">方圓</span>
-  <button id="r-off"  onclick="setRadius(0)"   style="font-size:11px;padding:3px 9px;border-radius:12px;border:1px solid var(--border2);cursor:pointer;background:var(--blue);color:#fff;font-weight:600">單點</button>
-  <button id="r-50"   onclick="setRadius(50)"  style="font-size:11px;padding:3px 9px;border-radius:12px;border:1px solid var(--border2);cursor:pointer;background:var(--surface2);color:var(--text2)">50m</button>
-  <button id="r-100"  onclick="setRadius(100)" style="font-size:11px;padding:3px 9px;border-radius:12px;border:1px solid var(--border2);cursor:pointer;background:var(--surface2);color:var(--text2)">100m</button>
+  <div style="background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:5px 8px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:3px;align-items:stretch">
+    <span style="font-size:10px;color:var(--text3);text-align:center;font-weight:600;letter-spacing:.5px">方圓</span>
+    <button id="r-off"  onclick="setRadius(0)"   style="font-size:11px;padding:3px 8px;border-radius:8px;border:1px solid var(--border2);cursor:pointer;background:var(--blue);color:#fff;font-weight:600">單點</button>
+    <button id="r-50"   onclick="setRadius(50)"  style="font-size:11px;padding:3px 8px;border-radius:8px;border:1px solid var(--border2);cursor:pointer;background:var(--surface2);color:var(--text2)">50m</button>
+    <button id="r-100"  onclick="setRadius(100)" style="font-size:11px;padding:3px 8px;border-radius:8px;border:1px solid var(--border2);cursor:pointer;background:var(--surface2);color:var(--text2)">100m</button>
+  </div>
 `;
 document.body.appendChild(_radiusBar);
-
-// 定位半徑列在搜尋列正下方
-function _posRadiusBar(){
-  const sb = document.getElementById('map-search-bar');
-  if(!sb) return;
-  const r = sb.getBoundingClientRect();
-  _radiusBar.style.top  = (r.bottom + 6) + 'px';
-  _radiusBar.style.left = r.left + 'px';
-}
-setTimeout(_posRadiusBar, 300);
-window.addEventListener('resize', _posRadiusBar);
 
 function setRadius(m){
   _radiusOn = m > 0;
@@ -3610,13 +3655,7 @@ map.on('click', (e)=>{
         if(nearLand && minLand<40) label=`佳里段 ${nearLand.key}`;
       }
     }
-    if(_searchMarker) map.removeLayer(_searchMarker);
-    _searchMarker = L.marker([mkLat,mkLng],{
-      icon: L.divIcon({
-        html:`<div style="width:18px;height:18px;border-radius:50%;background:#e74c3c;border:3px solid #fff;box-shadow:0 0 0 2px #e74c3c,0 2px 8px rgba(0,0,0,.3)"></div>`,
-        iconSize:[18,18],iconAnchor:[9,9],className:''
-      })
-    }).addTo(map);
+    _placePin(mkLat,mkLng,label||'此位置');
     show50mList(mkLat,mkLng,label);
     return;
   }
@@ -3648,17 +3687,33 @@ _doorBtn.addEventListener('click',()=>{
   if(_doorLayerOn) _refreshDoorLayer(); else _clearDoorLayer();
 });
 
-// 地號點浮動按鈕（與門牌點相同風格）
-const _landBtn2 = document.createElement('div');
-_landBtn2.title = '顯示/隱藏地號點';
-_landBtn2.innerHTML = '📌 地號點';
-_landBtn2.style.cssText = 'position:fixed;left:14px;bottom:400px;z-index:550;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);user-select:none';
-document.body.appendChild(_landBtn2);
-_landBtn2.addEventListener('click',()=>{
+/* ── 地號圖層 legend 按鈕控制 ── */
+function toggleLandLayerLeg(){
   toggleLandLayer();
-  _landBtn2.style.background = _landLayerOn ? 'var(--teal)' : 'rgba(255,255,255,.94)';
-  _landBtn2.style.color = _landLayerOn ? '#fff' : 'var(--text1)';
-});
+  const btn=document.getElementById('land-leg-btn');
+  if(btn){btn.textContent=_landLayerOn?'地號 ON':'地號 OFF';btn.style.background=_landLayerOn?'var(--teal)':'var(--surface2)';btn.style.color=_landLayerOn?'#fff':'var(--text2)';btn.style.borderColor=_landLayerOn?'var(--teal)':'var(--border2)';}
+}
+
+/* ── NLSC 地籍圖 WMS ── */
+let _cadLayerOn = false;
+let _cadLayer = null;
+function toggleCadLayer(){
+  _cadLayerOn = !_cadLayerOn;
+  const btn=document.getElementById('cad-leg-btn');
+  if(_cadLayerOn){
+    if(!_cadLayer){
+      _cadLayer = L.tileLayer.wms('https://wms.nlsc.gov.tw/wms',{
+        layers:'LUIMAP',format:'image/png',transparent:true,
+        opacity:0.7,version:'1.1.1',attribution:'© NLSC'
+      });
+    }
+    _cadLayer.addTo(map);
+    if(btn){btn.textContent='地籍 ON';btn.style.background='#8e44ad';btn.style.color='#fff';btn.style.borderColor='#8e44ad';}
+  } else {
+    if(_cadLayer) map.removeLayer(_cadLayer);
+    if(btn){btn.textContent='地籍 OFF';btn.style.background='var(--surface2)';btn.style.color='var(--text2)';btn.style.borderColor='var(--border2)';}
+  }
+}
 
 function _clearDoorLayer(){
   if(_doorLayerGroup){ map.removeLayer(_doorLayerGroup); _doorLayerGroup=null; }
@@ -3688,13 +3743,31 @@ function _refreshDoorLayer(){
       fillOpacity: 0.85, weight: 1.5
     });
     const disp = r[2].replace('\u81fa\u5357\u5e02\u4f73\u91cc\u5340','').replace('\u53f0\u5357\u5e02\u4f73\u91cc\u5340','');
-    cm.bindPopup('<b style="font-size:13px">'+disp+'</b>',{maxWidth:220});
+    cm.bindPopup('<b style="font-size:13px">'+disp+'</b>',{maxWidth:280});
     cm.on('click',(ev)=>{
       L.DomEvent.stopPropagation(ev);
       const vt=_vilTag(r[0],r[1]);
-      cm.setPopupContent(`<b style="font-size:13px">${vt}${disp}</b>`);
-      cm.openPopup();
-      show50mList(r[0],r[1],disp);
+      if(isApt){
+        // 公寓：找同一座標所有樓層
+        const cosLat=Math.cos(r[0]*Math.PI/180);
+        const units=[];
+        for(let j=0;j<DOOR_DB.length;j++){
+          const q=DOOR_DB[j];
+          const d=Math.sqrt(Math.pow(q[0]-r[0],2)+Math.pow((q[1]-r[1])*cosLat,2))*111000;
+          if(d<4) units.push(q[2].replace('臺南市佳里區','').replace('台南市佳里區',''));
+        }
+        units.sort();
+        const rows=units.map(u=>`<div style="padding:4px 8px;font-size:12px;border-bottom:1px solid #eee;cursor:pointer" onclick="show50mList(${r[0]},${r[1]},'${u.replace(/'/g,"\\'")}');this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">${vt}${u}</div>`).join('');
+        cm.setPopupContent(`<div style="font-size:12px;font-weight:700;padding:6px 8px;background:#f0f9f0;border-bottom:1px solid #ccc">${vt}共 ${units.length} 戶</div>${rows}`);
+        cm.openPopup();
+        // 放置箭頭標記
+        _placePin(r[0],r[1],units[0]||disp);
+      } else {
+        cm.setPopupContent(`<b style="font-size:13px">${vt}${disp}</b>`);
+        cm.openPopup();
+        _placePin(r[0],r[1],disp);
+        show50mList(r[0],r[1],disp);
+      }
     });
     _doorLayerGroup.addLayer(cm);
     cnt++;

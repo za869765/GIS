@@ -380,7 +380,20 @@ input,select,textarea,button{font-family:inherit}
     position:fixed;top:0;right:0;bottom:0;left:auto;
     width:340px;border-radius:0;transform:none !important;
     max-height:none;box-shadow:-4px 0 20px rgba(0,0,0,.12);
+    transition:width .25s ease;overflow:hidden;
   }
+  #sheet.panel-collapsed{width:0 !important;}
+  #map.panel-collapsed{right:0 !important;}
+  #sheet-toggle-btn{
+    position:fixed;top:50%;right:340px;transform:translateY(-50%);
+    z-index:600;width:18px;height:52px;
+    background:rgba(255,255,255,.92);border:1px solid var(--border2);
+    border-right:none;border-radius:8px 0 0 8px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    font-size:11px;color:var(--text2);box-shadow:-2px 0 8px rgba(0,0,0,.1);
+    transition:right .25s ease;user-select:none;
+  }
+  #sheet-toggle-btn.panel-collapsed{right:0;border-radius:0 8px 8px 0;border-right:1px solid var(--border2);border-left:none;}
   #sheet-handle{display:none}
   #bottom-nav{display:none}
   #fab{display:none}
@@ -507,10 +520,12 @@ input,select,textarea,button{font-family:inherit}
 }
 #map-search-inner{
   display:flex;align-items:center;gap:8px;
-  background:#fff;border-radius:24px;
+  background:rgba(255,255,255,0.78);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-radius:24px;
   padding:9px 14px;
-  box-shadow:0 2px 20px rgba(0,0,0,.25),0 0 0 1.5px rgba(27,79,114,.15);
-  border:1.5px solid rgba(27,79,114,.2);
+  box-shadow:0 2px 20px rgba(0,0,0,.18),0 0 0 1.5px rgba(27,79,114,.12);
+  border:1.5px solid rgba(27,79,114,.15);
 }
 #map-search-input{
   flex:1;border:none;outline:none;font-size:14px;
@@ -634,6 +649,8 @@ input,select,textarea,button{font-family:inherit}
 
 <!-- ── MAP ── -->
 <div id="map"></div>
+<!-- ── 右側欄收起按鈕 ── -->
+<div id="sheet-toggle-btn" onclick="toggleSheetPanel()" title="收起/展開側欄">▶</div>
 
 <!-- ── DISTRICT CHIPS ── -->
 <div id="dist-strip"></div>
@@ -687,7 +704,10 @@ input,select,textarea,button{font-family:inherit}
 
 <!-- ── DESKTOP LEGEND ── -->
 <div id="legend-desktop" style="display:none;flex-direction:column">
-  <div style="font-size:11px;font-weight:700;color:var(--text1);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">里別圖例</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">
+    <span style="font-size:11px;font-weight:700;color:var(--text1)">里別圖例</span>
+    <button id="vil-layer-btn" onclick="toggleVilLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">里界 OFF</button>
+  </div>
   <div id="leg-desktop-body" style="overflow-y:auto;flex:1"></div>
 </div>
 
@@ -1482,6 +1502,7 @@ function renderVilLayers(){
     const vm=filterVil==='all'||filterVil===name;
     const opacity=dm?(vm?.55:.22):.07;
     const weight=vm&&dm?2.5:1.2;
+    if(!_vilBoundaryOn) return;
     const layer=L.geoJSON(f,{
       style:{fillColor:col.fill,fillOpacity:opacity,color:col.border,weight,opacity:dm?1:.3},
       onEachFeature:(_,lyr)=>{
@@ -3248,7 +3269,8 @@ function mapSearchSelectPoint(lat, lng, label, doRadius=true){
   }).addTo(map).bindPopup(`<b>${label}</b>`).openPopup();
   map.setView([lat,lng], 17);
   document.getElementById('map-search-results').style.display='none';
-  if(doRadius) show50mList(lat, lng);
+  const dispLabel = label.replace('臺南市佳里區','').replace('台南市佳里區','');
+  if(doRadius) show50mList(lat, lng, dispLabel);
 }
 
 async function geocodeMapSearch(q){
@@ -3272,7 +3294,7 @@ async function geocodeMapSearch(q){
 
 /* ── 50m 半徑地址清單 ── */
 const RADIUS_M = 50;
-function show50mList(lat, lng){
+function show50mList(lat, lng, label=''){
   if(_radiusCircle) map.removeLayer(_radiusCircle);
   _radiusCircle = L.circle([lat,lng],{
     radius:RADIUS_M, color:'#1b4f72', weight:2,
@@ -3295,13 +3317,17 @@ function show50mList(lat, lng){
     }
     nearby.sort((a,b) => a.dist - b.dist);
   }
-  showRadiusPanel(lat, lng, nearby.slice(0, 50));
+  // 若無傳入 label，找最近的門牌當標題
+  if(!label && nearby.length) label = nearby[0].addr;
+  showRadiusPanel(lat, lng, nearby.slice(0, 50), label);
 }
 
-let _radiusPts = []; // 供匯出用
+let _radiusPts = [];
+let _radiusLabel = '';
 
-function showRadiusPanel(lat,lng,pts){
+function showRadiusPanel(lat,lng,pts,label=''){
   _radiusPts = pts;
+  _radiusLabel = label;
   _radiusShownAt = Date.now();
   const resultsEl = document.getElementById('map-search-results');
   resultsEl.style.display='block';
@@ -3327,7 +3353,8 @@ function exportRadiusList(){
   const csv = '\uFEFF' + rows.map(r=>r.join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download = `方圓${RADIUS_M}m門牌清單_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'')}.csv`;
+  const safeName = (_radiusLabel||'地點').replace(/[\\/:*?"<>|]/g,'');
+  a.download = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
   a.click();
 }
 
@@ -3346,6 +3373,43 @@ function useSearchAsCase(lat,lng){
 
 
 /* ══════════════════════════════════════════════════════════
+   右側欄收起/展開
+══════════════════════════════════════════════════════════ */
+function toggleSheetPanel(){
+  const sheet = document.getElementById('sheet');
+  const mapEl = document.getElementById('map');
+  const btn   = document.getElementById('sheet-toggle-btn');
+  const leg   = document.getElementById('legend-desktop');
+  const collapsed = sheet.classList.toggle('panel-collapsed');
+  mapEl.classList.toggle('panel-collapsed', collapsed);
+  btn.classList.toggle('panel-collapsed', collapsed);
+  btn.textContent = collapsed ? '◀' : '▶';
+  if(leg) leg.style.display = collapsed ? 'none' : 'flex';
+  setTimeout(()=>map.invalidateSize(), 260);
+}
+
+/* ══════════════════════════════════════════════════════════
+   里界圖層切換（預設隱藏）
+══════════════════════════════════════════════════════════ */
+let _vilBoundaryOn = false;
+function toggleVilLayer(){
+  _vilBoundaryOn = !_vilBoundaryOn;
+  const btn = document.getElementById('vil-layer-btn');
+  if(btn){
+    btn.textContent = _vilBoundaryOn ? '里界 ON' : '里界 OFF';
+    btn.style.background = _vilBoundaryOn ? 'var(--blue)' : 'var(--surface2)';
+    btn.style.color = _vilBoundaryOn ? '#fff' : 'var(--text2)';
+    btn.style.borderColor = _vilBoundaryOn ? 'var(--blue)' : 'var(--border2)';
+  }
+  if(_vilBoundaryOn){
+    renderVilLayers();
+  } else {
+    Object.values(vilLayers).forEach(l=>map.removeLayer(l));
+    vilLabels.forEach(l=>map.removeLayer(l));
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
    比例尺
 ══════════════════════════════════════════════════════════ */
 L.control.scale({position:'bottomleft', imperial:false, maxWidth:120}).addTo(map);
@@ -3358,7 +3422,7 @@ const _modeBtn = document.createElement('div');
 _modeBtn.id = 'map-mode-btn';
 _modeBtn.title = '切換選取/移動模式';
 _modeBtn.innerHTML = '🖐 移動';
-_modeBtn.style.cssText = 'position:fixed;left:14px;bottom:160px;z-index:550;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);user-select:none';
+_modeBtn.style.cssText = 'position:fixed;left:14px;bottom:320px;z-index:550;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);user-select:none';
 document.body.appendChild(_modeBtn);
 _modeBtn.addEventListener('click',()=>{
   _selectMode = !_selectMode;
@@ -3404,7 +3468,7 @@ let _doorLayerOn = false;
 const _doorBtn = document.createElement('div');
 _doorBtn.title = '顯示/隱藏門牌點';
 _doorBtn.innerHTML = '🔴 門牌點';
-_doorBtn.style.cssText = 'position:fixed;left:14px;bottom:200px;z-index:550;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);user-select:none';
+_doorBtn.style.cssText = 'position:fixed;left:14px;bottom:360px;z-index:550;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);user-select:none';
 document.body.appendChild(_doorBtn);
 _doorBtn.addEventListener('click',()=>{
   _doorLayerOn = !_doorLayerOn;
@@ -3441,14 +3505,11 @@ function _refreshDoorLayer(){
       fillOpacity: 0.85, weight: 1.5
     });
     const disp = r[2].replace('\u81fa\u5357\u5e02\u4f73\u91cc\u5340','').replace('\u53f0\u5357\u5e02\u4f73\u91cc\u5340','');
-    cm.bindTooltip(disp,{permanent:false,direction:'top',offset:[0,-4]});
+    cm.bindPopup('<b style="font-size:13px">'+disp+'</b>',{maxWidth:220});
     cm.on('click',(ev)=>{
       L.DomEvent.stopPropagation(ev);
-      if(_searchMarker) map.removeLayer(_searchMarker);
-      _searchMarker = L.marker([r[0],r[1]],{
-        icon:L.divIcon({html:`<div style="width:16px;height:16px;border-radius:50%;background:#1b4f72;border:3px solid #fff;box-shadow:0 0 0 2px #1b4f72"></div>`,iconSize:[16,16],iconAnchor:[8,8],className:''})
-      }).addTo(map).bindPopup('<b>'+disp+'</b>').openPopup();
-      show50mList(r[0],r[1]);
+      cm.openPopup();
+      show50mList(r[0],r[1],disp);
     });
     _doorLayerGroup.addLayer(cm);
     cnt++;

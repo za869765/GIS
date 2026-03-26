@@ -727,12 +727,8 @@ input,select,textarea,button{font-family:inherit}
     <button id="vil-layer-btn" onclick="toggleVilLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">里界 OFF</button>
   </div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border)">
-    <span style="font-size:11px;color:var(--text2)">📌 地號圖層</span>
-    <button id="land-leg-btn" onclick="toggleLandLayerLeg()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">地號 OFF</button>
-  </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border)">
-    <span style="font-size:11px;color:var(--text2)">🗺 地籍圖</span>
-    <button id="cad-leg-btn" onclick="toggleCadLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">地籍 OFF</button>
+    <span style="font-size:11px;color:var(--text2)">📐 地號範圍</span>
+    <button id="cad-leg-btn" onclick="toggleCadLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">地號 OFF</button>
   </div>
   <div id="leg-desktop-body" style="overflow-y:auto;flex:1"></div>
 </div>
@@ -952,24 +948,6 @@ input,select,textarea,button{font-family:inherit}
       <div style="font-size:10px;color:#8e44ad;background:#f5eeff;border-radius:6px;padding:6px 10px;margin-bottom:8px">
         ⭐ 牙醫圖層中標註 <b>115年全口假牙合約</b> 者即為免費裝置合約院所
       </div>
-      <div class="fac-section">
-        <div class="fac-section-label">🏥 衛生醫療服務（本機，離線可用）</div>
-        <div class="fac-grid">
-          <button class="fac-btn" id="fb-cancer"     onclick="gisFac('cancer')">🎗<br>癌症篩檢</button>
-          <button class="fac-btn" id="fb-nosmoking"  onclick="gisFac('nosmoking')">🚭<br>無菸場所</button>
-          <button class="fac-btn" id="fb-care_a"     onclick="gisFac('care_a')">🤝<br>社區A照護</button>
-          <button class="fac-btn" id="fb-homenursing" onclick="gisFac('homenursing')">🩺<br>居家護理</button>
-        </div>
-      </div>
-      <div class="fac-section">
-        <div class="fac-section-label">🌐 OSM 即時（需網路）</div>
-        <div class="fac-grid">
-          <button class="fac-btn" id="fb-ltc"      onclick="gisFac('ltc')">🏠<br>長照機構</button>
-          <button class="fac-btn" id="fb-activity" onclick="gisFac('activity')">🏢<br>活動中心</button>
-          <button class="fac-btn" id="fb-trail"    onclick="gisFac('trail')">🌿<br>公園步道</button>
-          <button class="fac-btn" id="fb-temple"   onclick="gisFac('temple')">🏯<br>廟宇</button>
-        </div>
-      </div>
       <div class="fac-status" id="fac-status"></div>
     </div><!-- /tab-fac -->
 
@@ -1015,39 +993,8 @@ input,select,textarea,button{font-family:inherit}
         </div>
       </div>
 
-      <!-- 地號查詢 -->
-      <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
-          <span style="font-size:10px;font-weight:700;color:var(--teal)">📌 佳里段地號查詢 <span style="font-size:9px;color:var(--text3);font-weight:400">（1,000筆）</span></span>
-          <button id="land-layer-btn" onclick="toggleLandLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">地號點 OFF</button>
-        </div>
-        <div style="display:flex;gap:6px">
-          <input id="land-search-input" type="text" placeholder="輸入地號，如：951 或 951-21" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);color:var(--text1);outline:none" oninput="searchLandParcel()">
-          <button onclick="searchLandParcel()" style="padding:7px 12px;background:var(--teal);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;cursor:pointer">查詢</button>
-        </div>
-        <div id="land-search-result" style="margin-top:7px;font-size:12px;color:var(--text2);min-height:18px"></div>
-      </div>
-
-      <!-- 門牌地址查詢 -->
-      <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px">
-        <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:7px">&#x1F3E0; 佳里區門牌地址查詢 <span style="font-size:9px;color:var(--text3);font-weight:400">（25,003筆）</span></div>
-        <div style="display:flex;gap:6px">
-          <input id="door-search-input" type="text" placeholder="輸入地址，如：忠孝路5 或 光復路" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);color:var(--text1);outline:none" oninput="searchDoorNum()" onkeydown="if(event.key==='Enter')searchDoorNum()">
-          <button onclick="searchDoorNum()" style="padding:7px 12px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;cursor:pointer">查詢</button>
-        </div>
-        <div id="door-search-result" style="margin-top:7px;font-size:12px;color:var(--text2);min-height:18px;max-height:120px;overflow-y:auto"></div>
-      </div>
-
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <button class="dist-ver-btn active" id="dvb-115" onclick="switchDistVer('115')">115年暫代</button>
-        <button class="dist-ver-btn" id="dvb-orig" onclick="switchDistVer('orig')">原始分配</button>
-      </div>
-      <div id="staff-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
-        <button class="staff-chip" id="dsc-all" data-staff="all" onclick="filterStaff(this,'all')" style="background:var(--blue);color:#fff;border-color:var(--blue)">全部</button>
-      </div>
-      <div id="district-table"></div>
-      <div style="font-size:11px;color:var(--text3);margin-top:10px;padding:8px 10px;background:var(--surface2);border-radius:7px;line-height:1.7">
-        💡 地圖自動以地段顏色標示里別 · 點里別名稱可篩選個案
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;padding:8px 10px;background:var(--surface2);border-radius:7px;line-height:1.7">
+        💡 點選右下角里別圖例可顯示里界並縮放至該里範圍
       </div>
     </div><!-- /tab-district -->
 

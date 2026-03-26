@@ -1320,7 +1320,14 @@ function buildDistStrip(){
 }
 function setDistFilter(dname){
   filterDist=dname;filterVil='all';
-  buildDistStrip();renderVilLayers();renderLegend();renderVilFilterRow();renderList();
+  if(dname!=='all' && !_vilBoundaryOn){ _vilBoundaryOn=true; }
+  buildDistStrip();renderVilLayers();renderLegend();renderVilFilterRow();
+  // Zoom to district extent
+  if(dname!=='all'){
+    const b=L.latLngBounds([]);
+    Object.entries(vilLayers).forEach(([vn,lyr])=>{if(VIL_TO_DIST[vn]===dname){try{b.extend(lyr.getBounds());}catch{}}});
+    if(b.isValid()) map.fitBounds(b,{padding:[30,30]});
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -1519,11 +1526,37 @@ function renderVilLayers(){
   });
 }
 
+/* ── 點座標所在里別（射線法點在多邊形判斷） ── */
+function _ptInRing(lat,lng,ring){
+  let inside=false;
+  for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+    const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1]; // GeoJSON [lng,lat]
+    if(((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+function getVillageAt(lat,lng){
+  if(!vilFeatures||!vilFeatures.length) return '';
+  for(const f of vilFeatures){
+    const geom=f.geometry;if(!geom)continue;
+    const polys=geom.type==='Polygon'?[geom.coordinates]:geom.coordinates;
+    for(const poly of polys){if(_ptInRing(lat,lng,poly[0])) return getVN(f);}
+  }
+  return '';
+}
+
 function clickVil(name){
   if(addMode){document.getElementById('f-village').value=name;onVillageChange();return;}
+  // Toggle selection (no case filtering — only boundary zoom/highlight)
   filterVil=(filterVil===name)?'all':name;
   if(filterVil!=='all') filterDist=VIL_TO_DIST[name]||'all';
-  buildDistStrip();renderVilLayers();renderLegend();renderVilFilterRow();renderList();
+  // Auto-enable boundary layer when a village is selected
+  if(filterVil!=='all' && !_vilBoundaryOn){ _vilBoundaryOn=true; }
+  buildDistStrip();renderVilLayers();renderLegend();renderVilFilterRow();
+  // Zoom to selected village
+  if(filterVil!=='all' && vilLayers[name]){
+    try{ map.fitBounds(vilLayers[name].getBounds(),{padding:[30,30]}); }catch{}
+  }
 }
 
 function renderVilFilterRow(){
@@ -1531,7 +1564,7 @@ function renderVilFilterRow(){
   if(filterVil==='all'&&filterDist==='all'){bar.innerHTML='';return;}
   const label=filterVil!=='all'?filterVil:filterDist;
   const col=filterVil!=='all'?(vilColorMap[filterVil]||{border:'#1b4f72'}):({border:DISTRICTS[filterDist]?.color||'#1b4f72'});
-  bar.innerHTML=`<span style="color:#bbb;font-size:10px;line-height:24px;flex-shrink:0">篩選：</span><span class="fchip active" style="background:${col.border};border-color:${col.border}" onclick="clearVilFilter()">${label} ✕</span>`;
+  bar.innerHTML=`<span style="color:#bbb;font-size:10px;line-height:24px;flex-shrink:0">範圍：</span><span class="fchip active" style="background:${col.border};border-color:${col.border}" onclick="clearVilFilter()">${label} ✕</span>`;
 }
 function clearVilFilter(){filterVil='all';filterDist='all';buildDistStrip();renderVilLayers();renderLegend();renderVilFilterRow();renderList();}
 
@@ -3292,6 +3325,7 @@ async function geocodeMapSearch(q){
 /* ── 半徑地址清單（預設關閉） ── */
 let RADIUS_M = 50;
 let _radiusOn = false;  // 預設：單點地址模式
+let _lastSelLat = null, _lastSelLng = null, _lastSelLabel = '';
 
 // 半徑控制列（搜尋列下方）
 const _radiusBar = document.createElement('div');
@@ -3329,9 +3363,23 @@ function setRadius(m){
   });
   // 清除既有圓圈
   if(_radiusCircle){ map.removeLayer(_radiusCircle); _radiusCircle=null; }
-  document.getElementById('map-search-results').style.display='none';
+  // 若有已選取的位置，立即刷新顯示
+  if(_lastSelLat !== null){
+    show50mList(_lastSelLat, _lastSelLng, _lastSelLabel);
+  } else {
+    document.getElementById('map-search-results').style.display='none';
+  }
 }
+function _vilTag(lat,lng){
+  const v=getVillageAt(lat,lng);
+  if(!v) return '';
+  const col=vilColorMap[v]||{fill:'#dde',border:'#1b4f72'};
+  return `<span style="font-size:11px;background:${col.fill};color:${col.border};border:1px solid ${col.border};border-radius:8px;padding:1px 7px;margin-right:5px;font-weight:600">${v}</span>`;
+}
+
 function show50mList(lat, lng, label=''){
+  // 記住最後選取的位置（切換方圓模式時可重新刷新）
+  _lastSelLat = lat; _lastSelLng = lng; _lastSelLabel = label;
   // 單點模式：只顯示地址，不畫圓
   if(!_radiusOn){
     if(_radiusCircle){ map.removeLayer(_radiusCircle); _radiusCircle=null; }
@@ -3340,7 +3388,8 @@ function show50mList(lat, lng, label=''){
       resultsEl.style.display = 'block';
       resultsEl.scrollTop = 0;
       _radiusShownAt = Date.now();
-      resultsEl.innerHTML = `<div style="padding:10px 14px;font-size:13px;font-weight:700;color:var(--text1)">📍 ${label}</div>`;
+      const vt = _vilTag(lat, lng);
+      resultsEl.innerHTML = `<div style="padding:10px 14px;font-size:13px;font-weight:700;color:var(--text1)">📍 ${vt}${label}</div>`;
     }
     return;
   }
@@ -3483,8 +3532,15 @@ function _hideLandLayer(){
 function _showLandLayer(){
   _hideLandLayer();
   if(typeof LAND_DB === 'undefined') return;
+  const zoom = map.getZoom();
+  if(zoom < 15){
+    _landBtn2.title = '需縮放至街道層級（zoom 15以上）才顯示地號點';
+    return;
+  }
+  const bounds = map.getBounds().pad(0.05);
   _landLayerGroup = L.layerGroup();
   Object.entries(LAND_DB).forEach(([key, val])=>{
+    if(!bounds.contains([val[0],val[1]])) return;
     const cm = L.circleMarker([val[0],val[1]],{
       renderer:_landRenderer, radius:4,
       color:'#0e7b68', fillColor:'#1abc9c', fillOpacity:0.8, weight:1.2
@@ -3496,6 +3552,7 @@ function _showLandLayer(){
   });
   _landLayerGroup.addTo(map);
 }
+map.on('zoomend moveend', ()=>{ if(_landLayerOn) _showLandLayer(); });
 
 /* ══════════════════════════════════════════════════════════
    比例尺
@@ -3526,15 +3583,41 @@ _modeBtn.addEventListener('click',()=>{
 let _radiusShownAt = 0;
 map.on('click', (e)=>{
   if(_selectMode){
-    // 選取模式：點擊地圖顯示該位置 50m 門牌清單
+    const lat=e.latlng.lat, lng=e.latlng.lng;
+    const cosLat=Math.cos(lat*Math.PI/180);
+    // 找最近門牌
+    let nearDoor=null, minDoor=99999;
+    if(typeof DOOR_DB!=='undefined'){
+      for(let i=0;i<DOOR_DB.length;i++){
+        const r=DOOR_DB[i];
+        const d=Math.sqrt(Math.pow(r[0]-lat,2)+Math.pow((r[1]-lng)*cosLat,2))*111000;
+        if(d<minDoor){minDoor=d;nearDoor=r;}
+      }
+    }
+    let mkLat=lat,mkLng=lng,label='';
+    if(nearDoor && minDoor<18){
+      // 點擊到門牌位置
+      mkLat=nearDoor[0];mkLng=nearDoor[1];
+      label=nearDoor[2].replace('臺南市佳里區','').replace('台南市佳里區','');
+    } else {
+      // 非門牌位置 → 找最近地號
+      if(typeof LAND_DB!=='undefined'){
+        let nearLand=null,minLand=99999;
+        Object.entries(LAND_DB).forEach(([key,val])=>{
+          const d=Math.sqrt(Math.pow(val[0]-lat,2)+Math.pow((val[1]-lng)*cosLat,2))*111000;
+          if(d<minLand){minLand=d;nearLand={key,val};}
+        });
+        if(nearLand && minLand<40) label=`佳里段 ${nearLand.key}`;
+      }
+    }
     if(_searchMarker) map.removeLayer(_searchMarker);
-    _searchMarker = L.marker([e.latlng.lat, e.latlng.lng],{
+    _searchMarker = L.marker([mkLat,mkLng],{
       icon: L.divIcon({
         html:`<div style="width:18px;height:18px;border-radius:50%;background:#e74c3c;border:3px solid #fff;box-shadow:0 0 0 2px #e74c3c,0 2px 8px rgba(0,0,0,.3)"></div>`,
         iconSize:[18,18],iconAnchor:[9,9],className:''
       })
     }).addTo(map);
-    show50mList(e.latlng.lat, e.latlng.lng);
+    show50mList(mkLat,mkLng,label);
     return;
   }
   // 移動模式：關閉搜尋結果
@@ -3563,6 +3646,18 @@ _doorBtn.addEventListener('click',()=>{
   _doorBtn.style.background = _doorLayerOn ? 'var(--blue)' : 'rgba(255,255,255,.94)';
   _doorBtn.style.color = _doorLayerOn ? '#fff' : 'var(--text1)';
   if(_doorLayerOn) _refreshDoorLayer(); else _clearDoorLayer();
+});
+
+// 地號點浮動按鈕（與門牌點相同風格）
+const _landBtn2 = document.createElement('div');
+_landBtn2.title = '顯示/隱藏地號點';
+_landBtn2.innerHTML = '📌 地號點';
+_landBtn2.style.cssText = 'position:fixed;left:14px;bottom:400px;z-index:550;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);user-select:none';
+document.body.appendChild(_landBtn2);
+_landBtn2.addEventListener('click',()=>{
+  toggleLandLayer();
+  _landBtn2.style.background = _landLayerOn ? 'var(--teal)' : 'rgba(255,255,255,.94)';
+  _landBtn2.style.color = _landLayerOn ? '#fff' : 'var(--text1)';
 });
 
 function _clearDoorLayer(){
@@ -3596,6 +3691,8 @@ function _refreshDoorLayer(){
     cm.bindPopup('<b style="font-size:13px">'+disp+'</b>',{maxWidth:220});
     cm.on('click',(ev)=>{
       L.DomEvent.stopPropagation(ev);
+      const vt=_vilTag(r[0],r[1]);
+      cm.setPopupContent(`<b style="font-size:13px">${vt}${disp}</b>`);
       cm.openPopup();
       show50mList(r[0],r[1],disp);
     });

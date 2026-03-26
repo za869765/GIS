@@ -3392,6 +3392,73 @@ map.on('click', (e)=>{
 });
 
 
+/* ══════════════════════════════════════════════════════════
+   門牌點圖層（紅點＝一般門牌，綠點＝公寓大樓含樓層）
+   縮放 >= 16 才顯示，避免過密
+══════════════════════════════════════════════════════════ */
+const _doorRenderer = L.canvas({padding:0.2});
+let _doorLayerGroup = null;
+let _doorLayerOn = false;
+
+// 切換按鈕
+const _doorBtn = document.createElement('div');
+_doorBtn.title = '顯示/隱藏門牌點';
+_doorBtn.innerHTML = '🔴 門牌點';
+_doorBtn.style.cssText = 'position:fixed;left:14px;bottom:200px;z-index:550;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);user-select:none';
+document.body.appendChild(_doorBtn);
+_doorBtn.addEventListener('click',()=>{
+  _doorLayerOn = !_doorLayerOn;
+  _doorBtn.style.background = _doorLayerOn ? 'var(--blue)' : 'rgba(255,255,255,.94)';
+  _doorBtn.style.color = _doorLayerOn ? '#fff' : 'var(--text1)';
+  if(_doorLayerOn) _refreshDoorLayer(); else _clearDoorLayer();
+});
+
+function _clearDoorLayer(){
+  if(_doorLayerGroup){ map.removeLayer(_doorLayerGroup); _doorLayerGroup=null; }
+}
+
+function _refreshDoorLayer(){
+  if(!_doorLayerOn) return;
+  _clearDoorLayer();
+  const zoom = map.getZoom();
+  if(zoom < 16){
+    _doorBtn.title = '需縮放至街道層級（zoom 16以上）才顯示門牌點';
+    return;
+  }
+  if(typeof DOOR_DB === 'undefined') return;
+  const bounds = map.getBounds().pad(0.05);
+  _doorLayerGroup = L.layerGroup();
+  let cnt = 0;
+  for(let i=0;i<DOOR_DB.length;i++){
+    const r = DOOR_DB[i];
+    if(!bounds.contains([r[0],r[1]])) continue;
+    const isApt = r[2].indexOf('\u6a13') >= 0; // 樓
+    const cm = L.circleMarker([r[0],r[1]],{
+      renderer: _doorRenderer,
+      radius: 5,
+      color: isApt ? '#27ae60' : '#c0392b',
+      fillColor: isApt ? '#2ecc71' : '#e74c3c',
+      fillOpacity: 0.85, weight: 1.5
+    });
+    const disp = r[2].replace('\u81fa\u5357\u5e02\u4f73\u91cc\u5340','').replace('\u53f0\u5357\u5e02\u4f73\u91cc\u5340','');
+    cm.bindTooltip(disp,{permanent:false,direction:'top',offset:[0,-4]});
+    cm.on('click',(ev)=>{
+      L.DomEvent.stopPropagation(ev);
+      if(_searchMarker) map.removeLayer(_searchMarker);
+      _searchMarker = L.marker([r[0],r[1]],{
+        icon:L.divIcon({html:`<div style="width:16px;height:16px;border-radius:50%;background:#1b4f72;border:3px solid #fff;box-shadow:0 0 0 2px #1b4f72"></div>`,iconSize:[16,16],iconAnchor:[8,8],className:''})
+      }).addTo(map).bindPopup('<b>'+disp+'</b>').openPopup();
+      show50mList(r[0],r[1]);
+    });
+    _doorLayerGroup.addLayer(cm);
+    cnt++;
+    if(cnt > 2000) break; // 最多顯示 2000 點避免卡頓
+  }
+  _doorLayerGroup.addTo(map);
+}
+
+map.on('zoomend moveend', _refreshDoorLayer);
+
 /* ══════════════════════════════════════════
    佳里 GIS v6 — 新增功能 JS
    全部用 ES5，避免編碼問題

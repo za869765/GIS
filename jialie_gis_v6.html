@@ -3332,13 +3332,12 @@ function showRadiusPanel(lat,lng,pts,label=''){
   const resultsEl = document.getElementById('map-search-results');
   resultsEl.style.display='block';
   resultsEl.scrollTop = 0;
-  let html = `<div class="msr-section" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px">
-    <span>📍 方圓 ${RADIUS_M}m（${pts.length} 筆）</span>
+  // 顯示選取的地址
+  const addrLine = label ? `<div style="padding:8px 14px 0;font-size:13px;font-weight:700;color:var(--text1)">📍 ${label}</div>` : '';
+  let html = addrLine;
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 14px 10px">
+    <span style="font-size:12px;color:var(--text2)">方圓 ${RADIUS_M}m　${pts.length} 筆</span>
     ${pts.length?`<button onclick="exportRadiusList()" style="font-size:11px;padding:4px 12px;background:var(--blue);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">⬇ 匯出清單</button>`:'<span style="font-size:11px;color:var(--text3)">附近無門牌資料</span>'}
-  </div>`;
-  html += `<div class="msr-item" style="background:#f0f7ff" onclick="useSearchAsCase(${lat},${lng})">
-    <span class="msr-icon">➕</span>
-    <div class="msr-main"><div class="msr-name" style="color:var(--blue);font-weight:700">以此位置新增個案</div></div>
   </div>`;
   resultsEl.innerHTML = html;
 }

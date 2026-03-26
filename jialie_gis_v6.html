@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.327</title>
+<title>佳里 GIS v6.328</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1358,6 +1358,7 @@ function clickVil(name){
 
 function renderVilFilterRow(){
   const bar=document.getElementById('vil-filter-row');
+  if(!bar)return;
   if(filterVil==='all'&&filterDist==='all'){bar.innerHTML='';return;}
   const label=filterVil!=='all'?filterVil:filterDist;
   const col=filterVil!=='all'?(vilColorMap[filterVil]||{border:'#1b4f72'}):({border:DISTRICTS[filterDist]?.color||'#1b4f72'});
@@ -1367,6 +1368,7 @@ function clearVilFilter(){filterVil='all';filterDist='all';buildDistStrip();rend
 
 function populateVilSelect(){
   const sel=document.getElementById('f-village');
+  if(!sel)return;
   let h='<option value="">（自動偵測）</option>';
   Object.entries(DISTRICTS).forEach(([dn,d])=>{
     h+=`<optgroup label="── ${dn} ──">`;
@@ -1377,9 +1379,10 @@ function populateVilSelect(){
 }
 
 function onVillageChange(){
-  const v=document.getElementById('f-village').value;
+  const v=(document.getElementById('f-village')||{}).value||'';
   const dist=VIL_TO_DIST[v];const d=DISTRICTS[dist];
   const box=document.getElementById('dist-info-box');
+  if(!box)return;
   if(v&&d){
     box.style.display='block';
     document.getElementById('dist-info-name').innerHTML=`<span style="background:${d.light};color:${d.text};border:1px solid ${d.color};border-radius:8px;padding:2px 8px;font-size:11px">${dist}</span>`;
@@ -1703,23 +1706,20 @@ async function updateAddrDbBadge(){
   badge.textContent = total > 0 ? `📍 ${src} (${total.toLocaleString()}筆)` : '📍 門牌DB';
 }
 function buildFullAddr(){
-  const road=document.getElementById('f-road').value.trim();
-  const lane=document.getElementById('f-lane').value.trim();
-  const num=document.getElementById('f-num').value.trim();
-  const ext=document.getElementById('f-numext').value.trim();
-  const floor=document.getElementById('f-floor').value.trim();
+  const _get=id=>(document.getElementById(id)||{}).value||'';
+  const road=_get('f-road').trim(),lane=_get('f-lane').trim(),num=_get('f-num').trim(),ext=_get('f-numext').trim(),floor=_get('f-floor').trim();
   let a='臺南市佳里區';
   if(road)a+=road;if(lane)a+=lane;
   if(num){a+=num+'號';if(ext)a+='之'+ext;if(floor)a+=floor+'樓';}
-  document.getElementById('f-addr-full').value=(a==='臺南市佳里區'?'':a);
+  const fa=document.getElementById('f-addr-full');if(fa)fa.value=(a==='臺南市佳里區'?'':a);
 }
 
 /* ═══════════════════════════════════════════
    GEOCODING
 ═══════════════════════════════════════════ */
 function setGeoMsg(msg,type){
-  const el=document.getElementById('geo-msg');el.textContent=msg;
-  el.className='geo-msg '+(type==='ok'?'geo-ok':type==='err'?'geo-err':'geo-loading');
+  const el=document.getElementById('geo-msg');if(!el)return;
+  el.textContent=msg;el.className='geo-msg '+(type==='ok'?'geo-ok':type==='err'?'geo-err':'geo-loading');
 }
 /* geocodeAddr → see smartGeocode integration below */
 
@@ -1784,6 +1784,7 @@ function updateStats(){
   ['active','followup','pending','closed'].forEach(s=>document.getElementById('cnt-'+s).textContent=cases.filter(c=>c.status===s).length);
 }
 function renderList(){
+  if(!document.getElementById("case-list"))return;
   const q=document.getElementById('search-box').value.toLowerCase();
   const list=cases.filter(c=>{
     if(filterStatus!=='all'&&c.status!==filterStatus)return false;
@@ -1814,7 +1815,8 @@ function selectCase(id){
   if(markers[id])map.setView([c.lat,c.lng],17);
   const dist=VIL_TO_DIST[c.village];const d=DISTRICTS[dist]||{};
   const col=vilColorMap[c.village]||{fill:'#eee',border:'#ccc',text:'#555'};
-  document.getElementById('detail-content').innerHTML=`
+  const _dc=document.getElementById('detail-content');if(!_dc)return;
+  _dc.innerHTML=`
     <div class="detail-hero" style="background:${d.color||'var(--blue)'}">
       <div style="font-size:10px;opacity:.7;margin-bottom:4px">${c.type} · ${SL[c.status]}</div>
       <div class="detail-hero-name">${c.name}</div>
@@ -3539,6 +3541,27 @@ function toggleCadLayer(){
 
 // 地號範圍預設開啟
 setTimeout(()=>{ if(!_cadLayerOn) toggleCadLayer(); }, 800);
+
+// 門牌點預設開啟
+setTimeout(()=>{
+  if(!_doorLayerOn){
+    _doorLayerOn=true;
+    _doorBtn.style.background='var(--blue)';
+    _doorBtn.style.color='#fff';
+    _refreshDoorLayer();
+  }
+}, 1000);
+
+// 選取模式預設開啟
+setTimeout(()=>{
+  if(!_selectMode){
+    _selectMode=true;
+    _modeBtn.innerHTML='🎯 選取';
+    _modeBtn.style.background='var(--blue)';
+    _modeBtn.style.color='#fff';
+    map.getContainer().style.cursor='crosshair';
+  }
+}, 600);
 
 function _clearDoorLayer(){
   if(_doorLayerGroup){ map.removeLayer(_doorLayerGroup); _doorLayerGroup=null; }

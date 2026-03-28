@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.366</title>
+<title>佳里 GIS v6.367</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -191,7 +191,7 @@ input,select,textarea,button{font-family:inherit}
 .meas-btn:hover{background:#f0f4ff}
 .meas-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .meas-label{
-  background:#e63946;color:#fff;padding:4px 10px;border-radius:7px;
+  background:#e63946;color:#000;padding:4px 10px;border-radius:7px;
   font-size:14px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4);line-height:1.5;
 }
 
@@ -3926,6 +3926,7 @@ function show50mList(lat, lng, label=''){
   // 單點模式：只顯示地址，不畫圓
   if(!_radiusOn){
     if(_radiusCircle){ map.removeLayer(_radiusCircle); _radiusCircle=null; }
+    setTimeout(_refreshDoorLayer, 0);
     if(label){
       const resultsEl = document.getElementById('map-search-results');
       resultsEl.style.display = 'block';
@@ -3941,6 +3942,7 @@ function show50mList(lat, lng, label=''){
     radius:RADIUS_M, color:'#1b4f72', weight:2,
     fillColor:'#1b4f72', fillOpacity:.08, dashArray:'6,3'
   }).addTo(map);
+  setTimeout(_refreshDoorLayer, 0);
 
   // 直接使用 DOOR_DB（官方門牌資料庫）搜尋方圓 RADIUS_M 公尺門牌
   const nearby = [];
@@ -4398,17 +4400,27 @@ function _refreshDoorLayer(){
   if(typeof DOOR_DB === 'undefined') return;
   const bounds = map.getBounds().pad(0.05);
   _doorLayerGroup = L.layerGroup();
+  const hasRadius = _radiusOn && _lastSelLat !== null;
+  const _cosLat = hasRadius ? Math.cos(_lastSelLat * Math.PI/180) : 1;
   let cnt = 0;
   for(let i=0;i<DOOR_DB.length;i++){
     const r = DOOR_DB[i];
     if(!bounds.contains([r[0],r[1]])) continue;
     const isApt = r[2].indexOf('\u6a13') >= 0; // 樓
+    let dotC, fillC, fillO, w, rad;
+    if(hasRadius){
+      const dist=Math.sqrt(Math.pow(r[0]-_lastSelLat,2)+Math.pow((r[1]-_lastSelLng)*_cosLat,2))*111000;
+      if(dist<=RADIUS_M){
+        dotC=isApt?'#27ae60':'#c0392b'; fillC=isApt?'#2ecc71':'#e74c3c'; fillO=0.92; w=1.5; rad=5;
+      } else {
+        dotC='#aaa'; fillC='#ccc'; fillO=0.22; w=0.8; rad=4;
+      }
+    } else {
+      dotC=isApt?'#27ae60':'#c0392b'; fillC=isApt?'#2ecc71':'#e74c3c'; fillO=0.85; w=1.5; rad=5;
+    }
     const cm = L.circleMarker([r[0],r[1]],{
       renderer: _doorRenderer,
-      radius: 5,
-      color: isApt ? '#27ae60' : '#c0392b',
-      fillColor: isApt ? '#2ecc71' : '#e74c3c',
-      fillOpacity: 0.85, weight: 1.5
+      radius: rad, color: dotC, fillColor: fillC, fillOpacity: fillO, weight: w
     });
     const disp = r[2].replace('\u81fa\u5357\u5e02\u4f73\u91cc\u5340','').replace('\u53f0\u5357\u5e02\u4f73\u91cc\u5340','');
     cm.on('click',(ev)=>{
@@ -5137,7 +5149,7 @@ function _measLabel(latlng, html){
 }
 
 function setMeasureMode(mode){
-  if(_measMode===mode){ _measMode=null; map.getContainer().style.cursor=''; document.getElementById('meas-btn-'+mode).classList.remove('active'); return; }
+  if(_measMode===mode){ clearMeasure(); return; }
   _measMode=mode; _measPts=[];
   ['dist','area','circle'].forEach(m=>{const b=document.getElementById('meas-btn-'+m);if(b)b.classList.toggle('active',m===mode);});
   map.getContainer().style.cursor='crosshair';

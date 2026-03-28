@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.383</title>
+<title>佳里 GIS v6.384</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4489,7 +4489,7 @@ function _floorLabel(addr){
   return s+'F';
 }
 
-// 公寓點擊：顯示同棟樓層清單
+// 公寓點擊
 function _aptClickFn(lat, lng){
   const cosLat=Math.cos(lat*Math.PI/180);
   const units=[];
@@ -4502,6 +4502,9 @@ function _aptClickFn(lat, lng){
   const aptLabel=units[0]||'';
   _placePin(lat,lng,aptLabel);
   _lastSelLat=lat; _lastSelLng=lng; _lastSelLabel=aptLabel;
+  // 圓圈模式：移動圓心到此公寓並重新計算範圍
+  if(_radiusOn){ show50mList(lat,lng,aptLabel); return; }
+  // 單點模式：顯示樓層清單
   const resultsEl=document.getElementById('map-search-results');
   const vt=_vilTag(lat,lng);
   const rows=units.map(u=>`<div class="msr-item" onclick="_placePin(${lat},${lng},'${u.replace(/'/g,"\\'")}');show50mList(${lat},${lng},'${u.replace(/'/g,"\\'")}');document.getElementById('map-search-results').style.display='none'">
@@ -4597,7 +4600,7 @@ function _refreshDoorLayer(){
         renderer:_doorRenderer, radius:rad, color:dotC, fillColor:fillC, fillOpacity:fillO, weight:w
       });
       cm.on('click',(ev)=>{
-        L.DomEvent.stopPropagation(ev);
+        L.DomEvent.stop(ev); // stop + preventDefault，防止 canvas 事件也觸發地圖 click
         if(isApt){ _aptClickFn(r[0],r[1]); }
         else { _placePin(r[0],r[1],disp); show50mList(r[0],r[1],disp); }
       });

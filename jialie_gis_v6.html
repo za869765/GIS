@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.375</title>
+<title>佳里 GIS v6.376</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4016,25 +4016,27 @@ function printRadiusArea(){
   const sheet = document.getElementById('sheet');
   const mapEl = document.getElementById('map');
   const wasCollapsed = sheet && sheet.classList.contains('panel-collapsed');
-  // 1. 收起側欄，讓地圖先變成全寬（與列印 CSS 一致）
+  // 1. 收起側欄
   if(sheet && !wasCollapsed){
     sheet.classList.add('panel-collapsed');
     mapEl && mapEl.classList.add('panel-collapsed');
   }
-  map.invalidateSize({animate:false});
-  // 2. 依半徑選擇縮放層級（50m→zoom20 比例尺10m；100m→zoom18 比例尺~30m）
-  const _pZoom = RADIUS_M <= 50 ? 19 : 18;
-  map.setView(_radiusCircle.getLatLng(), _pZoom, {animate:false});
-  // 3. 列印
+  // 2. 等側欄 CSS transition (0.25s) 完成後再 invalidateSize + setView
   setTimeout(()=>{
-    window.print();
-    // 4. 列印後還原側欄
-    if(!wasCollapsed && sheet){
-      sheet.classList.remove('panel-collapsed');
-      mapEl && mapEl.classList.remove('panel-collapsed');
-      map.invalidateSize({animate:false});
-    }
-  }, 700);
+    map.invalidateSize({animate:false});
+    const _pZoom = RADIUS_M <= 50 ? 19 : 18;
+    map.setView(_radiusCircle.getLatLng(), _pZoom, {animate:false});
+    // 3. 再等地圖渲染後列印
+    setTimeout(()=>{
+      window.print();
+      // 4. 列印後還原側欄
+      if(!wasCollapsed && sheet){
+        sheet.classList.remove('panel-collapsed');
+        mapEl && mapEl.classList.remove('panel-collapsed');
+        map.invalidateSize({animate:false});
+      }
+    }, 400);
+  }, 300);
 }
 
 function toggleRadiusDots(){

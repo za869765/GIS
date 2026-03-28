@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.335</title>
+<title>佳里 GIS v6.336</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -793,9 +793,89 @@ input,select,textarea,button{font-family:inherit}
           原住民人口：合計 266 人（平地原住民 140 · 山地原住民 126）
         </div>
       </div>
-      <!-- 公共設施圖層（待資料補充後啟用） -->
-      <div style="font-size:11px;color:var(--text3);padding:12px 10px;background:var(--surface2);border-radius:8px;text-align:center;margin-top:4px">
-        🏗 公共設施資料建置中，待資料完善後上線
+      <!-- 政府機關 -->
+      <div style="margin-top:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🏛 公務機關電話一覽表</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead><tr style="background:var(--surface2);color:var(--text2)">
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border)">機關名稱</th>
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border)">地址</th>
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">電話</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里區公所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">忠孝路5號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222127</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">北門區家庭福利服務中心</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">中山路458號2樓</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7235727</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">國稅局佳里稽徵所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">忠孝路25號3-4樓</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7230284</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">財稅局佳里分局</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">忠孝路25號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7224178</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里地政事務所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">中山路417號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7220404</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里戶政事務所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">忠孝路17號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7224172</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里衛生所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">進學路159號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7224106</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">警察局佳里分局</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">忠孝路7號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222012</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里派出所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">忠孝路7號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7224145</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳興派出所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里興441號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7261404</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">子龍派出所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">麻佳路三段237號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7262290</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">延平派出所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">頂廍118號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7223094</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">塭內派出所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">塭子內84號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7891415</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px">消防局第三大隊暨佳里分隊</td><td style="padding:4px 6px">六順路21號</td><td style="padding:4px 6px;white-space:nowrap">7224334</td></tr>
+          </tbody>
+        </table>
+
+        <div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">🏫 各中小學一覽表</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead><tr style="background:var(--surface2);color:var(--text2)">
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border)">學校名稱</th>
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border)">地址</th>
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">電話</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">北門高中</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">六安里269號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222150</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">北門農工</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">六安里117號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7260148</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里國中</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">安南路523號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222244</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳興國中</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">新宅34-1號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7260291</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">公園路445號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222031</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">仁愛國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">仁愛路307號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222227</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳興國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">麻興路二段636號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7260311</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">延平國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">頂廓里136號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222331</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">塭內國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">龍安里40號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7891054</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">子龍國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">麻佳路三段370巷88號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7262913</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">通興國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">埔頂5之1號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7873531</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px">信義國小</td><td style="padding:4px 6px">信義一街336號</td><td style="padding:4px 6px;white-space:nowrap">7211918</td></tr>
+          </tbody>
+        </table>
+
+        <div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">🏢 其他機關電話一覽表</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px">
+          <thead><tr style="background:var(--surface2);color:var(--text2)">
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border)">機關名稱</th>
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border)">地址</th>
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">電話</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里區農會</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">和平街168號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7223161</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">南縣區漁會</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">進學路240號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7220391</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">第一銀行佳里分行</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">延平路290號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7226111</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">京城銀行佳里分行</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">文化路203號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7223152</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">合作金庫佳里分行</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">和平街83號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7223131</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">中國信託佳里分行</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">中山路410號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7221335</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">玉山銀行佳里分行</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">延平路351號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7211313</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">元大銀行佳里分行</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">文化路278號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7214888</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里郵局</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">延平路375號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7211837</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">中華電信佳里服務中心</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">進學路256號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7440421</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">台電佳里服務所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">新生路576號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222047</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">自來水公司佳里服務所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">進學路139號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222477</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">臺灣菸酒公司佳里營業所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">建南街145號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222003</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里魚市場</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">延平路229號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222054</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里果菜市場</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">祥和三街231巷1號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222017</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">金唐殿上元燈慈善會</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">中山路289號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7231625</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">農田水利署佳里工作站</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">延平路586號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7231035</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">農田水利署子龍工作站</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">潭墘29號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7262849</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">農田水利署塭內工作站</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">塭子內2號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7892852</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">興南客運佳里站</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">文化路198號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7224107</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">統聯客運佳里站</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">光復路357號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7232990</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">和欣客運佳里站</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)">文化路305號</td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7220082</td></tr>
+            <tr><td style="padding:4px 6px">家扶中心佳里服務處</td><td style="padding:4px 6px">延平路580號</td><td style="padding:4px 6px;white-space:nowrap">7223440</td></tr>
+          </tbody>
+        </table>
       </div>
     </div><!-- /tab-fac -->
 

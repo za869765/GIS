@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.380</title>
+<title>佳里 GIS v6.381</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4512,7 +4512,10 @@ function _refreshDoorLayer(){
           if(d<4) units.push(q[2].replace('臺南市佳里區','').replace('台南市佳里區',''));
         }
         units.sort();
-        _placePin(r[0],r[1],units[0]||disp);
+        const aptLabel=units[0]||disp;
+        _placePin(r[0],r[1],aptLabel);
+        // 更新最後選取位置，讓切換 50m/100m 時圓圈在此座標
+        _lastSelLat=r[0]; _lastSelLng=r[1]; _lastSelLabel=aptLabel;
         // 在搜尋結果區顯示樓層清單
         const resultsEl=document.getElementById('map-search-results');
         const vt=_vilTag(r[0],r[1]);

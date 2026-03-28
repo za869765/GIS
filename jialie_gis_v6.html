@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.377</title>
+<title>佳里 GIS v6.378</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4016,26 +4016,36 @@ function printRadiusArea(){
   const sheet = document.getElementById('sheet');
   const mapEl = document.getElementById('map');
   const wasCollapsed = sheet && sheet.classList.contains('panel-collapsed');
-  // 1. 收起側欄
+  const bounds = _radiusCircle.getBounds();
+
+  // beforeprint：列印 CSS 已套用（地圖已是 A4 尺寸），此時 invalidateSize+fitBounds 才準確
+  function onBefore(){
+    window.removeEventListener('beforeprint', onBefore);
+    map.invalidateSize({animate:false});
+    map.fitBounds(bounds, {animate:false, padding:[40,40]});
+  }
+  // afterprint：還原側欄
+  function onAfter(){
+    window.removeEventListener('afterprint', onAfter);
+    if(!wasCollapsed && sheet){
+      sheet.classList.remove('panel-collapsed');
+      mapEl && mapEl.classList.remove('panel-collapsed');
+      map.invalidateSize({animate:false});
+    }
+  }
+  window.addEventListener('beforeprint', onBefore);
+  window.addEventListener('afterprint', onAfter);
+
+  // 1. 收起側欄，等 transition 後預先 fitBounds（預載圖磚）
   if(sheet && !wasCollapsed){
     sheet.classList.add('panel-collapsed');
     mapEl && mapEl.classList.add('panel-collapsed');
   }
-  // 2. 等側欄 CSS transition (0.25s) 完成後再 invalidateSize + fitBounds
   setTimeout(()=>{
     map.invalidateSize({animate:false});
-    // 用圓圈範圍 fitBounds，讓圓圈自動置中並填滿頁面，padding 留一點街道脈絡
-    map.fitBounds(_radiusCircle.getBounds(), {animate:false, padding:[48,48]});
-    // 3. 再等地圖渲染後列印
-    setTimeout(()=>{
-      window.print();
-      // 4. 列印後還原側欄
-      if(!wasCollapsed && sheet){
-        sheet.classList.remove('panel-collapsed');
-        mapEl && mapEl.classList.remove('panel-collapsed');
-        map.invalidateSize({animate:false});
-      }
-    }, 400);
+    map.fitBounds(bounds, {animate:false, padding:[48,48]});
+    // 2. 等圖磚載入後呼叫 print（beforeprint 會再用 A4 尺寸重算一次）
+    setTimeout(()=>{ window.print(); }, 500);
   }, 300);
 }
 

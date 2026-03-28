@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.338</title>
+<title>佳里 GIS v6.339</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -151,7 +151,6 @@ input,select,textarea,button{font-family:inherit}
 
 /* Legend button */
 #leg-toggle{
-  position:fixed;left:14px;bottom:calc(var(--panel-h) + 14px + env(safe-area-inset-bottom,0px));z-index:550;
   background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:10px;
   padding:7px 12px;font-size:11px;font-weight:700;color:var(--blue);cursor:pointer;
   box-shadow:var(--shadow);display:flex;align-items:center;gap:5px;
@@ -160,9 +159,20 @@ input,select,textarea,button{font-family:inherit}
 
 /* 量測工具列 */
 #measure-bar{
-  position:fixed;left:14px;bottom:calc(var(--panel-h) + 58px + env(safe-area-inset-bottom,0px));z-index:550;
   display:flex;flex-direction:column;gap:4px;
 }
+
+/* 左側工具列容器（可拖曳） */
+#left-tools{
+  position:fixed;left:14px;bottom:calc(var(--panel-h) + 14px + env(safe-area-inset-bottom,0px));z-index:550;
+  display:flex;flex-direction:column;gap:6px;user-select:none;
+}
+#left-tools-handle{
+  background:rgba(255,255,255,.85);border:1px solid var(--border2);border-radius:8px;
+  padding:4px 0;cursor:grab;text-align:center;color:var(--text3);font-size:15px;
+  box-shadow:var(--shadow);touch-action:none;letter-spacing:3px;
+}
+#left-tools-handle:active{cursor:grabbing;background:rgba(240,244,255,.95)}
 .meas-btn{
   width:36px;height:36px;border-radius:8px;border:1px solid var(--border2);
   background:rgba(255,255,255,.94);color:var(--text1);font-size:15px;cursor:pointer;
@@ -684,16 +694,17 @@ input,select,textarea,button{font-family:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="startAddMode()">＋</button>
 
-<!-- ── 量測工具列 ── -->
-<div id="measure-bar">
-  <button class="meas-btn" id="meas-btn-dist"   onclick="setMeasureMode('dist')"   title="距離量測">📏</button>
-  <button class="meas-btn" id="meas-btn-area"   onclick="setMeasureMode('area')"   title="面積量測">⬡</button>
-  <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測">⭕</button>
-  <button class="meas-btn"                       onclick="clearMeasure()"           title="清除量測">✕</button>
+<!-- ── 左側工具列（可拖曳） ── -->
+<div id="left-tools">
+  <div id="left-tools-handle" title="按住拖曳移動">⠿⠿</div>
+  <div id="measure-bar">
+    <button class="meas-btn" id="meas-btn-dist"   onclick="setMeasureMode('dist')"   title="距離量測">📏</button>
+    <button class="meas-btn" id="meas-btn-area"   onclick="setMeasureMode('area')"   title="面積量測">⬡</button>
+    <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測">⭕</button>
+    <button class="meas-btn"                       onclick="clearMeasure()"           title="清除量測">✕</button>
+  </div>
+  <button id="leg-toggle" onclick="openLegend()">🗂 里別</button>
 </div>
-
-<!-- ── LEGEND TOGGLE (mobile) ── -->
-<button id="leg-toggle" onclick="openLegend()">🗂 里別</button>
 
 <!-- ── ROAD LOADING TOAST ── -->
 <div id="roadbar" class="gone">
@@ -4600,5 +4611,65 @@ map.on('dblclick',function(e){
   </div>
 </div>
 
+<script>
+/* ── 左側工具列拖曳 ── */
+(function(){
+  const wrap = document.getElementById('left-tools');
+  const handle = document.getElementById('left-tools-handle');
+  if(!wrap || !handle) return;
+
+  // 還原上次位置
+  try{
+    const saved = JSON.parse(localStorage.getItem('leftToolsPos')||'null');
+    if(saved){
+      wrap.style.left   = saved.left;
+      wrap.style.bottom = saved.bottom;
+      wrap.style.top    = 'auto';
+    }
+  }catch(e){}
+
+  let startX, startY, startLeft, startTop, dragging = false;
+
+  function dragStart(cx, cy){
+    const r = wrap.getBoundingClientRect();
+    startX    = cx;
+    startY    = cy;
+    startLeft = r.left;
+    startTop  = r.top;
+    dragging  = false;
+    wrap.style.bottom = 'auto';
+    wrap.style.top    = startTop + 'px';
+    wrap.style.left   = startLeft + 'px';
+  }
+
+  function dragMove(cx, cy){
+    const dx = cx - startX, dy = cy - startY;
+    if(!dragging && Math.abs(dx)<5 && Math.abs(dy)<5) return;
+    dragging = true;
+    const maxL = window.innerWidth  - wrap.offsetWidth  - 4;
+    const maxT = window.innerHeight - wrap.offsetHeight - 4;
+    wrap.style.left = Math.max(4, Math.min(maxL, startLeft + dx)) + 'px';
+    wrap.style.top  = Math.max(4, Math.min(maxT, startTop  + dy)) + 'px';
+  }
+
+  function dragEnd(){
+    if(dragging){
+      try{ localStorage.setItem('leftToolsPos', JSON.stringify({left:wrap.style.left, bottom:'auto', top:wrap.style.top})); }catch(e){}
+    }
+    dragging = false;
+  }
+
+  // Mouse
+  handle.addEventListener('mousedown', e=>{ e.preventDefault(); dragStart(e.clientX, e.clientY); });
+  document.addEventListener('mousemove', e=>{ if(handle._down) dragMove(e.clientX, e.clientY); });
+  document.addEventListener('mouseup',   ()=>{ handle._down=false; dragEnd(); });
+  handle.addEventListener('mousedown',   ()=>{ handle._down=true; });
+
+  // Touch
+  handle.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragStart(t.clientX, t.clientY); }, {passive:true});
+  handle.addEventListener('touchmove',  e=>{ e.preventDefault(); const t=e.touches[0]; dragMove(t.clientX, t.clientY); }, {passive:false});
+  handle.addEventListener('touchend',   dragEnd);
+})();
+</script>
 </body>
 </html>

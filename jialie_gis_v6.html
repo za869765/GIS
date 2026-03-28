@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.381</title>
+<title>佳里 GIS v6.382</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4466,6 +4466,38 @@ function _clearDoorLayer(){
   if(_doorLayerGroup){ map.removeLayer(_doorLayerGroup); _doorLayerGroup=null; }
 }
 
+// 公寓樓層文字 → "2F","3F" 等
+function _floorLabel(addr){
+  const m = addr.match(/([\d一二三四五六七八九十百千]+)樓/);
+  if(!m) return '';
+  const s = m[1];
+  if(/^\d+$/.test(s)) return s+'F';
+  const c={一:1,二:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9,十:10};
+  return (c[s]||s)+'F';
+}
+
+// 公寓點擊：顯示同棟樓層清單
+function _aptClickFn(lat, lng){
+  const cosLat=Math.cos(lat*Math.PI/180);
+  const units=[];
+  for(let j=0;j<DOOR_DB.length;j++){
+    const q=DOOR_DB[j];
+    const d=Math.sqrt(Math.pow(q[0]-lat,2)+Math.pow((q[1]-lng)*cosLat,2))*111000;
+    if(d<4) units.push(q[2].replace('臺南市佳里區','').replace('台南市佳里區',''));
+  }
+  units.sort();
+  const aptLabel=units[0]||'';
+  _placePin(lat,lng,aptLabel);
+  _lastSelLat=lat; _lastSelLng=lng; _lastSelLabel=aptLabel;
+  const resultsEl=document.getElementById('map-search-results');
+  const vt=_vilTag(lat,lng);
+  const rows=units.map(u=>`<div class="msr-item" onclick="_placePin(${lat},${lng},'${u.replace(/'/g,"\\'")}');show50mList(${lat},${lng},'${u.replace(/'/g,"\\'")}');document.getElementById('map-search-results').style.display='none'">
+    <span class="msr-icon">🏢</span><span class="msr-main"><span class="msr-name">${vt}${u}</span></span></div>`).join('');
+  resultsEl.innerHTML=`<div class="msr-section">📌 同棟共 ${units.length} 戶</div>${rows}`;
+  resultsEl.style.display='block';
+  _radiusShownAt=Date.now();
+}
+
 function _refreshDoorLayer(){
   if(!_doorLayerOn) return;
   _clearDoorLayer();
@@ -4480,58 +4512,86 @@ function _refreshDoorLayer(){
   const hasRadius = _radiusOn && _lastSelLat !== null;
   const _cosLat = hasRadius ? Math.cos(_lastSelLat * Math.PI/180) : 1;
   let cnt = 0;
+
+  // 預先分組：圓圈內的公寓（同座標為同棟）→ coordKey → floors[]
+  const aptInRadius = new Map();
+  if(hasRadius){
+    for(let i=0;i<DOOR_DB.length;i++){
+      const r=DOOR_DB[i];
+      if(!r[2].includes('樓')) continue;
+      if(!bounds.contains([r[0],r[1]])) continue;
+      const dist=Math.sqrt(Math.pow(r[0]-_lastSelLat,2)+Math.pow((r[1]-_lastSelLng)*_cosLat,2))*111000;
+      if(dist>RADIUS_M) continue;
+      const key=r[0].toFixed(5)+','+r[1].toFixed(5);
+      if(!aptInRadius.has(key)) aptInRadius.set(key,{r,floors:[]});
+      const disp=r[2].replace('臺南市佳里區','').replace('台南市佳里區','');
+      const fl=_floorLabel(disp);
+      if(fl) aptInRadius.get(key).floors.push(fl);
+    }
+  }
+
+  const renderedAptKeys = new Set();
+
   for(let i=0;i<DOOR_DB.length;i++){
-    const r = DOOR_DB[i];
+    const r=DOOR_DB[i];
     if(!bounds.contains([r[0],r[1]])) continue;
-    const isApt = r[2].indexOf('\u6a13') >= 0; // 樓
-    let dotC, fillC, fillO, w, rad;
+    const isApt=r[2].includes('樓');
+    const disp=r[2].replace('臺南市佳里區','').replace('台南市佳里區','');
+    const key=r[0].toFixed(5)+','+r[1].toFixed(5);
+
+    let inRadius=false;
     if(hasRadius){
       const dist=Math.sqrt(Math.pow(r[0]-_lastSelLat,2)+Math.pow((r[1]-_lastSelLng)*_cosLat,2))*111000;
-      if(dist<=RADIUS_M){
-        dotC=isApt?'#27ae60':'#c0392b'; fillC=isApt?'#2ecc71':'#e74c3c'; fillO=0.92; w=1.5; rad=5;
-      } else {
-        dotC='#aaa'; fillC='#ccc'; fillO=0.22; w=0.8; rad=4;
-      }
-    } else {
-      dotC=isApt?'#27ae60':'#c0392b'; fillC=isApt?'#2ecc71':'#e74c3c'; fillO=0.85; w=1.5; rad=5;
+      inRadius=dist<=RADIUS_M;
     }
-    const cm = L.circleMarker([r[0],r[1]],{
-      renderer: _doorRenderer,
-      radius: rad, color: dotC, fillColor: fillC, fillOpacity: fillO, weight: w
-    });
-    const disp = r[2].replace('\u81fa\u5357\u5e02\u4f73\u91cc\u5340','').replace('\u53f0\u5357\u5e02\u4f73\u91cc\u5340','');
-    cm.on('click',(ev)=>{
-      L.DomEvent.stopPropagation(ev);
-      if(isApt){
-        // 公寓：找同一座標所有樓層，顯示在搜尋結果列
-        const cosLat=Math.cos(r[0]*Math.PI/180);
-        const units=[];
-        for(let j=0;j<DOOR_DB.length;j++){
-          const q=DOOR_DB[j];
-          const d=Math.sqrt(Math.pow(q[0]-r[0],2)+Math.pow((q[1]-r[1])*cosLat,2))*111000;
-          if(d<4) units.push(q[2].replace('臺南市佳里區','').replace('台南市佳里區',''));
-        }
-        units.sort();
-        const aptLabel=units[0]||disp;
-        _placePin(r[0],r[1],aptLabel);
-        // 更新最後選取位置，讓切換 50m/100m 時圓圈在此座標
-        _lastSelLat=r[0]; _lastSelLng=r[1]; _lastSelLabel=aptLabel;
-        // 在搜尋結果區顯示樓層清單
-        const resultsEl=document.getElementById('map-search-results');
-        const vt=_vilTag(r[0],r[1]);
-        const rows=units.map(u=>`<div class="msr-item" onclick="_placePin(${r[0]},${r[1]},'${u.replace(/'/g,"\\'")}');show50mList(${r[0]},${r[1]},'${u.replace(/'/g,"\\'")}');document.getElementById('map-search-results').style.display='none'">
-          <span class="msr-icon">🏢</span><span class="msr-main"><span class="msr-name">${vt}${u}</span></span></div>`).join('');
-        resultsEl.innerHTML=`<div class="msr-section">📌 同棟共 ${units.length} 戶</div>${rows}`;
-        resultsEl.style.display='block';
-        _radiusShownAt=Date.now();
-      } else {
-        _placePin(r[0],r[1],disp);
-        show50mList(r[0],r[1],disp);
+
+    // 圓圈內公寓：用 divIcon 顯示樓層標籤，同棟只渲染一次
+    if(isApt && hasRadius && inRadius){
+      if(renderedAptKeys.has(key)) continue;
+      renderedAptKeys.add(key);
+      const group=aptInRadius.get(key)||{floors:[]};
+      const floors=[...new Set(group.floors)].sort();
+      const dot=`<div style="width:8px;height:8px;background:#2ecc71;border-radius:50%;border:1.5px solid #27ae60;box-shadow:0 1px 3px rgba(0,0,0,.3);flex-shrink:0"></div>`;
+      const lbl=`font-size:9px;font-weight:700;color:#1a7a44;text-shadow:0 0 2px #fff,-1px 0 #fff,1px 0 #fff,0 1px #fff,0 -1px #fff;line-height:1.5`;
+      const inner=floors.length===0
+        ? `<div style="display:flex;align-items:center;gap:3px">${dot}</div>`
+        : floors.map((f,i)=>i===0
+            ? `<div style="display:flex;align-items:center;gap:3px">${dot}<span style="${lbl}">${f}</span></div>`
+            : `<div style="padding-left:11px"><span style="${lbl}">${f}</span></div>`
+          ).join('');
+      const icon=L.divIcon({
+        html:`<div style="display:flex;flex-direction:column;white-space:nowrap">${inner}</div>`,
+        className:'', iconAnchor:[4,4]
+      });
+      const cm=L.marker([r[0],r[1]],{icon});
+      cm.on('click',(ev)=>{ L.DomEvent.stopPropagation(ev); _aptClickFn(r[0],r[1]); });
+      _doorLayerGroup.addLayer(cm);
+      cnt++;
+    } else {
+      // 一般圓點（圓外公寓僅各座標渲染一次避免重疊）
+      if(isApt && hasRadius && !inRadius){
+        if(renderedAptKeys.has(key)) continue;
+        renderedAptKeys.add(key);
       }
-    });
-    _doorLayerGroup.addLayer(cm);
-    cnt++;
-    if(cnt > 2000) break; // 最多顯示 2000 點避免卡頓
+      let dotC,fillC,fillO,w,rad;
+      if(hasRadius){
+        if(inRadius){ dotC=isApt?'#27ae60':'#c0392b'; fillC=isApt?'#2ecc71':'#e74c3c'; fillO=0.92; w=1.5; rad=5; }
+        else { dotC='#aaa'; fillC='#ccc'; fillO=0.22; w=0.8; rad=4; }
+      } else {
+        dotC=isApt?'#27ae60':'#c0392b'; fillC=isApt?'#2ecc71':'#e74c3c'; fillO=0.85; w=1.5; rad=5;
+      }
+      const cm=L.circleMarker([r[0],r[1]],{
+        renderer:_doorRenderer, radius:rad, color:dotC, fillColor:fillC, fillOpacity:fillO, weight:w
+      });
+      cm.on('click',(ev)=>{
+        L.DomEvent.stopPropagation(ev);
+        if(isApt){ _aptClickFn(r[0],r[1]); }
+        else { _placePin(r[0],r[1],disp); show50mList(r[0],r[1],disp); }
+      });
+      _doorLayerGroup.addLayer(cm);
+      cnt++;
+    }
+    if(cnt>2000) break;
   }
   _doorLayerGroup.addTo(map);
 }

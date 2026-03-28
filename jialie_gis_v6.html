@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.369</title>
+<title>佳里 GIS v6.370</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1408,13 +1408,13 @@ function showNetworkToast(msg, bg){
 /* ═══════════════════════════════════════════
    MAP SETUP
 ═══════════════════════════════════════════ */
-const map=L.map('map',{center:[23.184,120.183],zoom:13,zoomControl:false});
+const map=L.map('map',{center:[23.184,120.183],zoom:13,zoomControl:false,maxZoom:21});
 
 // 離線時顯示灰色底圖
 // CartoDB Voyager — 免 Referer，支援繁中路名，適合 GAS/file 環境
 const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
   attribution:'',
-  subdomains:'abcd', maxZoom:19, minZoom:10,
+  subdomains:'abcd', maxNativeZoom:19, maxZoom:21, minZoom:10,
   errorTileUrl:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="%23f0ede8"/><text x="128" y="134" font-size="13" text-anchor="middle" fill="%23bbb">離線</text></svg>'
 }).addTo(map);
 map.attributionControl.setPrefix('此地圖為佳里區衛生所 授權使用 僅供參考');
@@ -4011,9 +4011,10 @@ function _updatePrintBtn(){
 
 function printRadiusArea(){
   if(!_radiusCircle) return;
-  const bounds = _radiusCircle.getBounds().pad(0.15);
-  map.fitBounds(bounds);
-  setTimeout(()=>{ window.print(); }, 600);
+  const c = _radiusCircle.getLatLng();
+  const zoom = RADIUS_M <= 50 ? 18 : 17;
+  map.setView(c, zoom);
+  setTimeout(()=>{ window.print(); }, 800);
 }
 
 function toggleRadiusDots(){
@@ -4027,9 +4028,14 @@ function toggleRadiusDots(){
   _radiusDotLayer = L.layerGroup();
   _radiusPts.forEach(p=>{
     const addr = p.road ? (p.road+(p.lane||'')+(p.num?p.num+'號':'')+(p.numExt?'之'+p.numExt:'')) : (p.addr||'');
+    const parts = _parseAddrParts(addr);
+    const shortLabel = parts[3]||''; // 號
     const icon = L.divIcon({
-      html:`<div style="width:8px;height:8px;background:#e63946;border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.5)"></div>`,
-      className:'', iconAnchor:[4,4]
+      html:`<div style="display:flex;align-items:center;gap:3px;white-space:nowrap">
+        <div style="width:7px;height:7px;flex-shrink:0;background:#e63946;border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>
+        <span style="font-size:9px;font-weight:700;color:#c0392b;text-shadow:0 0 2px #fff,-1px 0 #fff,1px 0 #fff,0 1px #fff,0 -1px #fff;line-height:1">${shortLabel}</span>
+      </div>`,
+      className:'', iconAnchor:[3,3]
     });
     L.marker([p.lat,p.lng],{icon})
       .bindTooltip(addr,{permanent:false,direction:'top',className:'tip-own',offset:[0,-4]})

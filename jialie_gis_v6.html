@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.359</title>
+<title>佳里 GIS v6.360</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -14,11 +14,11 @@
 /* ═══ SERVICE WORKER (離線磚塊與資源快取) ═══ */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  const ASSET_CACHE = 'jialie-assets-v5';
-  const TILE_CACHE  = 'jialie-tiles-v5';
+  const ASSET_CACHE = 'jialie-assets-v6';
+  const TILE_CACHE  = 'jialie-tiles-v6';
   const swCode = `
-const ASSET='${'"'}jialie-assets-v5${"'"}';
-const TILES='${'"'}jialie-tiles-v5${"'"}';
+const ASSET='${'"'}jialie-assets-v6${"'"}';
+const TILES='${'"'}jialie-tiles-v6${"'"}';
 const PRECACHE=[
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
@@ -94,10 +94,10 @@ input,select,textarea,button{font-family:inherit}
 ═══════════════════════════════════════════ */
 #topbar{
   position:fixed;top:0;left:0;right:0;z-index:600;
-  background:var(--blue);color:#fff;
+  background:transparent;color:#fff;
   padding:env(safe-area-inset-top,0) 0 0;
-  box-shadow:0 2px 12px rgba(0,0,0,.25);
 }
+#topbar-inner{text-shadow:0 1px 4px rgba(0,0,0,.7)}
 #topbar-inner{display:flex;align-items:center;gap:8px;padding:10px 12px}
 #topbar h1{font-size:14px;font-weight:700;flex:1;white-space:nowrap;letter-spacing:.3px}
 .topbar-sub{font-size:10px;opacity:.6;white-space:nowrap}
@@ -157,14 +157,15 @@ input,select,textarea,button{font-family:inherit}
 }
 #leg-toggle:active{background:#e8f0fb}
 
-/* 機關圖層切換按鈕 */
-#fac-toggle{
-  background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:10px;
-  padding:7px 12px;font-size:11px;font-weight:700;color:var(--text1);cursor:pointer;
-  box-shadow:var(--shadow);display:flex;align-items:center;gap:5px;white-space:nowrap;
+/* 機關分類按鈕 */
+.fac-grp-btn{
+  display:block;width:100%;
+  background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:9px;
+  padding:6px 10px;font-size:11px;font-weight:700;color:var(--text1);cursor:pointer;
+  box-shadow:var(--shadow);white-space:nowrap;text-align:left;transition:.15s;
 }
-#fac-toggle.fac-on{background:#e8f8ee;color:#1a7a4a;border-color:#1a7a4a}
-#fac-toggle:active{filter:brightness(.92)}
+.fac-grp-btn.fon{background:#e8f8ee;color:#1a7a4a;border-color:#1a7a4a}
+.fac-grp-btn:active{filter:brightness(.92)}
 
 /* 量測工具列 */
 #measure-bar{
@@ -710,12 +711,17 @@ input,select,textarea,button{font-family:inherit}
   <div id="left-tools-handle" title="按住拖曳移動">⠿⠿</div>
   <div id="measure-bar">
     <button class="meas-btn" id="meas-btn-dist"   onclick="setMeasureMode('dist')"   title="距離量測">📏</button>
-    <button class="meas-btn" id="meas-btn-area"   onclick="setMeasureMode('area')"   title="面積量測">⬡</button>
     <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測">⭕</button>
     <button class="meas-btn"                       onclick="clearMeasure()"           title="清除量測">✕</button>
   </div>
   <button id="leg-toggle" onclick="openLegend()">🗂 里別</button>
-  <button id="fac-toggle" onclick="toggleFacilityLayer()">🏛 機關</button>
+  <div id="fac-group-btns" style="display:flex;flex-direction:column;gap:4px">
+    <button class="fac-grp-btn" id="fac-grp-gov"       onclick="toggleFacGroup('gov')"      >🏛 機關</button>
+    <button class="fac-grp-btn" id="fac-grp-school"    onclick="toggleFacGroup('school')"   >🏫 學校</button>
+    <button class="fac-grp-btn" id="fac-grp-community" onclick="toggleFacGroup('community')">🏘 活動中心</button>
+    <button class="fac-grp-btn" id="fac-grp-temple"    onclick="toggleFacGroup('temple')"   >⛩ 宮廟</button>
+    <button class="fac-grp-btn" id="fac-grp-other"     onclick="toggleFacGroup('other')"    >🔖 其他</button>
+  </div>
 </div>
 
 <!-- ── ROAD LOADING TOAST ── -->
@@ -1406,10 +1412,11 @@ const map=L.map('map',{center:[23.184,120.183],zoom:13,zoomControl:true});
 // 離線時顯示灰色底圖
 // CartoDB Voyager — 免 Referer，支援繁中路名，適合 GAS/file 環境
 const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
-  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
+  attribution:'',
   subdomains:'abcd', maxZoom:19, minZoom:10,
   errorTileUrl:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="%23f0ede8"/><text x="128" y="134" font-size="13" text-anchor="middle" fill="%23bbb">離線</text></svg>'
 }).addTo(map);
+map.attributionControl.setPrefix('此地圖為佳里區衛生所 授權使用 僅供參考');
 
 /* ═══════════════════════════════════════════
    VILLAGE BOUNDARIES
@@ -2396,7 +2403,7 @@ async function showCacheStatus(){
 
 // 佳里區範圍（稍加邊緣）
 const TILE_BBOX = { minLat:23.08, maxLat:23.27, minLng:120.07, maxLng:120.28 };
-const TILE_CACHE_NAME = 'jialie-tiles-v5';
+const TILE_CACHE_NAME = 'jialie-tiles-v6';
 const TILE_DL_KEY = 'jialie_tile_dl_info'; // localStorage: 紀錄下載狀態
 
 // 各 zoom preset 選取狀態
@@ -3304,6 +3311,53 @@ async function toggleFacilityLayer(){
   _facLayerGroup.addTo(map);
   _facBuilding = false;
   if(btn) btn.innerHTML='🏛 機關';
+}
+
+const FAC_GROUPS = {
+  gov:       {label:'🏛 機關',     types:['gov','org']},
+  school:    {label:'🏫 學校',     types:['school']},
+  community: {label:'🏘 活動中心', types:['community']},
+  temple:    {label:'⛩ 宮廟',     types:['temple']},
+  other:     {label:'🔖 其他',     types:['attraction','care','chief','council']},
+};
+const _facGroups = {};
+const _facGroupBuilding = {};
+
+async function toggleFacGroup(gid){
+  const cfg = FAC_GROUPS[gid];
+  if(!cfg) return;
+  const btn = document.getElementById('fac-grp-'+gid);
+  if(_facGroups[gid]){
+    map.removeLayer(_facGroups[gid]);
+    _facGroups[gid] = null;
+    if(btn){ btn.classList.remove('fon'); btn.innerHTML=cfg.label; }
+    return;
+  }
+  if(_facGroupBuilding[gid]) return;
+  _facGroupBuilding[gid] = true;
+  if(btn){ btn.classList.add('fon'); btn.innerHTML='⌛ 載入…'; }
+
+  const byAddr = new Map();
+  for(const fac of FACILITY_DB){
+    if(!cfg.types.includes(fac.t)) continue;
+    if(!byAddr.has(fac.a)) byAddr.set(fac.a, {names:[], t:fac.t});
+    byAddr.get(fac.a).names.push(fac.n);
+  }
+
+  const lg = L.layerGroup();
+  for(const [addr, {names, t}] of byAddr){
+    const coord = await _resolveFacCoord(addr);
+    if(!coord) continue;
+    const label = names.map(n=>`<b>${n}</b>`).join('<br>') +
+                  `<br><span style="font-size:11px;color:#888">${addr}</span>`;
+    L.marker(coord, {icon:_facIcon(t)})
+      .bindPopup(label, {maxWidth:200})
+      .addTo(lg);
+  }
+  _facGroups[gid] = lg;
+  lg.addTo(map);
+  _facGroupBuilding[gid] = false;
+  if(btn) btn.innerHTML = cfg.label;
 }
 
 function applyGeoResult(lat,lng,source,method){
@@ -4298,7 +4352,7 @@ function toggleCadLayer(){
     if(!_cadLayer){
       _cadLayer = L.tileLayer.wms('https://wms.nlsc.gov.tw/wms',{
         layers:'CADSTRAL',format:'image/png',transparent:true,
-        opacity:0.88,version:'1.1.1',attribution:'© NLSC 地籍圖',
+        opacity:0.88,version:'1.1.1',attribution:'',
         pane:'cadPane'
       });
     }
@@ -5111,11 +5165,11 @@ map.on('click',function(e){
   /* ── 距離量測 ── */
   if(_measMode==='dist'){
     const pt=e.latlng; _measPts.push(pt);
-    const mk=L.circleMarker([pt.lat,pt.lng],{radius:5,color:'#1b4f72',fillColor:'#3498db',fillOpacity:1,weight:2}).addTo(map);
+    const mk=L.circleMarker([pt.lat,pt.lng],{radius:5,color:'#e63946',fillColor:'#e63946',fillOpacity:1,weight:2}).addTo(map);
     _measLayers.push(mk);
     if(_measPts.length>=2){
       const prev=_measPts[_measPts.length-2];
-      const line=L.polyline([[prev.lat,prev.lng],[pt.lat,pt.lng]],{color:'#1b4f72',weight:2,dashArray:'6,4'}).addTo(map);
+      const line=L.polyline([[prev.lat,prev.lng],[pt.lat,pt.lng]],{color:'#e63946',weight:3}).addTo(map);
       _measLayers.push(line);
       let total=0;
       for(let i=1;i<_measPts.length;i++) total+=_measDist(_measPts[i-1],_measPts[i]);

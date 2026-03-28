@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.358</title>
+<title>佳里 GIS v6.359</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -960,8 +960,8 @@ input,select,textarea,button{font-family:inherit}
           <tbody>
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">蕭壠文化園區</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('六安130號');return false;" style="color:var(--blue);text-decoration:underline">六安130號</a></td></tr>
             <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">國王家族羽絨服飾觀光工廠</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('民安里2-8號');return false;" style="color:var(--blue);text-decoration:underline">民安里2-8號</a></td></tr>
-            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">安西夜市</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('佳西路');return false;" style="color:var(--blue);text-decoration:underline">佳西路</a></td></tr>
-            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里公園</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('安北路');return false;" style="color:var(--blue);text-decoration:underline">安北路</a></td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">安西夜市</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('佳西路（安西夜市）');return false;" style="color:var(--blue);text-decoration:underline">佳西路</a></td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里公園</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('安北路（佳里公園）');return false;" style="color:var(--blue);text-decoration:underline">安北路</a></td></tr>
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">彼緹娃藝術蛋糕觀光工廠</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('同安寮1-1號');return false;" style="color:var(--blue);text-decoration:underline">同安寮1-1號</a></td></tr>
             <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">信行禪寺</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('麻佳路三段17之2號');return false;" style="color:var(--blue);text-decoration:underline">麻佳路三段17之2號</a></td></tr>
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">北頭洋文化園區</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('番子寮66之1號');return false;" style="color:var(--blue);text-decoration:underline">番子寮66之1號</a></td></tr>
@@ -1102,6 +1102,34 @@ const DISTRICTS={
 };
 const VIL_TO_DIST={};
 Object.entries(DISTRICTS).forEach(([d,v])=>v.villages.forEach(n=>VIL_TO_DIST[n]=d));
+// 地段管理者
+const VIL_TO_MANAGER={
+  '六安里':'陳翊瑄','民安里':'陳翊瑄','佳化里':'陳翊瑄',
+  '南勢里':'李伽葚','子龍里':'李伽葚',
+  '安西里':'顏詩瑋','營溪里':'顏詩瑋',
+  '忠仁里':'蔡錦慧','東寧里':'蔡錦慧','佳興里':'蔡錦慧',
+  '建南里':'蔡沛汝','塭內里':'蔡沛汝',
+  '鎮山里':'侯晏筑','下營里':'侯晏筑','文新里':'侯晏筑','海澄里':'侯晏筑',
+};
+// 里長資料
+const VIL_CHIEF={
+  '鎮山里':{n:'陳信祿',   tel:'06-7229012',mob:'0932758677',addr:'鎮山街160巷29號'},
+  '忠仁里':{n:'楊林錦鴦',tel:'06-7221236',mob:'0937498949',addr:'建中街4號'},
+  '東寧里':{n:'林育如',   tel:'06-7214349',mob:'0927909979',addr:'和平街39巷10號之1'},
+  '六安里':{n:'林佩玲',   tel:'06-7231761',mob:'0928798822',addr:'安北路58巷19號'},
+  '安西里':{n:'陳雅慧',   tel:'06-7237099',mob:'0936409616',addr:'佳西路525巷8弄1號'},
+  '文新里':{n:'柯淑華',   tel:'06-7212611',mob:'0932889106',addr:'安西路93巷8弄28號'},
+  '建南里':{n:'陳俊銘',   tel:'06-7236920',mob:'0921517201',addr:'建南街179巷2號'},
+  '南勢里':{n:'黃進福',   tel:'06-7238577',mob:'0932889115',addr:'佳南路420號'},
+  '下營里':{n:'林秉達',   tel:'06-7221073',mob:'0932779525',addr:'下廍120號'},
+  '海澄里':{n:'楊定昌',   tel:'',          mob:'0938792907',addr:'番子寮111號之7'},
+  '佳化里':{n:'張清水',   tel:'06-7260668',mob:'0933696628',addr:'佳化二街211號'},
+  '佳興里':{n:'林黃秋香', tel:'06-7260873',mob:'0937309458',addr:'佳里興545號之7'},
+  '營溪里':{n:'莊榮堯',   tel:'06-7261119',mob:'0953439121',addr:'營頂29號'},
+  '子龍里':{n:'謝清安',   tel:'06-7263112',mob:'0925171717',addr:'子龍路9號'},
+  '民安里':{n:'周天財',   tel:'06-7227609',mob:'0910747992',addr:'同安寮44號之11'},
+  '塭內里':{n:'黃明輝',   tel:'06-7872518',mob:'0910848527',addr:'埔頂18號之2'},
+};
 
 /* ── 佳里區官方統計資料（來源：臺南市政府開放資料） ── */
 const JIALIE_AREA={面積:'38.9422',里數:16,鄰數:257};
@@ -1521,7 +1549,11 @@ function renderVilLayers(){
     const layer=L.geoJSON(f,{
       style:{fillColor:col.fill,fillOpacity:opacity,color:col.border,weight,opacity:dm?1:.3},
       onEachFeature:(_,lyr)=>{
-        lyr.bindTooltip(`<b>${name}</b><small style="color:#888;margin-left:4px">${dist||''}</small>`,{sticky:true,className:'tip-own'});
+        {const _m=VIL_TO_MANAGER[name]||'',_ch=VIL_CHIEF[name];
+        let _tt=`<b>${name}</b><small style="color:#888;margin-left:4px">${dist||''}</small>`;
+        if(_m) _tt+=`<br><small style="color:#555">地段：${_m}</small>`;
+        if(_ch) _tt+=`　<small style="color:#555">里長：${_ch.n}</small>`;
+        lyr.bindTooltip(_tt,{sticky:true,className:'tip-own'});}
         lyr.on('click',()=>clickVil(name));
         lyr.on('mouseover',()=>lyr.setStyle({fillOpacity:Math.min(opacity+.2,.75)}));
         lyr.on('mouseout',()=>lyr.setStyle({fillOpacity:opacity}));
@@ -1566,6 +1598,17 @@ function clickVil(name){
   // Zoom to selected village
   if(filterVil!=='all' && vilLayers[name]){
     try{ map.fitBounds(vilLayers[name].getBounds(),{padding:[30,30]}); }catch{}
+    // 顯示地段 + 里長資訊
+    const _m=VIL_TO_MANAGER[name]||'', _ch=VIL_CHIEF[name];
+    if(_m||_ch){
+      let _h=`<b style="font-size:13px">${name}</b>`;
+      if(_m) _h+=`<br><span style="font-size:11px;color:#555">📋 地段：${_m}</span>`;
+      if(_ch){
+        _h+=`<br><span style="font-size:11px;color:#555">🏠 里長：${_ch.n}</span>`;
+        _h+=`<br><span style="font-size:10px;color:#888">${_ch.tel}　${_ch.mob}</span>`;
+      }
+      try{L.popup({maxWidth:200,className:'tip-own'}).setLatLng(vilLayers[name].getBounds().getCenter()).setContent(_h).openOn(map);}catch{}
+    }
   }
 }
 
@@ -2912,12 +2955,12 @@ const MANUAL_COORDS = {
   // 著名景點
   '六安130號':        [23.17337719606022,  120.17922901534254],
   '民安里2-8號':      [23.16063840032124,  120.18807493253458],
-  '佳西路':           [23.164866254971432, 120.16759541213807],
+  '佳西路（安西夜市）':[23.164866254971432, 120.16759541213807],
   '安北路116號':      [23.168574922898074, 120.1775202759602],
   '安北路118號':      [23.16890669207385,  120.1773939702082],
   '安北路192號':      [23.169226019132388, 120.1745160033946],
   '安北路196號':      [23.169916438050784, 120.174078970438],
-  '安北路':           [23.168949429861826, 120.17819810369893],
+  '安北路（佳里公園）':[23.168949429861826, 120.17819810369893],
   '同安寮1-1號':      [23.16536027198933,  120.18909492274042],
   '麻佳路三段17之2號':[23.165251770080985, 120.1877860047555],
   '番子寮66之1號':    [23.172828981805356, 120.16400096599013],
@@ -2945,13 +2988,13 @@ const MANUAL_COORDS = {
   '六安124號':        [23.17475215028666,  120.17992615679405],
   '六安22-10號':      [23.169702140631077, 120.18747925727318],
   '民安':             [23.172577530081124, 120.19830062242282],
+  '宅興二街598號':    [23.18437327195036,  120.18767542309413],
   '宅興二街':         [23.184267721012038, 120.19729652214846],
   '子龍三街117巷51弄9號':[23.17304173541786,120.20881523679842],
   '後庄41-1號':       [23.184911397096005, 120.20570208772513],
   '後庄三街':         [23.182464919770172, 120.20391618447066],
   '三協13號':         [23.18119264538672,  120.20352994638768],
   '佳化二街170號':    [23.1872457782811,   120.19585657215414],
-  '宅興二街598號':    [23.18437327195036,  120.18767542309413],
   '佳興里545號之12':  [23.18723707681019,  120.18586044873226],
   '佳興里545號之10':  [23.18779271222328,  120.186164935813],
   '佳興六街':         [23.185807777607714, 120.1925658392252],
@@ -3085,6 +3128,28 @@ const FACILITY_DB = [
   {n:'公園老人長期照護中心',   a:'佳北路161號',    t:'care'},
   {n:'宏祐老人養護之家',       a:'番仔寮45號之16', t:'care'},
   {n:'佳里奇美宿舍/公園日間照顧中心', a:'公園路82號', t:'care'},
+  // 里長住宅
+  {n:'鎮山里里長（陳信祿）',   a:'鎮山街160巷29號',   t:'chief'},
+  {n:'忠仁里里長（楊林錦鴦）', a:'建中街4號',          t:'chief'},
+  {n:'東寧里里長（林育如）',   a:'和平街39巷10號之1',  t:'chief'},
+  {n:'六安里里長（林佩玲）',   a:'安北路58巷19號',     t:'chief'},
+  {n:'安西里里長（陳雅慧）',   a:'佳西路525巷8弄1號',  t:'chief'},
+  {n:'文新里里長（柯淑華）',   a:'安西路93巷8弄28號',  t:'chief'},
+  {n:'建南里里長（陳俊銘）',   a:'建南街179巷2號',     t:'chief'},
+  {n:'南勢里里長（黃進福）',   a:'佳南路420號',        t:'chief'},
+  {n:'下營里里長（林秉達）',   a:'下廍120號',          t:'chief'},
+  {n:'海澄里里長（楊定昌）',   a:'番子寮111號之7',     t:'chief'},
+  {n:'佳化里里長（張清水）',   a:'佳化二街211號',      t:'chief'},
+  {n:'佳興里里長（林黃秋香）', a:'佳里興545號之7',     t:'chief'},
+  {n:'營溪里里長（莊榮堯）',   a:'營頂29號',           t:'chief'},
+  {n:'子龍里里長（謝清安）',   a:'子龍路9號',          t:'chief'},
+  {n:'民安里里長（周天財）',   a:'同安寮44號之11',     t:'chief'},
+  {n:'塭內里里長（黃明輝）',   a:'埔頂18號之2',        t:'chief'},
+  // 市議員
+  {n:'方一峰議員（國民黨）',   a:'光復路348號',        t:'council'},
+  {n:'蔡蘇秋金議員（民進黨）', a:'文化路132號',        t:'council'},
+  {n:'陳昆和議員（無黨籍）',   a:'安北路66號',         t:'council'},
+  {n:'蔡秋蘭議員（民進黨）',   a:'成功路87號',         t:'council'},
   // 社區活動中心
   {n:'六里聯合活動中心',       a:'佳東路327巷20號',  t:'community'},
   {n:'佳化里活動中心',         a:'佳興三街35號',     t:'community'},
@@ -3102,8 +3167,8 @@ const FACILITY_DB = [
   // 著名景點
   {n:'蕭壠文化園區',              a:'六安130號',         t:'attraction'},
   {n:'國王家族羽絨服飾觀光工廠',  a:'民安里2-8號',       t:'attraction'},
-  {n:'安西夜市',                  a:'佳西路',            t:'attraction'},
-  {n:'佳里公園',                  a:'安北路',            t:'attraction'},
+  {n:'安西夜市',                  a:'佳西路（安西夜市）', t:'attraction'},
+  {n:'佳里公園',                  a:'安北路（佳里公園）', t:'attraction'},
   {n:'彼緹娃藝術蛋糕觀光工廠',   a:'同安寮1-1號',       t:'attraction'},
   {n:'信行禪寺',                  a:'麻佳路三段17之2號', t:'attraction'},
   {n:'北頭洋文化園區',            a:'番子寮66之1號',     t:'attraction'},
@@ -3170,6 +3235,8 @@ function _facIcon(type){
     attraction: {c:'#d35400', e:'🌟'},
     temple:     {c:'#7b241c', e:'⛩'},
     care:       {c:'#117a8b', e:'🏥'},
+    chief:      {c:'#6d4c41', e:'🏡'},
+    council:    {c:'#4a235a', e:'🗳'},
   };
   const {c, e} = cfg[type] || {c:'#555', e:'📍'};
   return L.divIcon({
@@ -4134,22 +4201,23 @@ map.on('click', async (e)=>{
     } else {
       // 非門牌位置
       // 1. 立即：LAND_DB 最近地號 + 面積近似圓圈
-      let nearLand=null,nearLandArea=0;
+      // 判斷是否在佳里區範圍內（有里界資料用多邊形，否則用距離估算）
+      let nearLand=null,nearLandDist=99999,nearLandArea=0;
       if(typeof LAND_DB!=='undefined'){
-        let minLand=99999;
         Object.entries(LAND_DB).forEach(([key,val])=>{
           const d=Math.sqrt(Math.pow(val[0]-lat,2)+Math.pow((val[1]-lng)*cosLat,2))*111000;
-          if(d<minLand){minLand=d;nearLand={key,val};}
+          if(d<nearLandDist){nearLandDist=d;nearLand={key,val};}
         });
-        if(nearLand){
-          label=`佳里段 ${nearLand.key}`;
-          nearLandArea=parseFloat(nearLand.val[2])||0;
-          _highlightParcelApprox(lat,lng,nearLandArea);
-        }
       }
-      _placePin(lat,lng,label||'查詢中…');
+      const _inJiali=(vilFeatures&&vilFeatures.length>0)?getVillageAt(lat,lng)!=='':nearLandDist<2000;
+      if(nearLand && _inJiali){
+        label=`佳里段 ${nearLand.key}`;
+        nearLandArea=parseFloat(nearLand.val[2])||0;
+        _highlightParcelApprox(lat,lng,nearLandArea);
+      }
+      _placePin(lat,lng,label||(_inJiali?'查詢中…':''));
       show50mList(lat,lng,label);
-      if(!navigator.onLine) return;
+      if(!navigator.onLine||!_inJiali) return;
       // 2. 背景：WFS 取真實多邊形
       const wfsFeature = await _queryParcelWFS(lat,lng);
       if(wfsFeature && wfsFeature.geometry){
@@ -5183,6 +5251,46 @@ map.on('dblclick',function(e){
   handle.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragStart(t.clientX, t.clientY); }, {passive:true});
   handle.addEventListener('touchmove',  e=>{ e.preventDefault(); const t=e.touches[0]; dragMove(t.clientX, t.clientY); }, {passive:false});
   handle.addEventListener('touchend',   dragEnd);
+})();
+
+/* ── 控制面板拖曳（方圓／門牌點／選取） ── */
+(function(){
+  const panel = document.createElement('div');
+  panel.id = 'ctrl-panel';
+  panel.style.cssText = 'position:fixed;left:14px;bottom:280px;z-index:551;display:flex;flex-direction:column;gap:4px;user-select:none;touch-action:none';
+
+  const h = document.createElement('div');
+  h.id = 'ctrl-panel-handle';
+  h.title = '按住拖曳移動';
+  h.innerHTML = '⠿⠿';
+  h.style.cssText = 'background:rgba(255,255,255,.85);border:1px solid var(--border2);border-radius:8px;padding:4px 0;cursor:grab;text-align:center;color:var(--text3);font-size:15px;box-shadow:var(--shadow);letter-spacing:3px;touch-action:none';
+  panel.appendChild(h);
+
+  // 移入面板（自動從 body 搬移）並清除固定定位
+  [_radiusBar, _doorBtn, _modeBtn].forEach(el=>{
+    el.style.position='relative';
+    el.style.left=el.style.right=el.style.top=el.style.bottom=el.style.zIndex='';
+    panel.appendChild(el);
+  });
+  document.body.appendChild(panel);
+
+  // 還原上次位置
+  try{
+    const s=JSON.parse(localStorage.getItem('ctrlPanelPos')||'null');
+    if(s){ panel.style.left=s.left||'14px'; panel.style.top=s.top; panel.style.bottom='auto'; }
+  }catch{}
+
+  let sx,sy,sl,st,dragging=false;
+  function ds(cx,cy){ const r=panel.getBoundingClientRect(); sx=cx;sy=cy;sl=r.left;st=r.top;dragging=false; panel.style.bottom='auto';panel.style.top=st+'px';panel.style.left=sl+'px'; }
+  function dm(cx,cy){ const dx=cx-sx,dy=cy-sy; if(!dragging&&Math.abs(dx)<5&&Math.abs(dy)<5)return; dragging=true; panel.style.left=Math.max(4,Math.min(window.innerWidth-panel.offsetWidth-4,sl+dx))+'px'; panel.style.top=Math.max(4,Math.min(window.innerHeight-panel.offsetHeight-4,st+dy))+'px'; }
+  function de(){ if(dragging){try{localStorage.setItem('ctrlPanelPos',JSON.stringify({left:panel.style.left,top:panel.style.top}));}catch{}} dragging=false; }
+
+  h.addEventListener('mousedown',e=>{e.preventDefault();ds(e.clientX,e.clientY);h._d=true;});
+  document.addEventListener('mousemove',e=>{if(h._d)dm(e.clientX,e.clientY);});
+  document.addEventListener('mouseup',()=>{h._d=false;de();});
+  h.addEventListener('touchstart',e=>{const t=e.touches[0];ds(t.clientX,t.clientY);},{passive:true});
+  h.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];dm(t.clientX,t.clientY);},{passive:false});
+  h.addEventListener('touchend',de);
 })();
 </script>
 </body>

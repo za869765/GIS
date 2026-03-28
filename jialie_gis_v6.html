@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.360</title>
+<title>佳里 GIS v6.361</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -616,14 +616,6 @@ input,select,textarea,button{font-family:inherit}
 /* ═══════════════════════════════════════════
    LEAFLET OVERRIDES
 ═══════════════════════════════════════════ */
-.leaflet-control-zoom{
-  margin-top:calc(var(--topbar-h) + env(safe-area-inset-top,0px) + 108px) !important
-}
-@media(min-width:768px){
-  .leaflet-control-zoom{
-    margin-top:calc(var(--topbar-h) + 108px) !important
-  }
-}
 .vl-label{background:transparent;border:none;box-shadow:none;font-size:10px;font-weight:700;color:var(--blue);text-shadow:0 0 3px #fff,-1px 0 #fff,1px 0 #fff,0 1px #fff,0 -1px #fff;pointer-events:none;text-align:center;line-height:1.2}
 .tip-own{background:#fff;border:1px solid #cde;border-radius:8px;font-size:11px;padding:5px 10px;box-shadow:var(--shadow)}
 
@@ -1407,7 +1399,8 @@ function showNetworkToast(msg, bg){
 /* ═══════════════════════════════════════════
    MAP SETUP
 ═══════════════════════════════════════════ */
-const map=L.map('map',{center:[23.184,120.183],zoom:13,zoomControl:true});
+const map=L.map('map',{center:[23.184,120.183],zoom:13,zoomControl:false});
+L.control.zoom({position:'bottomleft'}).addTo(map);
 
 // 離線時顯示灰色底圖
 // CartoDB Voyager — 免 Referer，支援繁中路名，適合 GAS/file 環境

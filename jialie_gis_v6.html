@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.349</title>
+<title>佳里 GIS v6.350</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -854,7 +854,7 @@ input,select,textarea,button{font-family:inherit}
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">北門高中</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('六安里269號');return false;" style="color:var(--blue);text-decoration:underline">六安里269號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222150</td></tr>
             <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">北門農工</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('六安里117號');return false;" style="color:var(--blue);text-decoration:underline">六安里117號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7260148</td></tr>
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里國中</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('安南路523號');return false;" style="color:var(--blue);text-decoration:underline">安南路523號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222244</td></tr>
-            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳興國中</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('宅興二街59號');return false;" style="color:var(--blue);text-decoration:underline">新宅34-1號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7260291</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳興國中</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('宅興二街59號');return false;" style="color:var(--blue);text-decoration:underline">宅興二街59號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7260291</td></tr>
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('公園路445號');return false;" style="color:var(--blue);text-decoration:underline">公園路445號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222031</td></tr>
             <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">仁愛國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('仁愛路307號');return false;" style="color:var(--blue);text-decoration:underline">仁愛路307號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222227</td></tr>
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳興國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('麻興路二段636號');return false;" style="color:var(--blue);text-decoration:underline">麻興路二段636號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7260311</td></tr>
@@ -2807,13 +2807,12 @@ const MANUAL_COORDS = {
 async function gotoAddr(addr){
   const full = addr.startsWith('臺南市') ? addr : '臺南市佳里區'+addr;
   const stripped = full.replace('臺南市佳里區','');
-  // 行動裝置：收合底部面板讓地圖可見
-  if(window.innerWidth < 1024) expandSheet('peek');
   // 0. 手動補正座標表
   const manualKey = Object.keys(MANUAL_COORDS).find(k => stripped.includes(k));
   if(manualKey){
     const [lat,lng] = MANUAL_COORDS[manualKey];
     mapSearchSelectPoint(lat, lng, full, false);
+    _collapseSheet();
     return;
   }
   // 1. 優先查離線 DB → 直接放針
@@ -2821,11 +2820,18 @@ async function gotoAddr(addr){
   if(m){
     try{
       const r = await lookupAddressOffline(m[1].trim(), m[2], m[3]||'');
-      if(r){ mapSearchSelectPoint(r.lat, r.lng, full, false); return; }
+      if(r){ mapSearchSelectPoint(r.lat, r.lng, full, false); _collapseSheet(); return; }
     }catch(e){}
   }
   // 2. Nominatim 備援 → 由 geocodeMapSearch 放針
+  _collapseSheet();
   geocodeMapSearch(full);
+}
+function _collapseSheet(){
+  if(window.innerWidth >= 1024) return;
+  try{ expandSheet('peek'); }catch(e){}
+  // Leaflet 在面板動畫後須重算地圖大小才能正確顯示
+  setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 350);
 }
 
 /* ══════════════════════════════════════════════

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.374</title>
+<title>佳里 GIS v6.375</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4023,7 +4023,7 @@ function printRadiusArea(){
   }
   map.invalidateSize({animate:false});
   // 2. 依半徑選擇縮放層級（50m→zoom20 比例尺10m；100m→zoom18 比例尺~30m）
-  const _pZoom = RADIUS_M <= 50 ? 20 : 18;
+  const _pZoom = RADIUS_M <= 50 ? 19 : 18;
   map.setView(_radiusCircle.getLatLng(), _pZoom, {animate:false});
   // 3. 列印
   setTimeout(()=>{

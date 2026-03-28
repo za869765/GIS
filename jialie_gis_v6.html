@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.362</title>
+<title>佳里 GIS v6.363</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -3966,11 +3966,13 @@ function show50mList(lat, lng, label=''){
 
 let _radiusPts = [];
 let _radiusLabel = '';
+let _radiusDotLayer = null;
 
 function showRadiusPanel(lat,lng,pts,label=''){
   _radiusPts = pts;
   _radiusLabel = label;
   _radiusShownAt = Date.now();
+  if(_radiusDotLayer){ map.removeLayer(_radiusDotLayer); _radiusDotLayer=null; }
   const resultsEl = document.getElementById('map-search-results');
   resultsEl.style.display='block';
   resultsEl.scrollTop = 0;
@@ -3979,9 +3981,30 @@ function showRadiusPanel(lat,lng,pts,label=''){
   let html = addrLine;
   html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 14px 10px">
     <span style="font-size:12px;color:var(--text2)">方圓 ${RADIUS_M}m　${pts.length} 筆</span>
-    ${_radiusOn && pts.length?`<button onclick="exportRadiusList()" style="font-size:11px;padding:4px 12px;background:var(--blue);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">⬇ 匯出清單</button>`:(!_radiusOn?'':'<span style="font-size:11px;color:var(--text3)">附近無門牌資料</span>')}
+    ${_radiusOn && pts.length?`<div style="display:flex;gap:5px"><button id="radius-dot-btn" onclick="toggleRadiusDots()" style="font-size:11px;padding:4px 10px;background:#e63946;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">📍 顯示</button><button onclick="exportRadiusList()" style="font-size:11px;padding:4px 10px;background:var(--blue);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">⬇ 匯出清單</button></div>`:(!_radiusOn?'':'<span style="font-size:11px;color:var(--text3)">附近無門牌資料</span>')}
   </div>`;
   resultsEl.innerHTML = html;
+}
+
+function toggleRadiusDots(){
+  const btn = document.getElementById('radius-dot-btn');
+  if(_radiusDotLayer){
+    map.removeLayer(_radiusDotLayer); _radiusDotLayer=null;
+    if(btn){ btn.style.background='#e63946'; btn.textContent='📍 顯示'; }
+    return;
+  }
+  if(!_radiusPts.length) return;
+  _radiusDotLayer = L.layerGroup();
+  _radiusPts.forEach(p=>{
+    const addr = p.road ? (p.road+(p.lane||'')+(p.num?p.num+'號':'')+(p.numExt?'之'+p.numExt:'')) : (p.addr||'');
+    const icon = L.divIcon({
+      html:`<div style="position:relative"><div style="width:7px;height:7px;background:#e63946;border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.5)"></div><div style="position:absolute;left:9px;top:-3px;font-size:9px;font-weight:600;color:#c0392b;white-space:nowrap;text-shadow:0 0 2px #fff,-1px 0 #fff,1px 0 #fff,0 1px #fff,0 -1px #fff">${addr}</div></div>`,
+      className:'', iconAnchor:[3,3]
+    });
+    L.marker([p.lat,p.lng],{icon, interactive:false}).addTo(_radiusDotLayer);
+  });
+  _radiusDotLayer.addTo(map);
+  if(btn){ btn.style.background='#922b21'; btn.textContent='📍 隱藏'; }
 }
 
 function exportRadiusList(){

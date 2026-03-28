@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.353</title>
+<title>佳里 GIS v6.354</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -954,7 +954,8 @@ input,select,textarea,button{font-family:inherit}
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">鎮山宮</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('鎮山里94號');return false;" style="color:var(--blue);text-decoration:underline">鎮山里94號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap"></td></tr>
             <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">永昌宮</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('麻佳路三段200號');return false;" style="color:var(--blue);text-decoration:underline">麻佳路三段200號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap"></td></tr>
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">應元宮</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('番仔寮200號');return false;" style="color:var(--blue);text-decoration:underline">番仔寮200號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">06-7229852</td></tr>
-            <tr style="background:var(--surface2)"><td style="padding:4px 6px">福安宮</td><td style="padding:4px 6px"><a href="#" onclick="gotoAddr('番仔寮220號');return false;" style="color:var(--blue);text-decoration:underline">番仔寮220號</a></td><td style="padding:4px 6px;white-space:nowrap"></td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">福安宮</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('番仔寮220號');return false;" style="color:var(--blue);text-decoration:underline">番仔寮220號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap"></td></tr>
+            <tr><td style="padding:4px 6px">無極龍鳳宮</td><td style="padding:4px 6px"><a href="#" onclick="gotoAddr('頂廍');return false;" style="color:var(--blue);text-decoration:underline">頂廍</a></td><td style="padding:4px 6px;white-space:nowrap">7235952</td></tr>
           </tbody>
         </table>
       </div>
@@ -2856,6 +2857,7 @@ const MANUAL_COORDS = {
   '麻佳路三段200號':  [23.17553135151293,  120.20917082005089],
   '番仔寮200號':      [23.18031159428512,  120.15520907389043],
   '番仔寮220號':      [23.179545711621518, 120.15355235505677],
+  '頂廍':             [23.17755628145404,  120.15677082899795],
 };
 
 async function gotoAddr(addr){
@@ -2975,6 +2977,7 @@ const FACILITY_DB = [
   {n:'永昌宮',   a:'麻佳路三段200號',  t:'temple'},
   {n:'應元宮',   a:'番仔寮200號',      t:'temple'},
   {n:'福安宮',   a:'番仔寮220號',      t:'temple'},
+  {n:'無極龍鳳宮', a:'頂廍',           t:'temple'},
 ];
 
 function _facIcon(type){
@@ -3004,7 +3007,7 @@ function _facIcon(type){
 async function _resolveFacCoord(addr){
   // 1. MANUAL_COORDS
   for(const k of Object.keys(MANUAL_COORDS)){
-    if(addr === k || addr.includes(k) || k.includes(addr)) return MANUAL_COORDS[k];
+    if(addr === k || addr.includes(k)) return MANUAL_COORDS[k];
   }
   // 2. 離線 DB
   const m = addr.match(/^(.*?)(\d+)(?:之(\d+))?號/);

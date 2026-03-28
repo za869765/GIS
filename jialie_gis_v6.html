@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.347</title>
+<title>佳里 GIS v6.348</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -156,6 +156,15 @@ input,select,textarea,button{font-family:inherit}
   box-shadow:var(--shadow);display:flex;align-items:center;gap:5px;
 }
 #leg-toggle:active{background:#e8f0fb}
+
+/* 機關圖層切換按鈕 */
+#fac-toggle{
+  background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:10px;
+  padding:7px 12px;font-size:11px;font-weight:700;color:var(--text1);cursor:pointer;
+  box-shadow:var(--shadow);display:flex;align-items:center;gap:5px;white-space:nowrap;
+}
+#fac-toggle.fac-on{background:#e8f8ee;color:#1a7a4a;border-color:#1a7a4a}
+#fac-toggle:active{filter:brightness(.92)}
 
 /* 量測工具列 */
 #measure-bar{
@@ -706,6 +715,7 @@ input,select,textarea,button{font-family:inherit}
     <button class="meas-btn"                       onclick="clearMeasure()"           title="清除量測">✕</button>
   </div>
   <button id="leg-toggle" onclick="openLegend()">🗂 里別</button>
+  <button id="fac-toggle" onclick="toggleFacilityLayer()">🏛 機關</button>
 </div>
 
 <!-- ── ROAD LOADING TOAST ── -->
@@ -2815,6 +2825,153 @@ async function gotoAddr(addr){
   // 2. Nominatim 備援 → 由 geocodeMapSearch 放針
   geocodeMapSearch(full);
 }
+
+/* ══════════════════════════════════════════════
+   機關圖層
+══════════════════════════════════════════════ */
+const FACILITY_DB = [
+  // 公務機關
+  {n:'佳里區公所',              a:'忠孝路5號',         t:'gov'},
+  {n:'北門區家庭福利服務中心',  a:'中山路458號',        t:'gov'},
+  {n:'國稅局佳里稽徵所',        a:'忠孝路25號',         t:'gov'},
+  {n:'財稅局佳里分局',          a:'忠孝路25號',         t:'gov'},
+  {n:'佳里地政事務所',          a:'中山路417號',        t:'gov'},
+  {n:'佳里戶政事務所',          a:'忠孝路17號',         t:'gov'},
+  {n:'佳里衛生所',              a:'進學路159號',        t:'gov'},
+  {n:'警察局佳里分局',          a:'忠孝路7號',          t:'gov'},
+  {n:'佳里派出所',              a:'忠孝路7號',          t:'gov'},
+  {n:'佳興派出所',              a:'佳里興441號',        t:'gov'},
+  {n:'子龍派出所',              a:'麻佳路三段237號',    t:'gov'},
+  {n:'延平派出所',              a:'頂廍118號',          t:'gov'},
+  {n:'塭內派出所',              a:'塭子內84號',         t:'gov'},
+  {n:'消防局第三大隊暨佳里分隊',a:'六順路21號',         t:'gov'},
+  // 中小學
+  {n:'北門高中',    a:'六安里269號',        t:'school'},
+  {n:'北門農工',    a:'六安里117號',        t:'school'},
+  {n:'佳里國中',    a:'安南路523號',        t:'school'},
+  {n:'佳興國中',    a:'新宅34-1號',         t:'school'},
+  {n:'佳里國小',    a:'公園路445號',        t:'school'},
+  {n:'仁愛國小',    a:'仁愛路307號',        t:'school'},
+  {n:'佳興國小',    a:'麻興路二段636號',    t:'school'},
+  {n:'延平國小',    a:'頂廓里136號',        t:'school'},
+  {n:'塭內國小',    a:'龍安里40號',         t:'school'},
+  {n:'子龍國小',    a:'麻佳路三段370巷88號',t:'school'},
+  {n:'通興國小',    a:'埔頂5號',            t:'school'},
+  {n:'信義國小',    a:'信義一街336號',      t:'school'},
+  // 其他機關
+  {n:'佳里區農會',             a:'和平街168號',    t:'org'},
+  {n:'南縣區漁會',             a:'進學路240號',    t:'org'},
+  {n:'第一銀行佳里分行',       a:'延平路290號',    t:'org'},
+  {n:'京城銀行佳里分行',       a:'文化路203號',    t:'org'},
+  {n:'合作金庫佳里分行',       a:'和平街83號',     t:'org'},
+  {n:'中國信託佳里分行',       a:'中山路410號',    t:'org'},
+  {n:'玉山銀行佳里分行',       a:'延平路351號',    t:'org'},
+  {n:'元大銀行佳里分行',       a:'文化路278號',    t:'org'},
+  {n:'佳里郵局',               a:'延平路375號',    t:'org'},
+  {n:'中華電信佳里服務中心',   a:'進學路256號',    t:'org'},
+  {n:'台電佳里服務所',         a:'新生路576號',    t:'org'},
+  {n:'自來水公司佳里服務所',   a:'進學路139號',    t:'org'},
+  {n:'臺灣菸酒公司佳里營業所', a:'建南街145號',    t:'org'},
+  {n:'佳里魚市場',             a:'延平路229號',    t:'org'},
+  {n:'佳里果菜市場',           a:'祥和三街231巷1號',t:'org'},
+  {n:'金唐殿上元燈慈善會',     a:'中山路289號',    t:'org'},
+  {n:'農田水利署佳里工作站',   a:'延平路586號',    t:'org'},
+  {n:'農田水利署子龍工作站',   a:'潭墘29號',       t:'org'},
+  {n:'農田水利署塭內工作站',   a:'塭子內2號',      t:'org'},
+  {n:'興南客運佳里站',         a:'文化路198號',    t:'org'},
+  {n:'統聯客運佳里站',         a:'光復路357號',    t:'org'},
+  {n:'和欣客運佳里站',         a:'文化路305號',    t:'org'},
+  {n:'家扶中心佳里服務處',     a:'延平路580號',    t:'org'},
+  // 社區活動中心
+  {n:'六里聯合活動中心',       a:'佳東路327巷20號',  t:'community'},
+  {n:'佳化里活動中心',         a:'佳興三街35號',     t:'community'},
+  {n:'漳洲、海澄社區活動中心', a:'番子寮204號',      t:'community'},
+  {n:'民安社區活動中心',       a:'民安里34-2號',     t:'community'},
+  {n:'營頂社區活動中心',       a:'營頂27號',         t:'community'},
+  {n:'通興社區活動中心',       a:'埔頂25號',         t:'community'},
+  {n:'溪州社區活動中心',       a:'溪州2-1號',        t:'community'},
+  {n:'禮化社區活動中心',       a:'佳里興376-2號',    t:'community'},
+  {n:'蚶寮社區活動中心',       a:'蚶寮51-1號',       t:'community'},
+  {n:'頂廍社區活動中心',       a:'頂廍117號',        t:'community'},
+  {n:'興化社區活動中心',       a:'佳里興545之11號',  t:'community'},
+  {n:'三協社區活動中心',       a:'潭墘31號',         t:'community'},
+];
+
+function _facIcon(type){
+  const cfg = {
+    gov:       {c:'#c0392b', e:'🏛'},
+    school:    {c:'#1a7a4a', e:'🏫'},
+    org:       {c:'#1a5276', e:'🏢'},
+    community: {c:'#6c3483', e:'🏠'},
+  };
+  const {c, e} = cfg[type] || {c:'#555', e:'📍'};
+  return L.divIcon({
+    className:'',
+    html:`<div style="position:relative;width:26px;height:34px">
+      <svg width="26" height="34" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0">
+        <path d="M13 0C5.82 0 0 5.82 0 13c0 9.1 13 21 13 21S26 22.1 26 13C26 5.82 20.18 0 13 0z" fill="${c}" stroke="white" stroke-width="1.5"/>
+      </svg>
+      <div style="position:absolute;top:3px;left:0;width:26px;text-align:center;font-size:13px;line-height:1">${e}</div>
+    </div>`,
+    iconSize:[26,34],
+    iconAnchor:[13,34],
+    popupAnchor:[0,-36],
+  });
+}
+
+async function _resolveFacCoord(addr){
+  // 1. MANUAL_COORDS
+  for(const k of Object.keys(MANUAL_COORDS)){
+    if(addr === k || addr.includes(k) || k.includes(addr)) return MANUAL_COORDS[k];
+  }
+  // 2. 離線 DB
+  const m = addr.match(/^(.*?)(\d+)(?:之(\d+))?號/);
+  if(m){
+    try{
+      const r = await lookupAddressOffline(m[1].trim(), m[2], m[3]||'');
+      if(r) return [r.lat, r.lng];
+    }catch(e){}
+  }
+  return null;
+}
+
+let _facLayerGroup = null;
+let _facBuilding   = false;
+
+async function toggleFacilityLayer(){
+  const btn = document.getElementById('fac-toggle');
+  if(_facLayerGroup){
+    map.removeLayer(_facLayerGroup);
+    _facLayerGroup = null;
+    if(btn){ btn.classList.remove('fac-on'); btn.innerHTML='🏛 機關'; }
+    return;
+  }
+  if(_facBuilding) return;
+  _facBuilding = true;
+  if(btn){ btn.classList.add('fac-on'); btn.innerHTML='⌛ 載入…'; }
+
+  // 合併同地址的多個機關名稱
+  const byAddr = new Map();
+  for(const fac of FACILITY_DB){
+    if(!byAddr.has(fac.a)) byAddr.set(fac.a, {names:[], t:fac.t});
+    byAddr.get(fac.a).names.push(fac.n);
+  }
+
+  _facLayerGroup = L.layerGroup();
+  for(const [addr, {names, t}] of byAddr){
+    const coord = await _resolveFacCoord(addr);
+    if(!coord) continue;
+    const label = names.map(n=>`<b>${n}</b>`).join('<br>') +
+                  `<br><span style="font-size:11px;color:#888">${addr}</span>`;
+    L.marker(coord, {icon:_facIcon(t)})
+      .bindPopup(label, {maxWidth:200})
+      .addTo(_facLayerGroup);
+  }
+  _facLayerGroup.addTo(map);
+  _facBuilding = false;
+  if(btn) btn.innerHTML='🏛 機關';
+}
+
 function applyGeoResult(lat,lng,source,method){
   document.getElementById('f-lat').value=lat.toFixed(6);
   document.getElementById('f-lng').value=lng.toFixed(6);

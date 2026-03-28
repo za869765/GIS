@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.342</title>
+<title>佳里 GIS v6.343</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -582,7 +582,9 @@ input,select,textarea,button{font-family:inherit}
   padding:10px 14px;cursor:pointer;transition:.12s;border-bottom:1px solid var(--border);
 }
 .msr-item:last-child{border-bottom:none}
-.msr-item:active,.msr-item:hover{background:var(--surface2)}
+.msr-item:active,.msr-item:hover,.msr-item.msr-focused{background:var(--surface2)}
+.msr-item.msr-focused{outline:2px solid var(--blue);outline-offset:-2px}
+.msr-hl{color:var(--blue);font-weight:800}
 .msr-icon{font-size:16px;flex-shrink:0;width:24px;text-align:center}
 .msr-main{flex:1;min-width:0}
 .msr-name{font-size:13px;font-weight:600;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -3007,6 +3009,33 @@ async function searchAddressInDb(q){
 }
 
 let _searchDebounce = null;
+let _searchNavIdx = -1;
+
+/* 模糊比對評分（越高越相關）*/
+function _fuzzyScore(str, q){
+  if(!q) return 0;
+  if(str === q) return 100;
+  if(str.startsWith(q)) return 80;
+  if(str.includes(q)) return 60;
+  // 子序列比對（允許中間隔字）
+  let si=0, qi=0;
+  while(si<str.length && qi<q.length){ if(str[si]===q[qi]) qi++; si++; }
+  return qi===q.length ? 30 : 0;
+}
+
+/* 高亮匹配字元 */
+function _hlMatch(text, q){
+  if(!q) return text;
+  const idx = text.indexOf(q);
+  if(idx>=0) return text.slice(0,idx)+'<span class="msr-hl">'+text.slice(idx,idx+q.length)+'</span>'+text.slice(idx+q.length);
+  // 子序列：逐字標色
+  let out='', qi=0;
+  for(let i=0;i<text.length;i++){
+    if(qi<q.length && text[i]===q[qi]){ out+='<span class="msr-hl">'+text[i]+'</span>'; qi++; }
+    else out+=text[i];
+  }
+  return out;
+}
 async function onMapSearch(){
   const q = document.getElementById('map-search-input').value.trim();
   const clearBtn = document.getElementById('map-search-clear');
@@ -3078,11 +3107,16 @@ async function onMapSearch(){
 
     // ── Road-only matches (no number, pure road name search) ──
     const addrRoads = new Set(addrPts.map(p=>p.road));
+    const roadQ = (parsed.road||q).trim();
     let pureRoadMatches = [];
     if(!parsed.numPrefix && parsed.num===null){
-      pureRoadMatches = _allRoadOptions
-        .filter(r=>r.name.includes(parsed.road||q) && parsed.road.length>=2)
-        .slice(0,6);
+      if(roadQ.length>=2){
+        pureRoadMatches = _allRoadOptions
+          .map(r=>({...r, score:_fuzzyScore(r.name, roadQ)}))
+          .filter(r=>r.score>0)
+          .sort((a,b)=>b.score-a.score)
+          .slice(0,6);
+      }
     } else if(matchingRoads){
       pureRoadMatches = (matchingRoads||[])
         .filter(r=>!addrRoads.has(r))
@@ -3099,16 +3133,19 @@ async function onMapSearch(){
     }
 
     let html = '';
+    let itemIdx = 0;
+    _searchNavIdx = -1;
 
     // ── 路名區塊 ──
     if(pureRoadMatches.length){
       html += '<div class="msr-section">路名</div>';
       html += pureRoadMatches.map(r=>{
-        const esc = r.name.replace(/'/g,"\'");
-        return `<div class="msr-item" onclick="mapSearchSelectRoad('${esc}')">
+        const esc = r.name.replace(/'/g,"\\'");
+        const hl = _hlMatch(r.name, roadQ);
+        return `<div class="msr-item" data-idx="${itemIdx++}" onclick="mapSearchSelectRoad('${esc}')">
           <span class="msr-icon">🛣</span>
           <div class="msr-main">
-            <div class="msr-name">${r.name}</div>
+            <div class="msr-name">${hl}</div>
             <div class="msr-sub">佳里區</div>
           </div>
         </div>`;
@@ -3120,11 +3157,12 @@ async function onMapSearch(){
       html += `<div class="msr-section">門牌地址</div>`;
       html += addrPts.map(p=>{
         const addrLabel = p.road+(p.lane||'')+(p.num?p.num+'號':'')+(p.numExt?'之'+p.numExt:'');
-        const esc = addrLabel.replace(/'/g,"\'");
-        return `<div class="msr-item" onclick="mapSearchSelectPoint(${p.lat},${p.lng},'${esc}')">
+        const esc = addrLabel.replace(/'/g,"\\'");
+        const hl = _hlMatch(addrLabel, q);
+        return `<div class="msr-item" data-idx="${itemIdx++}" onclick="mapSearchSelectPoint(${p.lat},${p.lng},'${esc}')">
           <span class="msr-icon">📍</span>
           <div class="msr-main">
-            <div class="msr-name" style="font-weight:700">${addrLabel}</div>
+            <div class="msr-name">${hl}</div>
           </div>
         </div>`;
       }).join('');
@@ -3136,11 +3174,12 @@ async function onMapSearch(){
       html += doorHits.map(r=>{
         const fullAddr = r[2];
         const dispAddr = fullAddr.replace('臺南市佳里區','').replace('台南市佳里區','');
-        const esc = fullAddr.replace(/'/g,"\'");
-        return `<div class="msr-item" onclick="mapSearchSelectPoint(${r[0]},${r[1]},'${esc}')">
+        const esc = fullAddr.replace(/'/g,"\\'");
+        const hl = _hlMatch(dispAddr, q);
+        return `<div class="msr-item" data-idx="${itemIdx++}" onclick="mapSearchSelectPoint(${r[0]},${r[1]},'${esc}')">
           <span class="msr-icon">📍</span>
           <div class="msr-main">
-            <div class="msr-name" style="font-weight:700">${dispAddr}</div>
+            <div class="msr-name">${hl}</div>
           </div>
         </div>`;
       }).join('');
@@ -3153,8 +3192,23 @@ async function onMapSearch(){
 
 function onMapSearchKey(e){
   if(e.key==='Escape'){ clearMapSearch(); return; }
+  const items = Array.from(document.querySelectorAll('#map-search-results .msr-item'));
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    e.preventDefault();
+    if(!items.length) return;
+    items.forEach(el=>el.classList.remove('msr-focused'));
+    if(e.key==='ArrowDown') _searchNavIdx = Math.min(_searchNavIdx+1, items.length-1);
+    else _searchNavIdx = Math.max(_searchNavIdx-1, 0);
+    items[_searchNavIdx].classList.add('msr-focused');
+    items[_searchNavIdx].scrollIntoView({block:'nearest'});
+    return;
+  }
   if(e.key==='Enter'){
     clearTimeout(_searchDebounce);
+    if(_searchNavIdx>=0 && items[_searchNavIdx]){
+      items[_searchNavIdx].click();
+      return;
+    }
     const q = document.getElementById('map-search-input').value.trim();
     if(q) geocodeMapSearch(`臺南市佳里區${q}`);
   }

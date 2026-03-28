@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.361</title>
+<title>佳里 GIS v6.362</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -178,9 +178,9 @@ input,select,textarea,button{font-family:inherit}
   display:flex;flex-direction:column;gap:6px;user-select:none;
 }
 #left-tools-handle{
-  background:rgba(255,255,255,.85);border:1px solid var(--border2);border-radius:8px;
-  padding:4px 0;cursor:grab;text-align:center;color:var(--text3);font-size:15px;
-  box-shadow:var(--shadow);touch-action:none;letter-spacing:3px;
+  background:rgba(200,210,220,.7);border:none;border-radius:6px;
+  padding:2px 0;cursor:grab;text-align:center;color:rgba(100,120,140,.8);font-size:11px;
+  touch-action:none;letter-spacing:2px;line-height:1;
 }
 #left-tools-handle:active{cursor:grabbing;background:rgba(240,244,255,.95)}
 .meas-btn{
@@ -700,7 +700,6 @@ input,select,textarea,button{font-family:inherit}
 
 <!-- ── 左側工具列（可拖曳） ── -->
 <div id="left-tools">
-  <div id="left-tools-handle" title="按住拖曳移動">⠿⠿</div>
   <div id="measure-bar">
     <button class="meas-btn" id="meas-btn-dist"   onclick="setMeasureMode('dist')"   title="距離量測">📏</button>
     <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測">⭕</button>
@@ -714,6 +713,7 @@ input,select,textarea,button{font-family:inherit}
     <button class="fac-grp-btn" id="fac-grp-temple"    onclick="toggleFacGroup('temple')"   >⛩ 宮廟</button>
     <button class="fac-grp-btn" id="fac-grp-other"     onclick="toggleFacGroup('other')"    >🔖 其他</button>
   </div>
+  <div id="left-tools-handle" title="按住拖曳移動">⠿</div>
 </div>
 
 <!-- ── ROAD LOADING TOAST ── -->
@@ -1400,7 +1400,6 @@ function showNetworkToast(msg, bg){
    MAP SETUP
 ═══════════════════════════════════════════ */
 const map=L.map('map',{center:[23.184,120.183],zoom:13,zoomControl:false});
-L.control.zoom({position:'bottomleft'}).addTo(map);
 
 // 離線時顯示灰色底圖
 // CartoDB Voyager — 免 Referer，支援繁中路名，適合 GAS/file 環境
@@ -4103,6 +4102,7 @@ map.on('zoomend moveend', ()=>{ if(_landLayerOn) _showLandLayer(); });
    比例尺
 ══════════════════════════════════════════════════════════ */
 L.control.scale({position:'bottomleft', imperial:false, maxWidth:120}).addTo(map);
+L.control.zoom({position:'bottomleft'}).addTo(map);
 
 /* ══════════════════════════════════════════════════════════
    選取/移動 模式切換

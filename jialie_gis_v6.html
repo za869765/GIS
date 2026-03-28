@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.341</title>
+<title>佳里 GIS v6.342</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -3208,11 +3208,11 @@ function _pinIcon(color='#e74c3c'){
   });
 }
 
-function _placePin(lat, lng, labelText){
+function _placePin(lat, lng, labelText, color){
   if(_searchMarker) map.removeLayer(_searchMarker);
   const shortLabel = labelText.replace('臺南市佳里區','').replace('台南市佳里區','');
   const vt = _vilTag ? _vilTag(lat,lng) : '';
-  _searchMarker = L.marker([lat,lng],{icon:_pinIcon(),zIndexOffset:1000})
+  _searchMarker = L.marker([lat,lng],{icon:_pinIcon(color||'#1a6fba'),zIndexOffset:1000})
     .addTo(map)
     .bindTooltip(`${vt?vt.replace(/<[^>]+>/g,'')+'　':''}${shortLabel}`,
       {permanent:true, direction:'right', className:'pin-label'})

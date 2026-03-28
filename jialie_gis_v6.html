@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.379</title>
+<title>佳里 GIS v6.380</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -3937,6 +3937,7 @@ function show50mList(lat, lng, label=''){
   // 單點模式：只顯示地址，不畫圓
   if(!_radiusOn){
     if(_radiusCircle){ map.removeLayer(_radiusCircle); _radiusCircle=null; }
+    if(_radiusDotLayer){ map.removeLayer(_radiusDotLayer); _radiusDotLayer=null; }
     setTimeout(_refreshDoorLayer, 0);
     _updatePrintBtn();
     if(label){
@@ -4072,7 +4073,7 @@ function toggleRadiusDots(){
 }
 
 function _parseAddrParts(addr){
-  const floor = (addr.match(/(\d+樓)/)||[])[1]||'';
+  const floor = (addr.match(/([\d一二三四五六七八九十百千]+樓)/)||[])[1]||'';
   const num   = (addr.match(/(\d+(?:之\d+)?號)/)||[])[1]||'';
   const alley = (addr.match(/(\d+弄)/)||[])[1]||'';
   const lane  = (addr.match(/(\d+巷)/)||[])[1]||'';

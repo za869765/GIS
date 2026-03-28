@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.371</title>
+<title>佳里 GIS v6.372</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -3997,6 +3997,7 @@ function showRadiusPanel(lat,lng,pts,label=''){
     ${_radiusOn && pts.length?`<div style="display:flex;gap:5px"><button id="radius-dot-btn" onclick="toggleRadiusDots()" style="font-size:11px;padding:4px 10px;background:#e63946;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">📍 顯示</button><button onclick="exportRadiusList()" style="font-size:11px;padding:4px 10px;background:var(--blue);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">⬇ 匯出清單</button></div>`:(!_radiusOn?'':'<span style="font-size:11px;color:var(--text3)">附近無門牌資料</span>')}
   </div>`;
   resultsEl.innerHTML = html;
+  if(_radiusOn && pts.length) setTimeout(toggleRadiusDots, 0);
 }
 
 function _updatePrintBtn(){

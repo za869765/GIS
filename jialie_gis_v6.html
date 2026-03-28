@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.372</title>
+<title>佳里 GIS v6.373</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4012,16 +4012,27 @@ function _updatePrintBtn(){
 
 function printRadiusArea(){
   if(!_radiusCircle) return;
-  const c = _radiusCircle.getLatLng();
-  const zoom = RADIUS_M <= 50 ? 18 : 17;
-  map.setView(c, zoom, {animate:false});
-  // beforeprint：列印 CSS 套用後 Leaflet 可能 resize，在此重新鎖定視角
-  const _lock = ()=>{
-    map.invalidateSize({animate:false});
-    map.setView(c, zoom, {animate:false});
-  };
-  window.addEventListener('beforeprint', _lock, {once:true});
-  setTimeout(()=>window.print(), 600);
+  const sheet = document.getElementById('sheet');
+  const mapEl = document.getElementById('map');
+  const wasCollapsed = sheet && sheet.classList.contains('panel-collapsed');
+  // 1. 收起側欄，讓地圖先變成全寬（與列印 CSS 一致）
+  if(sheet && !wasCollapsed){
+    sheet.classList.add('panel-collapsed');
+    mapEl && mapEl.classList.add('panel-collapsed');
+  }
+  map.invalidateSize({animate:false});
+  // 2. fitBounds 在全寬下圓圈剛好置中
+  map.fitBounds(_radiusCircle.getBounds().pad(0.2), {animate:false});
+  // 3. 列印
+  setTimeout(()=>{
+    window.print();
+    // 4. 列印後還原側欄
+    if(!wasCollapsed && sheet){
+      sheet.classList.remove('panel-collapsed');
+      mapEl && mapEl.classList.remove('panel-collapsed');
+      map.invalidateSize({animate:false});
+    }
+  }, 700);
 }
 
 function toggleRadiusDots(){

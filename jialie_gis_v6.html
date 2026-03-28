@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.367</title>
+<title>佳里 GIS v6.368</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -618,6 +618,14 @@ input,select,textarea,button{font-family:inherit}
 ═══════════════════════════════════════════ */
 .vl-label{background:transparent;border:none;box-shadow:none;font-size:10px;font-weight:700;color:var(--blue);text-shadow:0 0 3px #fff,-1px 0 #fff,1px 0 #fff,0 1px #fff,0 -1px #fff;pointer-events:none;text-align:center;line-height:1.2}
 .tip-own{background:#fff;border:1px solid #cde;border-radius:8px;font-size:11px;padding:5px 10px;box-shadow:var(--shadow)}
+.leaflet-control-scale-line{font-size:13px!important;font-weight:700!important;padding:3px 8px!important;border-width:2px!important;border-top:none!important;color:#333!important}
+@media print{
+  body>*{display:none!important}
+  #map{display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;right:0!important}
+  .leaflet-control-attribution,.leaflet-control-zoom,.leaflet-control-scale{display:none!important}
+  #left-tools,#ctrl-panel,#topbar,#sheet,#sheet-toggle-btn,#print-btn,#roadbar,#fab,#leg-drawer,#leg-backdrop,#legend-desktop{display:none!important}
+  .leaflet-popup,.leaflet-tooltip{display:none!important}
+}
 
 /* ── 新增分頁系統 ── */
 .sub-nav{display:flex;border-bottom:1px solid var(--border);margin:0 -14px 10px;padding:0 4px;flex-shrink:0;background:var(--surface2)}
@@ -692,6 +700,8 @@ input,select,textarea,button{font-family:inherit}
 <div id="map"></div>
 <!-- ── 右側欄收起按鈕 ── -->
 <div id="sheet-toggle-btn" onclick="toggleSheetPanel()" title="收起/展開側欄">▶</div>
+<!-- ── 列印按鈕 ── -->
+<button id="print-btn" onclick="printRadiusArea()" title="列印範圍地圖" style="display:none;position:fixed;top:14px;right:360px;z-index:600;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);transition:right .25s ease">🖨 列印</button>
 
 <!-- search bar moved into #sheet below -->
 
@@ -3927,6 +3937,7 @@ function show50mList(lat, lng, label=''){
   if(!_radiusOn){
     if(_radiusCircle){ map.removeLayer(_radiusCircle); _radiusCircle=null; }
     setTimeout(_refreshDoorLayer, 0);
+    _updatePrintBtn();
     if(label){
       const resultsEl = document.getElementById('map-search-results');
       resultsEl.style.display = 'block';
@@ -3943,6 +3954,7 @@ function show50mList(lat, lng, label=''){
     fillColor:'#1b4f72', fillOpacity:.08, dashArray:'6,3'
   }).addTo(map);
   setTimeout(_refreshDoorLayer, 0);
+  _updatePrintBtn();
 
   // 直接使用 DOOR_DB（官方門牌資料庫）搜尋方圓 RADIUS_M 公尺門牌
   const nearby = [];
@@ -3987,6 +3999,23 @@ function showRadiusPanel(lat,lng,pts,label=''){
   resultsEl.innerHTML = html;
 }
 
+function _updatePrintBtn(){
+  const btn = document.getElementById('print-btn');
+  if(!btn) return;
+  const show = _radiusOn && _radiusCircle !== null;
+  btn.style.display = show ? 'block' : 'none';
+  // 側欄收起時跟著移位
+  const collapsed = document.getElementById('sheet') && document.getElementById('sheet').classList.contains('panel-collapsed');
+  btn.style.right = collapsed ? '14px' : '360px';
+}
+
+function printRadiusArea(){
+  if(!_radiusCircle) return;
+  const bounds = _radiusCircle.getBounds().pad(0.15);
+  map.fitBounds(bounds);
+  setTimeout(()=>{ window.print(); }, 600);
+}
+
 function toggleRadiusDots(){
   const btn = document.getElementById('radius-dot-btn');
   if(_radiusDotLayer){
@@ -3999,10 +4028,12 @@ function toggleRadiusDots(){
   _radiusPts.forEach(p=>{
     const addr = p.road ? (p.road+(p.lane||'')+(p.num?p.num+'號':'')+(p.numExt?'之'+p.numExt:'')) : (p.addr||'');
     const icon = L.divIcon({
-      html:`<div style="position:relative"><div style="width:7px;height:7px;background:#e63946;border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.5)"></div><div style="position:absolute;left:9px;top:-3px;font-size:9px;font-weight:600;color:#c0392b;white-space:nowrap;text-shadow:0 0 2px #fff,-1px 0 #fff,1px 0 #fff,0 1px #fff,0 -1px #fff">${addr}</div></div>`,
-      className:'', iconAnchor:[3,3]
+      html:`<div style="width:8px;height:8px;background:#e63946;border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.5)"></div>`,
+      className:'', iconAnchor:[4,4]
     });
-    L.marker([p.lat,p.lng],{icon, interactive:false}).addTo(_radiusDotLayer);
+    L.marker([p.lat,p.lng],{icon})
+      .bindTooltip(addr,{permanent:false,direction:'top',className:'tip-own',offset:[0,-4]})
+      .addTo(_radiusDotLayer);
   });
   _radiusDotLayer.addTo(map);
   if(btn){ btn.style.background='#922b21'; btn.textContent='📍 隱藏'; }
@@ -4050,6 +4081,8 @@ function toggleSheetPanel(){
   btn.classList.toggle('panel-collapsed', collapsed);
   btn.textContent = collapsed ? '◀' : '▶';
   if(leg) leg.style.right = collapsed ? '14px' : '354px';
+  const pb = document.getElementById('print-btn');
+  if(pb && pb.style.display!=='none') pb.style.right = collapsed ? '14px' : '360px';
   setTimeout(()=>map.invalidateSize(), 260);
 }
 

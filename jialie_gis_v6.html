@@ -445,7 +445,7 @@ input,select,textarea,button{font-family:inherit}
     position:fixed;bottom:20px;right:354px;z-index:500;
     background:rgba(255,255,255,.96);border-radius:var(--radius);border:1px solid var(--border);
     padding:10px 12px;font-size:10px;max-height:230px;flex-direction:column;
-    min-width:130px;box-shadow:var(--shadow);
+    min-width:130px;box-shadow:var(--shadow);transition:right .25s ease;
   }
   #leg-drawer{display:none}
   #leg-backdrop{display:none !important}
@@ -4047,7 +4047,7 @@ function toggleSheetPanel(){
   mapEl.classList.toggle('panel-collapsed', collapsed);
   btn.classList.toggle('panel-collapsed', collapsed);
   btn.textContent = collapsed ? '◀' : '▶';
-  if(leg) leg.style.display = collapsed ? 'none' : 'flex';
+  if(leg) leg.style.right = collapsed ? '14px' : '354px';
   setTimeout(()=>map.invalidateSize(), 260);
 }
 
@@ -4126,23 +4126,9 @@ map.on('zoomend moveend', ()=>{ if(_landLayerOn) _showLandLayer(); });
 L.control.scale({position:'bottomleft', imperial:false, maxWidth:120}).addTo(map);
 L.control.zoom({position:'bottomleft'}).addTo(map);
 
-/* ══════════════════════════════════════════════════════════
-   選取/移動 模式切換
-══════════════════════════════════════════════════════════ */
-let _selectMode = false;
-const _modeBtn = document.createElement('div');
-_modeBtn.id = 'map-mode-btn';
-_modeBtn.title = '切換選取/移動模式';
-_modeBtn.innerHTML = '🖐 移動';
-_modeBtn.style.cssText = 'position:fixed;left:14px;bottom:320px;z-index:550;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);user-select:none';
-document.body.appendChild(_modeBtn);
-_modeBtn.addEventListener('click',()=>{
-  _selectMode = !_selectMode;
-  _modeBtn.innerHTML = _selectMode ? '🎯 選取' : '🖐 移動';
-  _modeBtn.style.background = _selectMode ? 'var(--blue)' : 'rgba(255,255,255,.94)';
-  _modeBtn.style.color = _selectMode ? '#fff' : 'var(--text1)';
-  map.getContainer().style.cursor = _selectMode ? 'crosshair' : '';
-});
+/* 選取模式：永遠開啟 */
+const _selectMode = true;
+map.getContainer().style.cursor = 'crosshair';
 
 /* ══════════════════════════════════════════════════════════
    MAP CLICK
@@ -4396,16 +4382,6 @@ setTimeout(()=>{
   }
 }, 1000);
 
-// 選取模式預設開啟
-setTimeout(()=>{
-  if(!_selectMode){
-    _selectMode=true;
-    _modeBtn.innerHTML='🎯 選取';
-    _modeBtn.style.background='var(--blue)';
-    _modeBtn.style.color='#fff';
-    map.getContainer().style.cursor='crosshair';
-  }
-}, 600);
 
 function _clearDoorLayer(){
   if(_doorLayerGroup){ map.removeLayer(_doorLayerGroup); _doorLayerGroup=null; }
@@ -5337,7 +5313,7 @@ map.on('dblclick',function(e){
   panel.appendChild(h);
 
   // 移入面板（自動從 body 搬移）並清除固定定位
-  [_radiusBar, _doorBtn, _modeBtn].forEach(el=>{
+  [_radiusBar, _doorBtn].forEach(el=>{
     el.style.position='relative';
     el.style.left=el.style.right=el.style.top=el.style.bottom=el.style.zIndex='';
     panel.appendChild(el);

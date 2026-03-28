@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.340</title>
+<title>佳里 GIS v6.341</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -2762,12 +2762,18 @@ async function geocodeAddr(){
   finally{ btn.disabled=false; }
 }
 
-function gotoAddr(addr){
+async function gotoAddr(addr){
   const full = addr.startsWith('臺南市') ? addr : '臺南市佳里區'+addr;
-  const input = document.getElementById('map-search-input');
-  const dispAddr = addr.replace(/^臺南市佳里區/,'');
-  if(input) input.value = dispAddr;
-  if(window.innerWidth < 768) expandSheet('peek');
+  const stripped = full.replace('臺南市佳里區','');
+  // 1. 優先查離線 DB → 直接放針
+  const m = stripped.match(/^(.*?)(\d+)(?:之(\d+))?號/);
+  if(m){
+    try{
+      const r = await lookupAddressOffline(m[1].trim(), m[2], m[3]||'');
+      if(r){ mapSearchSelectPoint(r.lat, r.lng, full, false); return; }
+    }catch(e){}
+  }
+  // 2. Nominatim 備援 → 由 geocodeMapSearch 放針
   geocodeMapSearch(full);
 }
 function applyGeoResult(lat,lng,source,method){

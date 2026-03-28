@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.343</title>
+<title>佳里 GIS v6.344</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -2764,9 +2764,36 @@ async function geocodeAddr(){
   finally{ btn.disabled=false; }
 }
 
+/* ── 手動補正座標（離線 DB 查無、Nominatim 亦無法定位之地名型地址） ── */
+const MANUAL_COORDS = {
+  '佳里興441號':      [23.19019260859629, 120.18820764461151],
+  '佳里興376-2號':    [23.19088986015441, 120.18368010041358],
+  '佳里興545之11號':  [23.187670038545964, 120.18596132590424],
+  '塭子內84號':       [23.124006935924026, 120.16446348395223],
+  '塭子內2號':        [23.1271769304841, 120.16499189992741],
+  '頂廍118號':        [23.173098219110788, 120.14934763310026],
+  '頂廍117號':        [23.17292783057442, 120.14960041040634],
+  '潭墘29號':         [23.17786974981189, 120.20216942287422],
+  '潭墘31號':         [23.178204506774296, 120.2022073550364],
+  '營頂27號':         [23.198506507400698, 120.18861586171047],
+  '溪州2-1號':        [23.205091825226198, 120.18399421324217],
+  '番子寮204號':      [23.179952280713056, 120.15473671706641],
+  '龍安里40號':       [23.12562845808958, 120.16491262072208],
+  '六安里117號':      [23.176044548213994, 120.18095863523301],
+  '六安里269號':      [23.16708404414322, 120.17718976072082],
+  '民安里34-2號':     [23.162031361908664, 120.19243260663198],
+};
+
 async function gotoAddr(addr){
   const full = addr.startsWith('臺南市') ? addr : '臺南市佳里區'+addr;
   const stripped = full.replace('臺南市佳里區','');
+  // 0. 手動補正座標表
+  const manualKey = Object.keys(MANUAL_COORDS).find(k => stripped.includes(k));
+  if(manualKey){
+    const [lat,lng] = MANUAL_COORDS[manualKey];
+    mapSearchSelectPoint(lat, lng, full, false);
+    return;
+  }
   // 1. 優先查離線 DB → 直接放針
   const m = stripped.match(/^(.*?)(\d+)(?:之(\d+))?號/);
   if(m){

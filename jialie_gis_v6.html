@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.382</title>
+<title>佳里 GIS v6.383</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4073,12 +4073,19 @@ function toggleRadiusDots(){
 }
 
 function _parseAddrParts(addr){
-  const floor = (addr.match(/([\d一二三四五六七八九十百千]+樓)/)||[])[1]||'';
-  const num   = (addr.match(/(\d+(?:之\d+)?號)/)||[])[1]||'';
+  let floor = (addr.match(/([\d一二三四五六七八九十百千]+樓)/)||[])[1]||'';
+  let num   = (addr.match(/(\d+(?:之\d+)?號)/)||[])[1]||'';
   const alley = (addr.match(/(\d+弄)/)||[])[1]||'';
   const lane  = (addr.match(/(\d+巷)/)||[])[1]||'';
   const firstDig = addr.search(/\d/);
   const road = firstDig > 0 ? addr.substring(0, firstDig).trim() : addr.trim();
+  // 「數字前綴＋中文樓層」格式（如 "9六樓"、"1十樓"）
+  // → 表示 之X 號的不同地址，數字前綴移入號碼欄
+  const flPfx = floor.match(/^(\d+)([一二三四五六七八九十百千]+樓)$/);
+  if(flPfx && num){
+    num = num.replace(/號$/, '之'+flPfx[1]+'號');
+    floor = flPfx[2];
+  }
   return [road, lane, alley, num, floor];
 }
 
@@ -4470,10 +4477,16 @@ function _clearDoorLayer(){
 function _floorLabel(addr){
   const m = addr.match(/([\d一二三四五六七八九十百千]+)樓/);
   if(!m) return '';
-  const s = m[1];
+  let s = m[1];
+  // 去掉數字前綴（如 "9六"→"六"、"1十"→"十"，為之號延伸非樓層）
+  const pfx = s.match(/^\d+([一二三四五六七八九十百千]+)$/);
+  if(pfx) s = pfx[1];
   if(/^\d+$/.test(s)) return s+'F';
   const c={一:1,二:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9,十:10};
-  return (c[s]||s)+'F';
+  if(c[s]) return c[s]+'F';
+  // 十一、十二 … 十九
+  if(s.length===2 && s[0]==='十') return (10+(c[s[1]]||0))+'F';
+  return s+'F';
 }
 
 // 公寓點擊：顯示同棟樓層清單

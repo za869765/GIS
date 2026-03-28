@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.348</title>
+<title>佳里 GIS v6.349</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -854,7 +854,7 @@ input,select,textarea,button{font-family:inherit}
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">北門高中</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('六安里269號');return false;" style="color:var(--blue);text-decoration:underline">六安里269號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222150</td></tr>
             <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">北門農工</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('六安里117號');return false;" style="color:var(--blue);text-decoration:underline">六安里117號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7260148</td></tr>
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里國中</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('安南路523號');return false;" style="color:var(--blue);text-decoration:underline">安南路523號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222244</td></tr>
-            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳興國中</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('民安里新宅34號');return false;" style="color:var(--blue);text-decoration:underline">新宅34-1號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7260291</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳興國中</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('宅興二街59號');return false;" style="color:var(--blue);text-decoration:underline">新宅34-1號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7260291</td></tr>
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳里國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('公園路445號');return false;" style="color:var(--blue);text-decoration:underline">公園路445號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222031</td></tr>
             <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">仁愛國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('仁愛路307號');return false;" style="color:var(--blue);text-decoration:underline">仁愛路307號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7222227</td></tr>
             <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">佳興國小</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('麻興路二段636號');return false;" style="color:var(--blue);text-decoration:underline">麻興路二段636號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7260311</td></tr>
@@ -2793,8 +2793,8 @@ const MANUAL_COORDS = {
   '六安里269號':      [23.16708404414322, 120.17718976072082],
   '民安里34-2號':     [23.162031361908664, 120.19243260663198],
   '延平路375號':      [23.16365849556581,  120.17811012215593],
-  '忠孝路25號':       [23.1654248366204,   120.17583227941779],
-  '忠孝路7號':        [23.165213328365716, 120.17660815760865],
+  '忠孝路25號':       [23.165507384720105, 120.17581878182231],
+  '忠孝路7號':        [23.165200948521502, 120.17660679336797],
   '宅興二街59號':     [23.18327024662506,  120.19601744816127],
   '頂廓里136號':      [23.17878023628628,  120.15253943665361],
   '建南街145號':      [23.158960870307602, 120.17663703115069],
@@ -2807,6 +2807,8 @@ const MANUAL_COORDS = {
 async function gotoAddr(addr){
   const full = addr.startsWith('臺南市') ? addr : '臺南市佳里區'+addr;
   const stripped = full.replace('臺南市佳里區','');
+  // 行動裝置：收合底部面板讓地圖可見
+  if(window.innerWidth < 1024) expandSheet('peek');
   // 0. 手動補正座標表
   const manualKey = Object.keys(MANUAL_COORDS).find(k => stripped.includes(k));
   if(manualKey){
@@ -2849,7 +2851,7 @@ const FACILITY_DB = [
   {n:'北門高中',    a:'六安里269號',        t:'school'},
   {n:'北門農工',    a:'六安里117號',        t:'school'},
   {n:'佳里國中',    a:'安南路523號',        t:'school'},
-  {n:'佳興國中',    a:'新宅34-1號',         t:'school'},
+  {n:'佳興國中',    a:'宅興二街59號',        t:'school'},
   {n:'佳里國小',    a:'公園路445號',        t:'school'},
   {n:'仁愛國小',    a:'仁愛路307號',        t:'school'},
   {n:'佳興國小',    a:'麻興路二段636號',    t:'school'},

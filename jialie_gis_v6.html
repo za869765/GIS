@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.384</title>
+<title>佳里 GIS v6.385</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -722,6 +722,7 @@ input,select,textarea,button{font-family:inherit}
     <button class="fac-grp-btn" id="fac-grp-community" onclick="toggleFacGroup('community')">🏘 活動中心</button>
     <button class="fac-grp-btn" id="fac-grp-temple"    onclick="toggleFacGroup('temple')"   >⛩ 宮廟</button>
     <button class="fac-grp-btn" id="fac-grp-other"     onclick="toggleFacGroup('other')"    >🔖 其他</button>
+    <button class="fac-grp-btn" id="fac-grp-medical"  onclick="toggleFacGroup('medical')"  >🏥 醫療</button>
   </div>
   <div id="left-tools-handle" title="按住拖曳移動">⠿</div>
 </div>
@@ -3036,6 +3037,37 @@ const MANUAL_COORDS = {
   '佳北路161號':      [23.17091286422056,  120.1785145529992],
   '番仔寮45號之16':   [23.17227324515026,  120.16819170827428],
   '公園路82號':       [23.154324836634412, 120.17402456188768],
+  // 醫療院所精確座標
+  '佳里興606號':      [23.181878093589795, 120.1838460125203],
+  '佳北路1號':        [23.168690072423605, 120.1830045709985],
+  '光復路145號':      [23.158991522626813, 120.17471766728622],
+  '中山路188號':      [23.159069500185876, 120.17744091114666],
+  '新生路272號':      [23.160556620004563, 120.17677337889533],
+  '和平街118號':      [23.162609753791404, 120.17743500499448],
+  '延平路72號2樓':    [23.155185510773432, 120.17967979370125],
+  '仁愛路343號':      [23.154413905937982, 120.17771183605767],
+  '中山路113號':      [23.157028002649874, 120.17787276854722],
+  '延平路280號':      [23.160411455771968, 120.17895638092021],
+  '光復路226號':      [23.161939352178628, 120.17536640146498],
+  '光復路313號':      [23.163069080091947, 120.17473977445421],
+  '延平路353號':      [23.16290318837484,  120.17856503447345],
+  '進學路298號':      [23.16449411878469,  120.17466786836282],
+  '新生路297號':      [23.160099524048466, 120.17586697361348],
+  '新生路87號':       [23.160818226053586, 120.17955035750465],
+  '延平路225號':      [23.159492672349614, 120.17840844421752],
+  '自由街110號':      [23.156077507552006, 120.17814833066915],
+  '光復路25號':       [23.156082439797068, 120.17528057078948],
+  '中山路204號':      [23.159590532408586, 120.17758846678275],
+  '文化路255號':      [23.1632266055373,   120.17614419946513],
+  '中山路398號':      [23.16317639049031,  120.17712128072286],
+  '中山路355號':      [23.16270011548673,  120.17674706873484],
+  '文化路205號':      [23.163035491120976, 120.17733619444921],
+  '延平路356號':      [23.16230432182339,  120.17849519843767],
+  '延平路401號':      [23.164681532177504, 120.17815858106754],
+  '光復路160號':      [23.159670817035277, 120.1752390406091],
+  '延平路47號':       [23.15515131132315,  120.17946315494412],
+  '中山路201號':      [23.159113269767055, 120.17789832136886],
+  '文化路445號':      [23.163277158335546, 120.17061079575895],
 };
 
 async function gotoAddr(addr){
@@ -3233,6 +3265,38 @@ const FACILITY_DB = [
   {n:'佳里興金聖宮',          a:'佳里興300號',            t:'temple'},
   {n:'雷恩行宮',              a:'後庄一街230號',          t:'temple'},
   {n:'佳福寺',               a:'營頂里102號',            t:'temple'},
+  // 醫療院所
+  {n:'奇美醫療財團法人佳里奇美醫院', a:'佳里興606號',    t:'medical', p:'7263333'},
+  {n:'馬博榮婦產專科診所',           a:'佳北路1號',      t:'medical', p:'7236110'},
+  {n:'黃逸仁診所',                   a:'光復路145號',    t:'medical', p:'7220076'},
+  {n:'佳安診所',                     a:'中山路188號',    t:'medical', p:'7237768'},
+  {n:'新生診所',                     a:'新生路272號',    t:'medical', p:'7223122'},
+  {n:'以琳內科診所',                 a:'建南街161號',    t:'medical', p:'7211102'},
+  {n:'楊惠芬婦產科診所',             a:'和平街118號',    t:'medical', p:'7220000'},
+  {n:'黃清相診所',                   a:'延平路72號2樓',  t:'medical', p:'7215777'},
+  {n:'鴻慶診所',                     a:'仁愛路343號',    t:'medical', p:'7216636'},
+  {n:'金石小兒科診所',               a:'中山路113號',    t:'medical', p:'7213897'},
+  {n:'賴建利小兒科診所',             a:'延平路280號',    t:'medical', p:'7212233'},
+  {n:'黃永裕家醫科診所',             a:'光復路226號',    t:'medical', p:'7220220'},
+  {n:'葉佳霖診所',                   a:'光復路313號',    t:'medical', p:'7227875'},
+  {n:'劉亞伯耳鼻喉科診所',           a:'延平路353號',    t:'medical', p:'7236765'},
+  {n:'泰好復健科診所',               a:'進學路298號',    t:'medical', p:'7228858'},
+  {n:'佳元診所',                     a:'新生路297號',    t:'medical', p:'7238181'},
+  {n:'立新診所',                     a:'新生路87號',     t:'medical', p:'7213260'},
+  {n:'張松盛小兒科診所',             a:'延平路225號',    t:'medical', p:'7234215'},
+  {n:'人人診所',                     a:'自由街110號',    t:'medical', p:'7228895'},
+  {n:'宏和診所',                     a:'光復路25號',     t:'medical', p:'7232335'},
+  {n:'蘇稔然內科診所',               a:'中山路204號',    t:'medical', p:'7212273'},
+  {n:'朝圍診所',                     a:'文化路255號',    t:'medical', p:'7224123'},
+  {n:'光復診所',                     a:'中山路398號',    t:'medical', p:'7234656'},
+  {n:'吳小兒科診所',                 a:'中山路355號',    t:'medical', p:'7222986'},
+  {n:'謝樂偉眼科診所',               a:'文化路205號',    t:'medical', p:'7234303'},
+  {n:'吳志昶耳鼻喉科診所',           a:'延平路356號',    t:'medical', p:'7235182'},
+  {n:'凃尚言皮膚科',                 a:'延平路401號',    t:'medical', p:'7236996'},
+  {n:'鍾宏銘皮膚科診所',             a:'光復路160號',    t:'medical', p:'067236387'},
+  {n:'汪骨科診所',                   a:'延平路47號',     t:'medical', p:'7233305'},
+  {n:'洪骨科診所',                   a:'中山路201號',    t:'medical', p:'7237088'},
+  {n:'茗亮楊宗茗復健科診所',         a:'文化路445號',    t:'medical', p:'7222005'},
 ];
 
 function _facIcon(type){
@@ -3246,6 +3310,7 @@ function _facIcon(type){
     care:       {c:'#117a8b', e:'🏥'},
     chief:      {c:'#6d4c41', e:'🏡'},
     council:    {c:'#4a235a', e:'🗳'},
+    medical:    {c:'#2874a6', e:'🏥'},
   };
   const {c, e} = cfg[type] || {c:'#555', e:'📍'};
   return L.divIcon({
@@ -3321,6 +3386,7 @@ const FAC_GROUPS = {
   community: {label:'🏘 活動中心', types:['community']},
   temple:    {label:'⛩ 宮廟',     types:['temple']},
   other:     {label:'🔖 其他',     types:['attraction','care','chief','council']},
+  medical:   {label:'🏥 醫療',     types:['medical']},
 };
 const _facGroups = {};
 const _facGroupBuilding = {};
@@ -3342,18 +3408,20 @@ async function toggleFacGroup(gid){
   const byAddr = new Map();
   for(const fac of FACILITY_DB){
     if(!cfg.types.includes(fac.t)) continue;
-    if(!byAddr.has(fac.a)) byAddr.set(fac.a, {names:[], t:fac.t});
+    if(!byAddr.has(fac.a)) byAddr.set(fac.a, {names:[], phones:[], t:fac.t});
     byAddr.get(fac.a).names.push(fac.n);
+    byAddr.get(fac.a).phones.push(fac.p||'');
   }
 
   const lg = L.layerGroup();
-  for(const [addr, {names, t}] of byAddr){
+  for(const [addr, {names, phones, t}] of byAddr){
     const coord = await _resolveFacCoord(addr);
     if(!coord) continue;
-    const label = names.map(n=>`<b>${n}</b>`).join('<br>') +
-                  `<br><span style="font-size:11px;color:#888">${addr}</span>`;
+    const label = names.map((n,i)=>
+      `<b>${n}</b>${phones[i]?`<br><span style="font-size:11px;color:#555">☎ ${phones[i]}</span>`:''}`
+    ).join('<br>') + `<br><span style="font-size:11px;color:#888">${addr}</span>`;
     L.marker(coord, {icon:_facIcon(t)})
-      .bindPopup(label, {maxWidth:200})
+      .bindPopup(label, {maxWidth:220})
       .addTo(lg);
   }
   _facGroups[gid] = lg;

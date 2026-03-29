@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.400</title>
+<title>佳里 GIS v6.401</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1801,24 +1801,31 @@ function _demogHtml(name, forToast=false){
 }
 
 /* ── 各里篩檢排名圖表面板 ── */
-let _scPanelKey='br';
-function _showScPanel(vilName, key){
+let _scPanelKey='br', _scPanelSort='rate'; // sort: 'rate'=人口比率 | 'abs'=人數
+function _showScPanel(vilName, key, sort){
   if(vilName) window._scPanelVil=vilName;
   if(key) _scPanelKey=key;
+  if(sort) _scPanelSort=sort;
   const curVil=window._scPanelVil||vilName||'';
   const meta=SC_META.find(m=>m.k===_scPanelKey)||SC_META[0];
   const isEl=_scPanelKey==='el';
   const getVal=(vn)=>isEl?VIL_DEMOG[vn].o:(VIL_DEMOG[vn].sc?.[_scPanelKey]||0);
   const getPop=(vn)=>VIL_DEMOG[vn].pop;
-  const sorted=Object.keys(VIL_DEMOG).sort((a,b)=>(getVal(b)/getPop(b))-(getVal(a)/getPop(a)));
-  const maxRate=getVal(sorted[0])/getPop(sorted[0]);
+  const byRate=_scPanelSort==='rate';
+  const sorted=Object.keys(VIL_DEMOG).sort((a,b)=>
+    byRate ? (getVal(b)/getPop(b))-(getVal(a)/getPop(a))
+           : getVal(b)-getVal(a)
+  );
+  const maxRef=byRate
+    ? getVal(sorted[0])/getPop(sorted[0])
+    : getVal(sorted[0]);
   const n16=sorted.length;
 
   let panel=document.getElementById('sc-rank-panel');
   if(!panel){
     panel=document.createElement('div');
     panel.id='sc-rank-panel';
-    panel.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:900;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:300px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;font-family:inherit';
+    panel.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:900;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:310px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;font-family:inherit';
     document.body.appendChild(panel);
   }
 
@@ -1827,16 +1834,22 @@ function _showScPanel(vilName, key){
     return `<button onclick="_showScPanel('','${m.k}')" style="font-size:10px;padding:3px 7px;border-radius:20px;border:1.5px solid ${active?'#1565c0':'#e0e0e0'};background:${active?'#1565c0':'#fafafa'};color:${active?'#fff':'#666'};cursor:pointer;white-space:nowrap;font-weight:${active?700:400}">${m.l}</button>`;
   }).join('');
 
+  const sortBtns=`
+    <button onclick="_showScPanel('','','rate')" style="font-size:10px;padding:2px 9px;border-radius:12px;border:1.5px solid ${byRate?'#e67e22':'#e0e0e0'};background:${byRate?'#e67e22':'#fafafa'};color:${byRate?'#fff':'#666'};cursor:pointer;font-weight:${byRate?700:400}">人口比率</button>
+    <button onclick="_showScPanel('','','abs')" style="font-size:10px;padding:2px 9px;border-radius:12px;border:1.5px solid ${!byRate?'#e67e22':'#e0e0e0'};background:${!byRate?'#e67e22':'#fafafa'};color:${!byRate?'#fff':'#666'};cursor:pointer;font-weight:${!byRate?700:400}">人數多寡</button>`;
+
   const bars=sorted.map((vn,i)=>{
-    const val=getVal(vn), rate=val/getPop(vn);
-    const barPct=Math.round(rate/maxRate*100);
+    const val=getVal(vn);
+    const ref=byRate?val/getPop(vn):val;
+    const barPct=Math.round(ref/maxRef*100);
     const isCur=vn===curVil;
     const rColor=i<=3?'#1565c0':i>=n16-4?'#bbb':'#666';
     const barColor=isCur?'#1565c0':i<=3?'#90caf9':'#c8e6c9';
+    const pctTip=byRate?`(${(val/getPop(vn)*100).toFixed(1)}%)`:'';
     return `<div style="display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:6px;${isCur?'background:#f0f6ff;':''}">
       <span style="width:18px;text-align:right;font-size:10px;font-weight:700;color:${rColor}">${i+1}</span>
       <span style="width:52px;font-size:11px;color:${isCur?'#1565c0':'#333'};font-weight:${isCur?700:400};flex-shrink:0">${vn}${isCur?' ◀':''}</span>
-      <div style="flex:1;height:11px;background:#f0f0f0;border-radius:4px;overflow:hidden">
+      <div style="flex:1;height:11px;background:#f0f0f0;border-radius:4px;overflow:hidden" title="${pctTip}">
         <div style="width:${barPct}%;height:100%;background:${barColor};border-radius:4px"></div>
       </div>
       <span style="width:40px;text-align:right;font-size:10px;color:${isCur?'#1565c0':'#555'};font-weight:${isCur?700:400}">${val.toLocaleString()}</span>
@@ -1844,6 +1857,7 @@ function _showScPanel(vilName, key){
   }).join('');
 
   const curRank=sorted.indexOf(curVil)+1;
+  const sortLabel=byRate?'人口比率':'人數多寡';
   panel.innerHTML=`
     <div style="padding:12px 14px 8px;flex-shrink:0;border-bottom:1px solid #f0f0f0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -1852,13 +1866,16 @@ function _showScPanel(vilName, key){
         </div>
         <button onclick="document.getElementById('sc-rank-panel').style.display='none'" style="border:none;background:#f0f0f0;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#888;flex-shrink:0">✕</button>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px">${tabs}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">${tabs}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;color:#888">排序：</span>${sortBtns}
+      </div>
     </div>
-    <div style="padding:4px 8px 4px;flex-shrink:0;display:flex;justify-content:space-between">
-      <span style="font-size:9px;color:#aaa">排名（人口比率）</span><span style="font-size:9px;color:#aaa">人數</span>
+    <div style="padding:4px 10px 2px;flex-shrink:0;display:flex;justify-content:space-between">
+      <span style="font-size:9px;color:#aaa">排名（${sortLabel}）</span><span style="font-size:9px;color:#aaa">人數</span>
     </div>
     <div style="overflow-y:auto;padding:0 8px 12px;flex:1">${bars}</div>
-    <div style="padding:6px 14px 10px;border-top:1px solid #f0f0f0;font-size:9px;color:#bbb;flex-shrink:0">依各里篩檢對象÷總人口比率排序　點擊上方項目切換</div>`;
+    <div style="padding:6px 14px 10px;border-top:1px solid #f0f0f0;font-size:9px;color:#bbb;flex-shrink:0">${byRate?'依篩檢對象÷總人口比率排序':'依篩檢對象絕對人數排序'}　點擊上方項目切換</div>`;
   panel.style.display='flex';
 }
 

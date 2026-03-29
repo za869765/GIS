@@ -1609,7 +1609,11 @@ function renderVilLayers(){
         {const _m=VIL_TO_MANAGER[name]||'',_ch=VIL_CHIEF[name];
         let _tt=`<b>${name}</b><small style="color:#888;margin-left:4px">${dist||''}</small>`;
         if(_m) _tt+=`<br><small style="color:#555">地段：${_m}</small>`;
-        if(_ch) _tt+=`　<small style="color:#555">里長：${_ch.n}</small>`;
+        if(_ch){
+          _tt+=`<br><small style="color:#555">🏠 里長：${_ch.n}</small>`;
+          const _phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
+          if(_phones) _tt+=`<br><small style="color:#888">${_phones}</small>`;
+        }
         lyr.bindTooltip(_tt,{sticky:true,className:'tip-own'});}
         lyr.on('click',(e)=>{L.DomEvent.stopPropagation(e);clickVil(name);});
         lyr.on('mouseover',()=>lyr.setStyle({fillOpacity:Math.min(opacity+.2,.75)}));

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.389</title>
+<title>佳里 GIS v6.390</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -943,6 +943,21 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
             <tr><td style="padding:4px 6px">佳里奇美宿舍/公園日間照顧中心</td><td style="padding:4px 6px"><a href="#" onclick="gotoAddr('公園路82號');return false;" style="color:var(--blue);text-decoration:underline">公園路82號</a></td><td style="padding:4px 6px;white-space:nowrap"></td></tr>
           </tbody>
         </table>
+        <div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">🦷 牙醫診所一覽表</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px">
+          <thead><tr style="background:var(--surface2);color:var(--text2)">
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border)">名稱</th>
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border)">地址</th>
+            <th style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">電話</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">光裕牙醫診所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('文化路335號');return false;" style="color:var(--blue);text-decoration:underline">文化路335號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7212342</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">康橋牙醫診所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('延平路274號');return false;" style="color:var(--blue);text-decoration:underline">延平路274號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7233333</td></tr>
+            <tr><td style="padding:4px 6px;border-bottom:1px solid var(--border)">新安牙醫診所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('博愛街165號');return false;" style="color:var(--blue);text-decoration:underline">博愛街165號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7215266</td></tr>
+            <tr style="background:var(--surface2)"><td style="padding:4px 6px;border-bottom:1px solid var(--border)">遠東牙醫診所</td><td style="padding:4px 6px;border-bottom:1px solid var(--border)"><a href="#" onclick="gotoAddr('光復路236號');return false;" style="color:var(--blue);text-decoration:underline">光復路236號</a></td><td style="padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap">7238333</td></tr>
+            <tr><td style="padding:4px 6px">御品牙醫診所</td><td style="padding:4px 6px"><a href="#" onclick="gotoAddr('中山路233號');return false;" style="color:var(--blue);text-decoration:underline">中山路233號</a></td><td style="padding:4px 6px;white-space:nowrap">7212780</td></tr>
+          </tbody>
+        </table>
         <div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">🏥 醫療院所一覽表</div>
         <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px">
           <thead><tr style="background:var(--surface2);color:var(--text2)">
@@ -1592,6 +1607,7 @@ function showOfflineVilMsg(){
 }
 function getVN(f){return f.properties.VILLNAME||f.properties.villname||'未知';}
 
+const _vilRenderer = L.canvas({padding:0.5});
 function renderVilLayers(){
   Object.values(vilLayers).forEach(l=>map.removeLayer(l));vilLayers={};
   vilLabels.forEach(l=>map.removeLayer(l));vilLabels=[];
@@ -1604,6 +1620,7 @@ function renderVilLayers(){
     const weight=vm&&dm?2.5:1.2;
     if(!_vilBoundaryOn) return;
     const layer=L.geoJSON(f,{
+      renderer:_vilRenderer,
       style:{fillColor:col.fill,fillOpacity:opacity,color:col.border,weight,opacity:dm?1:.3},
       onEachFeature:(_,lyr)=>{
         {const _m=VIL_TO_MANAGER[name]||'',_ch=VIL_CHIEF[name];
@@ -3111,6 +3128,12 @@ const MANUAL_COORDS = {
   '延平路47號':       [23.15515131132315,  120.17946315494412],
   '中山路201號':      [23.159113269767055, 120.17789832136886],
   '文化路445號':      [23.163277158335546, 120.17061079575895],
+  // 牙醫診所
+  '文化路335號':      [23.16313860546694,  120.17344141472458],
+  '延平路274號':      [23.160218089525774, 120.17859691122484],
+  '博愛街165號':      [23.157577239586228, 120.17670153771807],
+  '光復路236號':      [23.161857520554157, 120.17489765618019],
+  '中山路233號':      [23.160062576796584, 120.17687650765332],
 };
 
 async function gotoAddr(addr){
@@ -3340,6 +3363,12 @@ const FACILITY_DB = [
   {n:'汪骨科診所',                   a:'延平路47號',     t:'medical', p:'7233305'},
   {n:'洪骨科診所',                   a:'中山路201號',    t:'medical', p:'7237088'},
   {n:'茗亮楊宗茗復健科診所',         a:'文化路445號',    t:'medical', p:'7222005'},
+  // 牙醫診所
+  {n:'光裕牙醫診所',  a:'文化路335號',  t:'dental', p:'7212342'},
+  {n:'康橋牙醫診所',  a:'延平路274號',  t:'dental', p:'7233333'},
+  {n:'新安牙醫診所',  a:'博愛街165號',  t:'dental', p:'7215266'},
+  {n:'遠東牙醫診所',  a:'光復路236號',  t:'dental', p:'7238333'},
+  {n:'御品牙醫診所',  a:'中山路233號',  t:'dental', p:'7212780'},
 ];
 
 function _facIcon(type){
@@ -3354,6 +3383,7 @@ function _facIcon(type){
     chief:      {c:'#6d4c41', e:'🏡'},
     council:    {c:'#4a235a', e:'🗳'},
     medical:    {c:'#2874a6', e:'🏥'},
+    dental:     {c:'#8e44ad', e:'🦷'},
   };
   const {c, e} = cfg[type] || {c:'#555', e:'📍'};
   return L.divIcon({
@@ -3430,6 +3460,7 @@ const FAC_GROUPS = {
   temple:    {label:'⛩ 宮廟',     types:['temple']},
   other:     {label:'🔖 其他',     types:['attraction','care','chief','council']},
   medical:   {label:'🏥 醫療',     types:['medical']},
+  dental:    {label:'🦷 牙醫',     types:['dental']},
 };
 const _facGroups = {};
 const _facGroupBuilding = {};

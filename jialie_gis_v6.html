@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.423</title>
+<title>佳里 GIS v6.424</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1668,41 +1668,7 @@ async function loadJialiBoundary(){
       interactive: false
     }).addTo(map);
 
-    // 5. 找鄰近行政區（bbox 與佳里區重疊的其他 town）並加標籤
-    const jBounds = L.geoJSON(jialiF).getBounds();
-    const expanded = jBounds.pad(0.5); // 50% 擴張搜尋範圍
-
-    _jialiNeighborLayers.forEach(l=>map.removeLayer(l));
-    _jialiNeighborLayers = [];
-
-    townsFeatures.forEach(f=>{
-      const p = f.properties;
-      const code = p.TOWNCODE||p.towncode||'';
-      if(code==='67000230') return; // 跳過佳里區本身
-      const tname = p.TOWNNAME||p.townname||'';
-      const cname = p.COUNTYNAME||p.countyname||p.CITYNAME||p.cityname||'';
-      if(!tname) return;
-      // 只顯示臺南市鄰近行政區
-      if(cname && !cname.includes('臺南') && !cname.includes('台南')) return;
-      try {
-        const b = L.geoJSON(f).getBounds();
-        if(!expanded.intersects(b)) return;
-        const c = b.getCenter();
-        // 標籤
-        const mk = L.marker([c.lat, c.lng], {
-          icon: L.divIcon({
-            html: `<div class="jialie-neighbor-label">${tname}</div>`,
-            className: '',
-            iconAnchor: [30, 10]
-          }),
-          interactive: false,
-          zIndexOffset: -100
-        }).addTo(map);
-        _jialiNeighborLayers.push(mk);
-      } catch(e){}
-    });
-
-    console.log('[GIS] 佳里區邊界 + 鄰近行政區標記完成');
+    console.log('[GIS] 佳里區邊界完成');
   } catch(e){
     console.warn('[GIS] 佳里區邊界載入失敗', e);
   }

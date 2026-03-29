@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.387</title>
+<title>佳里 GIS v6.388</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -662,6 +662,9 @@ input,select,textarea,button{font-family:inherit}
 .dc-vils{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
 .dc-vil{font-size:11px;padding:3px 8px;border-radius:8px;font-weight:600;cursor:pointer;transition:.12s}
 .dc-org{font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:6px}
+/* 行動裝置觸碰優化：消除 300ms 延遲、取消點擊高亮 */
+button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.leg-close,
+.leaflet-interactive,.msr-item{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 /* 設定 modal */
 #settings-overlay{position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center}
 #settings-overlay.open{display:flex}
@@ -699,6 +702,8 @@ input,select,textarea,button{font-family:inherit}
 
 <!-- ── MAP ── -->
 <div id="map"></div>
+<!-- 里界模式徽章 -->
+<div id="vil-mode-badge" style="display:none;position:fixed;top:calc(var(--topbar-h,52px) + 8px);left:50%;transform:translateX(-50%);z-index:560;background:var(--blue);color:#fff;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);letter-spacing:.3px">🗺 里界瀏覽模式</div>
 <!-- ── 右側欄收起按鈕 ── -->
 <div id="sheet-toggle-btn" onclick="toggleSheetPanel()" title="收起/展開側欄">▶</div>
 <!-- ── 列印按鈕 ── -->
@@ -743,6 +748,7 @@ input,select,textarea,button{font-family:inherit}
   </div>
   <div id="leg-drawer-body"></div>
   <div style="padding:10px 12px;border-top:1px solid rgba(255,255,255,.15);background:#f7f9fc;display:flex;gap:6px;flex-wrap:wrap">
+    <button id="vil-layer-btn-mobile" onclick="toggleVilLayer()" style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:11px;cursor:pointer;color:var(--text2);font-weight:600">里界 OFF</button>
     <button onclick="clearVilCache()" style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:10px;cursor:pointer;color:#555">🔄 更新里界</button>
     <button onclick="clearRoadCache()" style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:10px;cursor:pointer;color:#555">🔄 更新路名</button>
     <button onclick="openTileModal()" style="width:100%;margin-top:5px;background:#1b4f72;border:none;border-radius:6px;padding:8px;font-size:11px;cursor:pointer;color:#fff;font-weight:700">🗺 下載離線地圖磚塊</button>
@@ -1605,7 +1611,7 @@ function renderVilLayers(){
         if(_m) _tt+=`<br><small style="color:#555">地段：${_m}</small>`;
         if(_ch) _tt+=`　<small style="color:#555">里長：${_ch.n}</small>`;
         lyr.bindTooltip(_tt,{sticky:true,className:'tip-own'});}
-        lyr.on('click',()=>clickVil(name));
+        lyr.on('click',(e)=>{L.DomEvent.stopPropagation(e);clickVil(name);});
         lyr.on('mouseover',()=>lyr.setStyle({fillOpacity:Math.min(opacity+.2,.75)}));
         lyr.on('mouseout',()=>lyr.setStyle({fillOpacity:opacity}));
       }
@@ -1640,27 +1646,19 @@ function getVillageAt(lat,lng){
 
 function clickVil(name){
   if(addMode){document.getElementById('f-village').value=name;onVillageChange();return;}
-  // Toggle selection (no case filtering — only boundary zoom/highlight)
-  filterVil=(filterVil===name)?'all':name;
-  if(filterVil!=='all') filterDist=VIL_TO_DIST[name]||'all';
-  // Auto-enable boundary layer when a village is selected
-  if(filterVil!=='all' && !_vilBoundaryOn){ _vilBoundaryOn=true; }
-  buildDistStrip();renderVilLayers();renderLegend();renderVilFilterRow();
-  // Zoom to selected village
-  if(filterVil!=='all' && vilLayers[name]){
-    try{ map.fitBounds(vilLayers[name].getBounds(),{padding:[30,30]}); }catch{}
-    // 顯示地段 + 里長資訊
-    const _m=VIL_TO_MANAGER[name]||'', _ch=VIL_CHIEF[name];
-    if(_m||_ch){
-      let _h=`<b style="font-size:13px">${name}</b>`;
-      if(_m) _h+=`<br><span style="font-size:11px;color:#555">📋 地段：${_m}</span>`;
-      if(_ch){
-        _h+=`<br><span style="font-size:11px;color:#555">🏠 里長：${_ch.n}</span>`;
-        _h+=`<br><span style="font-size:10px;color:#888">${_ch.tel}　${_ch.mob}</span>`;
-      }
-      try{L.popup({maxWidth:200,className:'tip-own'}).setLatLng(vilLayers[name].getBounds().getCenter()).setContent(_h).openOn(map);}catch{}
-    }
+  // 里界模式 = 純瀏覽移動，桌機已有 hover tooltip；行動裝置改用 toast 顯示
+  if(!window.matchMedia('(pointer:coarse)').matches) return;
+  const _m=VIL_TO_MANAGER[name]||'', _ch=VIL_CHIEF[name];
+  const dist=VIL_TO_DIST[name]||'';
+  let msg=`<b style="font-size:14px">${name}</b>`;
+  if(dist) msg+=` <span style="font-size:11px;opacity:.75">${dist}</span>`;
+  if(_m) msg+=`<br><span style="font-size:12px">📋 ${_m}</span>`;
+  if(_ch){
+    msg+=`<br><span style="font-size:13px">🏠 ${_ch.n}</span>`;
+    const phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
+    if(phones) msg+=`<br><span style="font-size:12px;opacity:.85">☎ ${phones}</span>`;
   }
+  _showVilToast(msg);
 }
 
 function renderVilFilterRow(){
@@ -4252,19 +4250,41 @@ function toggleSheetPanel(){
 let _vilBoundaryOn = false;
 function toggleVilLayer(){
   _vilBoundaryOn = !_vilBoundaryOn;
-  const btn = document.getElementById('vil-layer-btn');
-  if(btn){
+  ['vil-layer-btn','vil-layer-btn-mobile'].forEach(id=>{
+    const btn=document.getElementById(id);
+    if(!btn) return;
     btn.textContent = _vilBoundaryOn ? '里界 ON' : '里界 OFF';
     btn.style.background = _vilBoundaryOn ? 'var(--blue)' : 'var(--surface2)';
     btn.style.color = _vilBoundaryOn ? '#fff' : 'var(--text2)';
     btn.style.borderColor = _vilBoundaryOn ? 'var(--blue)' : 'var(--border2)';
-  }
+  });
+  // 里界模式提示游標
+  map.getContainer().style.cursor = _vilBoundaryOn ? 'grab' : '';
+  // 地圖頂部模式徽章
+  const badge=document.getElementById('vil-mode-badge');
+  if(badge) badge.style.display=_vilBoundaryOn?'block':'none';
   if(_vilBoundaryOn){
     renderVilLayers();
   } else {
     Object.values(vilLayers).forEach(l=>map.removeLayer(l));
     vilLabels.forEach(l=>map.removeLayer(l));
   }
+}
+
+/* ── 里別資訊 Toast（行動裝置觸碰使用） ── */
+let _vilToastTimer=null;
+function _showVilToast(html){
+  let el=document.getElementById('vil-toast');
+  if(!el){
+    el=document.createElement('div');
+    el.id='vil-toast';
+    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--panel-h) + env(safe-area-inset-bottom,0px) + 10px);z-index:700;background:rgba(15,15,35,.9);color:#fff;border-radius:16px;padding:12px 20px;font-size:13px;line-height:1.65;text-align:center;max-width:85vw;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:opacity .3s;pointer-events:none';
+    document.body.appendChild(el);
+  }
+  el.innerHTML=html;
+  el.style.opacity='1';
+  if(_vilToastTimer) clearTimeout(_vilToastTimer);
+  _vilToastTimer=setTimeout(()=>{el.style.opacity='0';},4000);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -4429,6 +4449,7 @@ function _highlightParcelApprox(lat, lng, areaM2){
 }
 
 map.on('click', async (e)=>{
+  if(_vilBoundaryOn && !addMode) return; // 里界模式：純移動，不查詢門牌地段
   if(_selectMode){
     const lat=e.latlng.lat, lng=e.latlng.lng;
     const cosLat=Math.cos(lat*Math.PI/180);

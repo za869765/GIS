@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.429</title>
+<title>佳里 GIS v6.430</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5995,6 +5995,7 @@ function setMeasureMode(mode){
     clearMeasure();
     // 清除單點門牌/地段殘留
     if(pendingMarker){map.removeLayer(pendingMarker);pendingMarker=null;}
+    if(_searchMarker){map.removeLayer(_searchMarker);_searchMarker=null;}
     if(_parcelHighlight){map.removeLayer(_parcelHighlight);_parcelHighlight=null;}
     _measMode=mode; _measState=1; _measPts=[];
     _updateMeasBtns();

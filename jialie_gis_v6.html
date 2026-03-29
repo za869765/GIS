@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.412</title>
+<title>佳里 GIS v6.413</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1941,9 +1941,13 @@ function _showScPanel(vilName, key, sort){
     return `<button onclick="_showScPanel('','${m.k}')" style="font-size:10px;padding:3px 7px;border-radius:20px;border:1.5px solid ${active?'#1565c0':'#e0e0e0'};background:${active?'#1565c0':'#fafafa'};color:${active?'#fff':'#666'};cursor:pointer;white-space:nowrap;font-weight:${active?700:400}">${m.l}</button>`;
   }).join('');
 
+  // 排序切換：Segmented Control 樣式
+  const _segBase='font-size:11px;padding:4px 12px;border:none;cursor:pointer;font-weight:600;border-radius:6px;transition:.15s';
   const sortBtns=`
-    <button onclick="_showScPanel('','','rate')" style="font-size:10px;padding:2px 9px;border-radius:12px;border:1.5px solid ${byRate?'#e67e22':'#e0e0e0'};background:${byRate?'#e67e22':'#fafafa'};color:${byRate?'#fff':'#666'};cursor:pointer;font-weight:${byRate?700:400}">人口比率</button>
-    <button onclick="_showScPanel('','','abs')" style="font-size:10px;padding:2px 9px;border-radius:12px;border:1.5px solid ${!byRate?'#e67e22':'#e0e0e0'};background:${!byRate?'#e67e22':'#fafafa'};color:${!byRate?'#fff':'#666'};cursor:pointer;font-weight:${!byRate?700:400}">人數多寡</button>`;
+    <div style="background:#efefef;border-radius:8px;padding:3px;display:inline-flex;gap:2px">
+      <button onclick="_showScPanel('','','abs')" style="${_segBase};background:${!byRate?'#fff':'transparent'};color:${!byRate?'#e67e22':'#999'};box-shadow:${!byRate?'0 1px 4px rgba(0,0,0,.12)':'none'}">人數多寡</button>
+      <button onclick="_showScPanel('','','rate')" style="${_segBase};background:${byRate?'#fff':'transparent'};color:${byRate?'#e67e22':'#999'};box-shadow:${byRate?'0 1px 4px rgba(0,0,0,.12)':'none'}">人口比率</button>
+    </div>`;
 
   const distTotal=Object.keys(VIL_DEMOG).reduce((s,vn)=>s+getVal(vn),0);
   const bars=sorted.map((vn,i)=>{
@@ -1969,18 +1973,27 @@ function _showScPanel(vilName, key, sort){
   const curRank=sorted.indexOf(curVil)+1;
   const sortLabel=byRate?'人口比率':'人數多寡';
   panel.innerHTML=`
-    <div style="padding:12px 14px 8px;flex-shrink:0;border-bottom:1px solid #f0f0f0">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div><div style="font-size:13px;font-weight:700;color:#1a1a2e">📊 各里篩檢排名</div>
+    <div style="padding:12px 14px 0;flex-shrink:0">
+      <!-- 標題列 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#1a1a2e">📊 各里篩檢排名</div>
           <div style="font-size:10px;color:#888;margin-top:1px">${curVil} · ${meta.l}（${meta.n}）· 第 <b style="color:#1565c0">${curRank}</b>/${n16} 名</div>
         </div>
-        <button onclick="document.getElementById('sc-rank-panel').style.display='none';_clearScChoropleth();if(window._scPanelCollapsedSheet){window._scPanelCollapsedSheet=false;toggleSheetPanel();}" style="border:none;background:#f0f0f0;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#888;flex-shrink:0">✕</button>
+        <button onclick="document.getElementById('sc-rank-panel').style.display='none';_clearScChoropleth();if(window._scPanelCollapsedSheet){window._scPanelCollapsedSheet=false;toggleSheetPanel();}" style="border:none;background:#f0f0f0;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;color:#888;flex-shrink:0">✕</button>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">${tabs}</div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:10px;color:#888">排序：</span>${sortBtns}
+      <!-- 篩檢項目 -->
+      <div style="margin-bottom:8px">
+        <div style="font-size:9px;color:#aaa;font-weight:700;letter-spacing:.8px;margin-bottom:5px">篩 檢 項 目</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">${tabs}</div>
+      </div>
+      <!-- 分隔線 + 排序方式 -->
+      <div style="border-top:1.5px solid #f0f0f0;margin:0 -14px;padding:8px 14px 10px;display:flex;align-items:center;justify-content:space-between;background:#fafafa">
+        <span style="font-size:9px;color:#aaa;font-weight:700;letter-spacing:.8px">排 序 方 式</span>
+        ${sortBtns}
       </div>
     </div>
+    <div style="height:1px;background:#e8e8e8;flex-shrink:0"></div>
     <div style="padding:4px 10px 2px;flex-shrink:0;display:flex;justify-content:space-between">
       <span style="font-size:9px;color:#aaa">排名（${sortLabel}）</span>
       <div style="display:flex;gap:4px"><span style="font-size:9px;color:#aaa;width:38px;text-align:right">人數</span><span style="font-size:9px;color:#aaa;width:32px;text-align:right">佔全區</span></div>

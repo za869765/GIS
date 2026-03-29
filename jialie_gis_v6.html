@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.395</title>
+<title>佳里 GIS v6.396</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -3783,6 +3783,11 @@ async function onMapSearch(){
   const resultsEl = document.getElementById('map-search-results');
   clearBtn.style.display = q ? 'block' : 'none';
   if(!q){ resultsEl.style.display='none'; return; }
+  if(q.length < 2){
+    resultsEl.style.display='block';
+    resultsEl.innerHTML=`<div style="padding:14px 16px;font-size:12px;color:var(--text3);text-align:center">至少輸入兩個文字</div>`;
+    return;
+  }
 
   // Debounce 200ms
   clearTimeout(_searchDebounce);

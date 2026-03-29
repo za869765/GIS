@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.409</title>
+<title>佳里 GIS v6.410</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -775,10 +775,6 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border)">
     <span style="font-size:11px;font-weight:700;color:var(--text1)">里別圖例</span>
     <button id="vil-layer-btn" onclick="toggleVilLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">里界 OFF</button>
-  </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border)">
-    <span style="font-size:11px;color:var(--text2)">📐 地號範圍</span>
-    <button id="cad-leg-btn" onclick="toggleCadLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid #8e44ad;background:#8e44ad;color:#fff;cursor:pointer">地號 ON</button>
   </div>
   <div id="leg-desktop-body" style="overflow-y:auto;flex:1"></div>
 </div>
@@ -4693,6 +4689,7 @@ function toggleSheetPanel(){
    里界圖層切換（預設隱藏）
 ══════════════════════════════════════════════════════════ */
 let _vilBoundaryOn = false;
+let _vilHidDoor=false, _vilHidLand=false, _vilCollapsedSheet=false;
 function toggleVilLayer(){
   _vilBoundaryOn = !_vilBoundaryOn;
   ['vil-layer-btn','vil-layer-btn-mobile'].forEach(id=>{
@@ -4703,16 +4700,54 @@ function toggleVilLayer(){
     btn.style.color = _vilBoundaryOn ? '#fff' : 'var(--text2)';
     btn.style.borderColor = _vilBoundaryOn ? 'var(--blue)' : 'var(--border2)';
   });
-  // 里界模式提示游標
-  map.getContainer().style.cursor = _vilBoundaryOn ? 'grab' : '';
-  // 地圖頂部模式徽章
   const badge=document.getElementById('vil-mode-badge');
   if(badge) badge.style.display=_vilBoundaryOn?'block':'none';
+
   if(_vilBoundaryOn){
+    /* ── 切入里界模式 ── */
+    map.getContainer().style.cursor='grab';
+    // 清除單點模式殘留（addMode / pendingMarker / parcel highlight）
+    if(addMode){
+      addMode=false;
+      const fab=document.getElementById('fab');
+      if(fab){fab.classList.remove('mode-on');fab.textContent='＋';}
+      if(pendingMarker){map.removeLayer(pendingMarker);pendingMarker=null;}
+    }
+    if(_parcelHighlight){map.removeLayer(_parcelHighlight);_parcelHighlight=null;}
+    // 隱藏門牌點
+    _vilHidDoor=_doorLayerOn;
+    if(_doorLayerOn){_clearDoorLayer();_doorLayerOn=false;_doorBtn.style.background='rgba(255,255,255,.94)';_doorBtn.style.color='var(--text1)';}
+    // 隱藏地段點
+    _vilHidLand=_landLayerOn;
+    if(_landLayerOn){_hideLandLayer();_landLayerOn=false;const lb=document.getElementById('land-layer-btn');if(lb){lb.textContent='地號點 OFF';lb.style.background='var(--surface2)';lb.style.color='var(--text2)';lb.style.borderColor='var(--border2)';}}
+    // 摺疊右側欄（桌機）
+    if(window.innerWidth>=768){
+      const sheet=document.getElementById('sheet');
+      _vilCollapsedSheet=sheet&&!sheet.classList.contains('panel-collapsed');
+      if(_vilCollapsedSheet) toggleSheetPanel();
+    }
     renderVilLayers();
   } else {
+    /* ── 切出里界模式 ── */
+    map.getContainer().style.cursor='crosshair';
+    // 清除里界圖層
     Object.values(vilLayers).forEach(l=>map.removeLayer(l));
     vilLabels.forEach(l=>map.removeLayer(l));
+    vilLabels=[];vilLabelMap={};vilLayers={};
+    // 關閉篩檢面板
+    const scPanel=document.getElementById('sc-rank-panel');
+    if(scPanel) scPanel.style.display='none';
+    _clearScChoropleth();
+    if(window._scPanelCollapsedSheet){window._scPanelCollapsedSheet=false;}
+    // 隱藏右側里別資訊面板
+    const vip=document.getElementById('vil-info-panel');
+    if(vip) vip.style.display='none';
+    // 恢復右側欄
+    if(_vilCollapsedSheet){_vilCollapsedSheet=false;toggleSheetPanel();}
+    // 恢復門牌點
+    if(_vilHidDoor){_vilHidDoor=false;_doorLayerOn=true;_doorBtn.style.background='var(--blue)';_doorBtn.style.color='#fff';_refreshDoorLayer();}
+    // 恢復地段點
+    if(_vilHidLand){_vilHidLand=false;_landLayerOn=true;const lb=document.getElementById('land-layer-btn');if(lb){lb.textContent='地號點 ON';lb.style.background='var(--teal)';lb.style.color='#fff';lb.style.borderColor='var(--teal)';}; _showLandLayer();}
   }
 }
 
@@ -4986,52 +5021,6 @@ function toggleLandLayerLeg(){
   const btn=document.getElementById('land-leg-btn');
   if(btn){btn.textContent=_landLayerOn?'地號 ON':'地號 OFF';btn.style.background=_landLayerOn?'var(--teal)':'var(--surface2)';btn.style.color=_landLayerOn?'#fff':'var(--text2)';btn.style.borderColor=_landLayerOn?'var(--teal)':'var(--border2)';}
 }
-
-/* ── NLSC 地籍圖 WMS（限佳里區範圍） ── */
-let _cadLayerOn = false;
-let _cadLayer = null;
-// 佳里區邊界 bbox（僅在此範圍內顯示地籍圖）
-const _JIALI_SW = [23.082, 120.072];
-const _JIALI_NE = [23.240, 120.285];
-
-function _updateCadClip(){
-  const pane = map.getPane('cadPane');
-  if(!pane) return;
-  const sw = map.latLngToContainerPoint(_JIALI_SW); // left-bottom
-  const ne = map.latLngToContainerPoint(_JIALI_NE); // right-top
-  // CSS polygon：左上→右上→右下→左下
-  pane.style.clipPath = `polygon(${sw.x}px ${ne.y}px, ${ne.x}px ${ne.y}px, ${ne.x}px ${sw.y}px, ${sw.x}px ${sw.y}px)`;
-}
-
-function toggleCadLayer(){
-  _cadLayerOn = !_cadLayerOn;
-  const btn=document.getElementById('cad-leg-btn');
-  if(_cadLayerOn){
-    // 建立專屬 pane（不影響底圖）
-    if(!map.getPane('cadPane')){
-      map.createPane('cadPane');
-      map.getPane('cadPane').style.zIndex = 250; // 底圖(200) 上方，標記(400) 下方
-    }
-    if(!_cadLayer){
-      _cadLayer = L.tileLayer.wms('https://wms.nlsc.gov.tw/wms',{
-        layers:'CADSTRAL',format:'image/png',transparent:true,
-        opacity:0.88,version:'1.1.1',attribution:'',
-        pane:'cadPane'
-      });
-    }
-    _cadLayer.addTo(map);
-    _updateCadClip();
-    map.on('move zoom viewreset', _updateCadClip);
-    if(btn){btn.textContent='地號 ON';btn.style.background='#8e44ad';btn.style.color='#fff';btn.style.borderColor='#8e44ad';}
-  } else {
-    map.off('move zoom viewreset', _updateCadClip);
-    if(_cadLayer) map.removeLayer(_cadLayer);
-    if(btn){btn.textContent='地號 OFF';btn.style.background='var(--surface2)';btn.style.color='var(--text2)';btn.style.borderColor='var(--border2)';}
-  }
-}
-
-// 地號範圍預設開啟
-setTimeout(()=>{ if(!_cadLayerOn) toggleCadLayer(); }, 800);
 
 // 門牌點預設開啟
 setTimeout(()=>{

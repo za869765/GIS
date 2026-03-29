@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.426</title>
+<title>佳里 GIS v6.427</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -181,10 +181,12 @@ input,select,textarea,button{font-family:inherit}
 }
 #left-tools:active{cursor:grabbing;}
 .meas-btn{
-  width:36px;height:36px;border-radius:8px;border:1px solid var(--border2);
-  background:rgba(255,255,255,.94);color:var(--text1);font-size:15px;cursor:pointer;
-  box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;transition:.15s;
+  height:36px;border-radius:8px;border:1px solid var(--border2);
+  background:rgba(255,255,255,.94);color:var(--text1);font-size:11px;font-weight:700;cursor:pointer;
+  box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;
+  transition:.15s;padding:0 10px;gap:4px;white-space:nowrap;letter-spacing:.2px;
 }
+.meas-btn-icon{font-size:14px;line-height:1;}
 .meas-btn:hover{background:#f0f4ff}
 .meas-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .meas-btn.paused{background:#e65100;color:#fff;border-color:#bf360c}
@@ -735,8 +737,8 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 
 <!-- ── 量測按鈕（獨立，由ctrl-panel接管） ── -->
 <div id="measure-bar">
-  <button class="meas-btn" id="meas-btn-dist"   onclick="setMeasureMode('dist')"   title="距離量測">📏</button>
-  <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測">⭕</button>
+  <button class="meas-btn" id="meas-btn-dist"   onclick="setMeasureMode('dist')"   title="距離量測"><span class="meas-btn-icon" id="meas-icon-dist">↔</span><span id="meas-text-dist">測距</span></button>
+  <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測"><span class="meas-btn-icon" id="meas-icon-circle">◯</span><span id="meas-text-circle">畫圓</span></button>
 </div>
 
 <!-- ── 機關圖層卡（可拖曳，點空白處移動） ── -->
@@ -5955,15 +5957,35 @@ function _measLabel(latlng, html){
 }
 
 function _updateMeasBtns(){
-  ['dist','area','circle'].forEach(m=>{
-    const b=document.getElementById('meas-btn-'+m);
-    if(!b) return;
-    b.classList.remove('active','paused');
-    if(_measMode===m){
-      if(_measState===1) b.classList.add('active');
-      else if(_measState===2) b.classList.add('paused');
+  // 距離
+  const db=document.getElementById('meas-btn-dist');
+  const di=document.getElementById('meas-icon-dist');
+  const dt=document.getElementById('meas-text-dist');
+  if(db){
+    db.classList.remove('active','paused');
+    if(_measMode==='dist'&&_measState===1){
+      db.classList.add('active');
+      if(di) di.textContent='⏸'; if(dt) dt.textContent='暫停';
+    } else if(_measMode==='dist'&&_measState===2){
+      db.classList.add('paused');
+      if(di) di.textContent='✕'; if(dt) dt.textContent='清除';
+    } else {
+      if(di) di.textContent='↔'; if(dt) dt.textContent='測距';
     }
-  });
+  }
+  // 圓形
+  const cb=document.getElementById('meas-btn-circle');
+  const ci=document.getElementById('meas-icon-circle');
+  const ct=document.getElementById('meas-text-circle');
+  if(cb){
+    cb.classList.remove('active','paused');
+    if(_measMode==='circle'&&_measState===1){
+      cb.classList.add('active');
+      if(ci) ci.textContent='✕'; if(ct) ct.textContent='清除';
+    } else {
+      if(ci) ci.textContent='◯'; if(ct) ct.textContent='畫圓';
+    }
+  }
 }
 
 function setMeasureMode(mode){

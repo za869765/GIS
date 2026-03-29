@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.419</title>
+<title>佳里 GIS v6.420</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -760,22 +760,22 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
     <h3>🗂 里別 / 地區</h3>
     <button class="leg-close" onclick="closeLegend()">✕</button>
   </div>
-  <div id="leg-drawer-body"></div>
-  <div style="padding:10px 12px;border-top:1px solid rgba(255,255,255,.15);background:#f7f9fc;display:flex;gap:6px;flex-wrap:wrap">
-    <button id="vil-layer-btn-mobile" onclick="toggleVilLayer()" style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:11px;cursor:pointer;color:var(--text2);font-weight:600">📊 統計 OFF</button>
-    <button onclick="clearVilCache()" style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:10px;cursor:pointer;color:#555">🔄 更新里界</button>
-    <button onclick="clearRoadCache()" style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:10px;cursor:pointer;color:#555">🔄 更新路名</button>
-    <button onclick="openTileModal()" style="width:100%;margin-top:5px;background:#1b4f72;border:none;border-radius:6px;padding:8px;font-size:11px;cursor:pointer;color:#fff;font-weight:700">🗺 下載離線地圖磚塊</button>
+  <div style="padding:14px 14px 10px;display:flex;flex-direction:column;gap:10px">
+    <button id="vil-layer-btn-mobile" onclick="toggleVilLayer()" style="width:100%;background:var(--surface2);border:2px solid var(--border2);border-radius:10px;padding:14px 10px;font-size:15px;cursor:pointer;color:var(--text2);font-weight:700;letter-spacing:.5px">📊 里別統計模式　統計 OFF</button>
+    <div style="display:flex;gap:6px">
+      <button onclick="clearVilCache()" style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:10px;cursor:pointer;color:#555">🔄 更新里界</button>
+      <button onclick="clearRoadCache()" style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:10px;cursor:pointer;color:#555">🔄 更新路名</button>
+    </div>
+    <button onclick="openTileModal()" style="width:100%;background:#1b4f72;border:none;border-radius:6px;padding:8px;font-size:11px;cursor:pointer;color:#fff;font-weight:700">🗺 下載離線地圖磚塊</button>
   </div>
 </div>
 
 <!-- ── DESKTOP LEGEND ── -->
 <div id="legend-desktop" style="display:none;flex-direction:column">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border)">
-    <span style="font-size:11px;font-weight:700;color:var(--text1)">里別統計模式</span>
-    <button id="vil-layer-btn" onclick="toggleVilLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">統計 OFF</button>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px 8px">
+    <span style="font-size:13px;font-weight:800;color:var(--text1);letter-spacing:.3px">📊 里別統計模式</span>
+    <button id="vil-layer-btn" onclick="toggleVilLayer()" style="font-size:12px;padding:5px 14px;border-radius:8px;border:2px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-weight:700">統計 OFF</button>
   </div>
-  <div id="leg-desktop-body" style="overflow-y:auto;flex:1"></div>
 </div>
 
 <!-- ── BOTTOM SHEET ── -->
@@ -1429,21 +1429,7 @@ function openLegend(){document.getElementById('leg-drawer').classList.add('open'
 function closeLegend(){document.getElementById('leg-drawer').classList.remove('open');document.getElementById('leg-backdrop').classList.remove('show');}
 
 function renderLegend(){
-  ['leg-drawer-body','leg-desktop-body'].forEach(id=>{
-    const body=document.getElementById(id);if(!body)return;body.innerHTML='';
-    Object.entries(DISTRICTS).forEach(([dname,d])=>{
-      const dt=document.createElement('div');dt.className='leg-dist-title';dt.style.color=d.color;dt.textContent=dname;body.appendChild(dt);
-      d.villages.forEach(vname=>{
-        const col=vilColorMap[vname]||{fill:'#eee',border:'#aaa'};
-        const cnt=cases.filter(c=>c.village===vname).length;
-        const row=document.createElement('div');
-        row.className='leg-row'+(filterVil===vname?' hl':'');
-        row.innerHTML=`<div class="leg-sw" style="background:${col.fill};border-color:${col.border}"></div><span class="leg-name">${vname}</span>`;
-        row.onclick=()=>{clickVil(vname);closeLegend();};
-        body.appendChild(row);
-      });
-    });
-  });
+  // 里別清單已移除，僅保留統計模式按鈕區
 }
 
 /* ═══════════════════════════════════════════
@@ -1515,7 +1501,7 @@ const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voy
   subdomains:'abcd', maxNativeZoom:19, maxZoom:21, minZoom:10,
   errorTileUrl:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="%23f0ede8"/><text x="128" y="134" font-size="13" text-anchor="middle" fill="%23bbb">離線</text></svg>'
 }).addTo(map);
-map.attributionControl.setPrefix('此地圖為佳里區衛生所 授權使用 僅供參考');
+map.attributionControl.setPrefix('此地圖為佳里區衛生所 內部使用 僅供參考');
 
 /* ═══════════════════════════════════════════
    VILLAGE BOUNDARIES
@@ -4728,7 +4714,7 @@ function toggleVilLayer(){
   ['vil-layer-btn','vil-layer-btn-mobile'].forEach(id=>{
     const btn=document.getElementById(id);
     if(!btn) return;
-    btn.textContent = _vilBoundaryOn ? (id==='vil-layer-btn-mobile'?'📊 統計 ON':'統計 ON') : (id==='vil-layer-btn-mobile'?'📊 統計 OFF':'統計 OFF');
+    btn.textContent = _vilBoundaryOn ? (id==='vil-layer-btn-mobile'?'📊 里別統計模式　統計 ON':'統計 ON') : (id==='vil-layer-btn-mobile'?'📊 里別統計模式　統計 OFF':'統計 OFF');
     btn.style.background = _vilBoundaryOn ? 'var(--blue)' : 'var(--surface2)';
     btn.style.color = _vilBoundaryOn ? '#fff' : 'var(--text2)';
     btn.style.borderColor = _vilBoundaryOn ? 'var(--blue)' : 'var(--border2)';

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.418</title>
+<title>佳里 GIS v6.419</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5929,8 +5929,11 @@ function setMeasureMode(mode){
     _updateMeasBtns();
     map.getContainer().style.cursor='crosshair';
   } else {
-    if(_measState===1){
-      // 第二下：暫停，保留量測結果
+    if(mode==='circle'){
+      // 圓形：兩進程，第二下直接清除
+      clearMeasure();
+    } else if(_measState===1){
+      // 距離：第二下暫停，保留量測結果
       _measState=2;
       if(_measTemp){map.removeLayer(_measTemp);_measTemp=null;}
       if(_measTempLbl){map.removeLayer(_measTempLbl);_measTempLbl=null;}
@@ -5938,7 +5941,7 @@ function setMeasureMode(mode){
       _updateMeasBtns();
       map.getContainer().style.cursor='';
     } else if(_measState===2){
-      // 第三下：清除所有，結束
+      // 距離：第三下清除所有，結束
       clearMeasure();
     }
   }

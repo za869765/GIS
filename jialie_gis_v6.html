@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.430</title>
+<title>佳里 GIS v6.431</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1920,12 +1920,18 @@ function _demogHtml(name, forToast=false){
         const c=rank<=4?'#1565c0':rank>=n16-3?'#bbb':'#888';
         return `<span style="font-size:9px;color:${c};font-weight:700;margin-left:3px">#${rank}</span>`;
       };
-      const row=(label,val,key,note='')=>
-        `<tr style="cursor:pointer" onclick="_showScPanel('${name}','${key}')" title="點擊查看各里排名圖表">
-          <td style="padding:1px 5px 1px 0;color:#555;white-space:nowrap">${label}</td>
-          <td style="padding:1px 0;font-weight:600;color:#333;text-align:right;white-space:nowrap">${val.toLocaleString()}${rBadge(key)}</td>
+      const row=(label,val,key,note='')=>{
+        const rank=r[key]||0;
+        const top=rank>=1&&rank<=4;
+        const lc=top?'#1565c0':'#555';
+        const vc=top?'#1565c0':'#333';
+        const fw=top?'800':'600';
+        return `<tr style="cursor:pointer" onclick="_showScPanel('${name}','${key}')" title="點擊查看各里排名圖表">
+          <td style="padding:1px 5px 1px 0;color:${lc};font-weight:${top?'700':'400'};white-space:nowrap">${label}</td>
+          <td style="padding:1px 0;font-weight:${fw};color:${vc};text-align:right;white-space:nowrap">${val.toLocaleString()}${rBadge(key)}</td>
           <td style="padding:1px 0 1px 4px;color:#aaa;font-size:9px;white-space:nowrap">${note}</td>
         </tr>`;
+      };
       scHtml=`<br><div style="margin-top:4px;border-top:1px solid #e0e0e0;padding-top:3px">
         <small style="color:#555;font-weight:700">🔬 預防保健目標人數 <span style="font-weight:400;color:#aaa;font-size:9px">（點任一列查看各里排名）</span></small>
         <table style="font-size:10px;border-collapse:collapse;margin-top:2px;width:100%">

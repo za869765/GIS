@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.434</title>
+<title>佳里 GIS v6.435</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -62,7 +62,7 @@ self.addEventListener('fetch',e=>{
    TOKENS & RESET
 ═══════════════════════════════════════════ */
 :root{
-  --topbar-h: 56px;   /* topbar-inner only */
+  --topbar-h: 0px;    /* topbar hidden */
   --blue:#1b4f72; --blue-dk:#0f2d42; --blue-lt:#d6eaf8;
   --green:#1a7a44; --green-lt:#d5f5e3;
   --purple:#6c3483; --purple-lt:#e8daef;
@@ -93,9 +93,7 @@ input,select,textarea,button{font-family:inherit}
    TOP BAR
 ═══════════════════════════════════════════ */
 #topbar{
-  position:fixed;top:0;left:0;right:0;z-index:600;
-  background:transparent;color:#fff;
-  padding:env(safe-area-inset-top,0) 0 0;
+  display:none !important;
 }
 #topbar-inner{text-shadow:0 1px 4px rgba(0,0,0,.7)}
 #topbar-inner{display:flex;align-items:center;gap:8px;padding:10px 12px}
@@ -725,7 +723,7 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 <!-- ── MAP ── -->
 <div id="map"></div>
 <!-- 里界模式徽章 -->
-<div id="vil-mode-badge" style="display:none;position:fixed;top:calc(var(--topbar-h,52px) + 8px);left:50%;transform:translateX(-50%);z-index:560;background:var(--blue);color:#fff;border-radius:16px;padding:7px 14px 8px;box-shadow:0 2px 10px rgba(0,0,0,.32);user-select:none;min-width:230px;text-align:center;pointer-events:auto">
+<div id="vil-mode-badge" style="display:none;position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:560;background:var(--blue);color:#fff;border-radius:16px;padding:7px 14px 8px;box-shadow:0 2px 10px rgba(0,0,0,.32);user-select:none;min-width:230px;text-align:center;pointer-events:auto">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
     <span style="font-size:13px;font-weight:700;letter-spacing:.3px;pointer-events:none">📊 里別統計模式</span>
     <button onclick="toggleVilLayer()" style="font-size:11px;font-weight:700;padding:3px 11px;border-radius:10px;border:1.5px solid rgba(255,255,255,.5);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;letter-spacing:.2px;flex-shrink:0" title="關閉里別統計模式">關閉</button>
@@ -1827,7 +1825,7 @@ function _applyScChoropleth(){
   } else if(_lw<1024){
     leg.style.cssText='position:fixed;left:10px;bottom:80px;z-index:700;background:rgba(255,255,255,.95);border-radius:10px;padding:8px 11px;box-shadow:0 2px 10px rgba(0,0,0,.2);font-size:10px;pointer-events:auto;line-height:1.9;min-width:140px';
   } else {
-    leg.style.cssText='position:fixed;right:310px;top:60px;z-index:700;background:rgba(255,255,255,.95);border-radius:12px;padding:10px 13px;box-shadow:0 4px 16px rgba(0,0,0,.15);font-size:11px;pointer-events:auto;line-height:2;min-width:150px';
+    leg.style.cssText='position:fixed;right:310px;top:10px;z-index:700;background:rgba(255,255,255,.95);border-radius:12px;padding:10px 13px;box-shadow:0 4px 16px rgba(0,0,0,.15);font-size:11px;pointer-events:auto;line-height:2;min-width:150px';
   }
   const meta=SC_META.find(m=>m.k===_scPanelKey)||SC_META[0];
   var byRateLeg=(_scPanelSort==='rate');
@@ -1874,28 +1872,33 @@ function _showVilInfoPanel(html){
   if(!p){
     p=document.createElement('div');
     p.id='vil-info-panel';
-    p.style.cssText='position:fixed;right:310px;top:60px;z-index:800;background:#fff;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.18);padding:10px 14px;font-size:12px;line-height:1.65;max-width:240px;max-height:calc(100vh - 80px);overflow-y:auto;pointer-events:none;transition:opacity .15s';
+    p.style.cssText='position:fixed;z-index:800;background:#fff;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.18);padding:10px 14px;font-size:12px;line-height:1.65;max-width:240px;overflow-y:auto;pointer-events:none;transition:opacity .15s';
     document.body.appendChild(p);
   }
   // 定位依螢幕寬度
   const sc=document.getElementById('sc-rank-panel');
   const leg=document.getElementById('sc-choro-legend');
   const _vw=window.innerWidth;
+  var topVal=10;
   if(_vw>=1024 && sc && sc.style.display!=='none'){
     // 桌機：排名面板左側欄，choropleth 卡片下方
     p.style.right='310px'; p.style.left='auto';
     if(leg && leg.style.display!=='none'){
-      p.style.top=(leg.getBoundingClientRect().bottom+8)+'px';
-    } else { p.style.top='60px'; }
+      topVal=leg.getBoundingClientRect().bottom+8;
+    } else { topVal=10; }
+    p.style.top=topVal+'px';
   } else if(_vw>=600 && sc && sc.style.display!=='none'){
-    // 平板：排名面板下方
-    const scB=sc.getBoundingClientRect().bottom;
-    p.style.right='10px'; p.style.left='auto';
-    p.style.top=Math.min(scB+8, window.innerHeight-200)+'px';
+    // 平板：左側空白區顯示，避免遮擋排名面板
+    p.style.right='auto'; p.style.left='10px';
+    topVal=10;
+    p.style.top=topVal+'px';
   } else {
     p.style.right='10px'; p.style.left='auto';
-    p.style.top='60px';
+    topVal=10;
+    p.style.top=topVal+'px';
   }
+  // 動態計算可用高度，避免超出螢幕底部
+  p.style.maxHeight=(window.innerHeight - topVal - 16)+'px';
   p.innerHTML=html;
   p.style.opacity='1';
   p.style.display='block';
@@ -2069,9 +2072,9 @@ function _showScPanel(vilName, key, sort){
   if(_pw<600){
     panel.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:900;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -4px 30px rgba(0,0,0,.22);max-height:75vh;overflow:hidden;display:flex;flex-direction:column;font-family:inherit';
   } else if(_pw<1024){
-    panel.style.cssText='position:fixed;right:10px;top:60px;z-index:900;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:280px;max-height:calc(100vh - 80px);overflow:hidden;display:flex;flex-direction:column;font-family:inherit';
+    panel.style.cssText='position:fixed;right:10px;top:10px;z-index:900;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:280px;max-height:calc(100vh - 20px);overflow:hidden;display:flex;flex-direction:column;font-family:inherit';
   } else {
-    panel.style.cssText='position:fixed;right:10px;top:60px;z-index:900;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:290px;max-height:calc(100vh - 80px);overflow:hidden;display:flex;flex-direction:column;font-family:inherit';
+    panel.style.cssText='position:fixed;right:10px;top:10px;z-index:900;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:290px;max-height:calc(100vh - 20px);overflow:hidden;display:flex;flex-direction:column;font-family:inherit';
   }
 
   const tabs=SC_META.map(m=>{

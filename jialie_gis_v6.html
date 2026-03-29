@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.398</title>
+<title>佳里 GIS v6.399</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1218,24 +1218,27 @@ const VIL_CHIEF={
 };
 // 各里人口年齡結構（資料來源：內政部戶政司）
 // pop=總人口 m=男 f=女 y=0-14幼年 w=15-64壯年 o=65+老年
-// ab=原住民合計 abp=平地原住民 abm=山地原住民
+// ab=原住民合計 abp=平地 abm=山地
+// sc=預防保健對象估計（依5歲年齡組計算，70歲以上除肝癌外不列入）：
+//   br=乳房X光女40-69  cx=子宮頸抹片女25-69  fc=糞便/胃癌45-69
+//   lv=肝癌40-79(BC肝)  om=口腔黏膜男30-69  lm=肺癌男45-69  lf=肺癌女40-69  ac=成人健檢40-64
 const VIL_DEMOG={
-  '安西里':{pop:6869,m:3330,f:3539,y:966,w:4572,o:1331, ab:23,abp:9, abm:14},
-  '鎮山里':{pop:6426,m:3171,f:3255,y:734,w:4437,o:1255, ab:20,abp:12,abm:8},
-  '佳化里':{pop:2338,m:1182,f:1156,y:191,w:1655,o:492,  ab:11,abp:7, abm:4},
-  '忠仁里':{pop:3220,m:1585,f:1635,y:346,w:2171,o:703,  ab:6, abp:2, abm:4},
-  '塭內里':{pop:2986,m:1566,f:1420,y:223,w:2008,o:755,  ab:16,abp:11,abm:5},
-  '文新里':{pop:6122,m:2904,f:3218,y:819,w:4451,o:852,  ab:26,abp:10,abm:16},
-  '民安里':{pop:2033,m:1007,f:1026,y:237,w:1438,o:358,  ab:17,abp:9, abm:8},
-  '海澄里':{pop:2433,m:1234,f:1199,y:207,w:1733,o:493,  ab:14,abp:9, abm:5},
-  '六安里':{pop:4799,m:2340,f:2459,y:592,w:3294,o:913,  ab:8, abp:5, abm:3},
-  '南勢里':{pop:5771,m:2819,f:2952,y:854,w:4180,o:737,  ab:21,abp:17,abm:4},
-  '下營里':{pop:1857,m:962, f:895, y:97, w:1324,o:436,  ab:5, abp:5, abm:0},
-  '營溪里':{pop:1124,m:585, f:539, y:62, w:776, o:286,  ab:1, abp:1, abm:0},
-  '佳興里':{pop:2307,m:1183,f:1124,y:151,w:1566,o:590,  ab:9, abp:0, abm:9},
-  '建南里':{pop:4878,m:2327,f:2551,y:548,w:3305,o:1025, ab:18,abp:12,abm:6},
-  '子龍里':{pop:2653,m:1349,f:1304,y:201,w:1803,o:649,  ab:14,abp:5, abm:9},
-  '東寧里':{pop:2416,m:1163,f:1253,y:269,w:1527,o:620,  ab:9, abp:3, abm:6},
+  '安西里':{pop:6869,m:3330,f:3539,y:966,w:4572,o:1331, ab:23,abp:9, abm:14, sc:{br:1680,cx:2336,fc:2489,lv:3690,om:1945,lm:1124,lf:1680,ac:2593}},
+  '鎮山里':{pop:6426,m:3171,f:3255,y:734,w:4437,o:1255, ab:20,abp:12,abm:8,  sc:{br:1551,cx:2262,fc:2341,lv:3467,om:1918,lm:1096,lf:1551,ac:2451}},
+  '佳化里':{pop:2338,m:1182,f:1156,y:191,w:1655,o:492,  ab:11,abp:7, abm:4,  sc:{br:557, cx:794, fc:927, lv:1314,om:747, lm:480, lf:557, ac:947}},
+  '忠仁里':{pop:3220,m:1585,f:1635,y:346,w:2171,o:703,  ab:6, abp:2, abm:4,  sc:{br:758, cx:1052,fc:1229,lv:1777,om:938, lm:607, lf:758, ac:1235}},
+  '塭內里':{pop:2986,m:1566,f:1420,y:223,w:2008,o:755,  ab:16,abp:11,abm:5,  sc:{br:655, cx:948, fc:1226,lv:1662,om:1008,lm:673, lf:655, ac:1161}},
+  '文新里':{pop:6122,m:2904,f:3218,y:819,w:4451,o:852,  ab:26,abp:10,abm:16, sc:{br:1523,cx:2158,fc:2274,lv:3117,om:1642,lm:1030,lf:1523,ac:2428}},
+  '民安里':{pop:2033,m:1007,f:1026,y:237,w:1438,o:358,  ab:17,abp:9, abm:8,  sc:{br:490, cx:693, fc:723, lv:1066,om:611, lm:342, lf:490, ac:799}},
+  '海澄里':{pop:2433,m:1234,f:1199,y:207,w:1733,o:493,  ab:14,abp:9, abm:5,  sc:{br:555, cx:820, fc:943, lv:1330,om:755, lm:482, lf:555, ac:976}},
+  '六安里':{pop:4799,m:2340,f:2459,y:592,w:3294,o:913,  ab:8, abp:5, abm:3,  sc:{br:1157,cx:1612,fc:1799,lv:2604,om:1365,lm:849, lf:1157,ac:1886}},
+  '南勢里':{pop:5771,m:2819,f:2952,y:854,w:4180,o:737,  ab:21,abp:17,abm:4,  sc:{br:1404,cx:1978,fc:1969,lv:2907,om:1696,lm:903, lf:1404,ac:2273}},
+  '下營里':{pop:1857,m:962, f:895, y:97, w:1324,o:436,  ab:5, abp:5, abm:0,  sc:{br:458, cx:609, fc:810, lv:1117,om:622, lm:418, lf:458, ac:806}},
+  '營溪里':{pop:1124,m:585, f:539, y:62, w:776, o:286,  ab:1, abp:1, abm:0,  sc:{br:245, cx:366, fc:445, lv:653, om:383, lm:240, lf:245, ac:440}},
+  '佳興里':{pop:2307,m:1183,f:1124,y:151,w:1566,o:590,  ab:9, abp:0, abm:9,  sc:{br:529, cx:742, fc:904, lv:1326,om:742, lm:476, lf:529, ac:913}},
+  '建南里':{pop:4878,m:2327,f:2551,y:548,w:3305,o:1025, ab:18,abp:12,abm:6,  sc:{br:1211,cx:1669,fc:1865,lv:2696,om:1370,lm:857, lf:1211,ac:1931}},
+  '子龍里':{pop:2653,m:1349,f:1304,y:201,w:1803,o:649,  ab:14,abp:5, abm:9,  sc:{br:586, cx:848, fc:1027,lv:1475,om:845, lm:540, lf:586, ac:1032}},
+  '東寧里':{pop:2416,m:1163,f:1253,y:269,w:1527,o:620,  ab:9, abp:3, abm:6,  sc:{br:600, cx:811, fc:922, lv:1388,om:702, lm:430, lf:600, ac:922}},
 };
 
 /* ── 佳里區官方統計資料（來源：臺南市政府開放資料） ── */
@@ -1702,6 +1705,22 @@ function getVillageAt(lat,lng){
   return '';
 }
 
+/* ── 全區預防保健基準比率（一次性計算，與全區各里平均比較） ── */
+let _scDistAvg = null;
+function _getScDistAvg(){
+  if(_scDistAvg) return _scDistAvg;
+  const sums={br:0,cx:0,fc:0,lv:0,om:0,lm:0,lf:0,ac:0,el:0};
+  let totPop=0;
+  Object.values(VIL_DEMOG).forEach(v=>{
+    totPop+=v.pop;
+    if(v.sc) Object.keys(sums).forEach(k=>{ if(k!=='el') sums[k]+=(v.sc[k]||0); });
+    sums.el+=(v.o||0);
+  });
+  _scDistAvg={};
+  Object.keys(sums).forEach(k=>{ _scDistAvg[k]=sums[k]/totPop; });
+  return _scDistAvg;
+}
+
 /* ── 人口年齡結構 mini bar HTML ── */
 function _demogHtml(name, forToast=false){
   const d=VIL_DEMOG[name]; if(!d) return '';
@@ -1709,6 +1728,7 @@ function _demogHtml(name, forToast=false){
   const py=pct(d.y),pw=pct(d.w),po=pct(d.o);
   const aging=d.y>0?Math.round(d.o/d.y*100):999;
   const abStr = d.ab>0 ? `原住民 ${d.ab}人（平地${d.abp}・山地${d.abm}）` : '';
+
   if(forToast){
     const bar=`<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:5px 0 2px;width:160px">
       <div style="width:${py}%;background:#3498db"></div>
@@ -1721,7 +1741,7 @@ function _demogHtml(name, forToast=false){
     const abLine = abStr ? `<div style="font-size:10px;opacity:.75;margin-top:2px">🪶 ${abStr}</div>` : '';
     return `<div style="margin-top:5px;font-size:12px">👥 ${d.pop.toLocaleString()}人（♂${d.m.toLocaleString()} · ♀${d.f.toLocaleString()}）</div>${bar}<div style="font-size:10px;opacity:.7;margin-top:1px">老化指數 ${aging}</div>${abLine}`;
   } else {
-    // tooltip 用（較窄）
+    // 桌機 tooltip：人口結構 + 預防保健
     const bar=`<div style="display:flex;height:5px;border-radius:2px;overflow:hidden;margin:3px 0 1px;min-width:120px">
       <div style="width:${py}%;background:#3498db"></div>
       <div style="width:${pw}%;background:#2ecc71"></div>
@@ -1729,7 +1749,47 @@ function _demogHtml(name, forToast=false){
     </div>
     <small style="color:#666;display:flex;gap:6px"><span>幼${py}%</span><span>壯${pw}%</span><span>老${po}%</span><span style="margin-left:4px;color:#aaa">老化指數${aging}</span></small>`;
     const abLine = abStr ? `<br><small style="color:#777">🪶 ${abStr}</small>` : '';
-    return `<br><small style="color:#444">👥 ${d.pop.toLocaleString()}人（♂${d.m.toLocaleString()} · ♀${d.f.toLocaleString()}）</small>${bar}${abLine}`;
+    let scHtml = '';
+    if(d.sc){
+      const avg = _getScDistAvg();
+      const p = d.pop;
+      const s = d.sc;
+      // 顏色：超過全區平均+6% → 藍；低於-6% → 灰；其餘黑
+      const clr = (val, key) => {
+        const r = val/p, a = avg[key];
+        if(r >= a*1.06) return '#1565c0';
+        if(r <= a*0.94) return '#999';
+        return '#333';
+      };
+      const elClr = () => {
+        const r = d.o/p, a = avg.el;
+        if(r >= a*1.06) return '#1565c0';
+        if(r <= a*0.94) return '#999';
+        return '#333';
+      };
+      const row = (label, val, key, note='') =>
+        `<tr><td style="padding:1px 6px 1px 0;color:#555;white-space:nowrap">${label}</td>`+
+        `<td style="padding:1px 0;font-weight:600;color:${clr(val,key)};text-align:right;white-space:nowrap">${val.toLocaleString()}</td>`+
+        `<td style="padding:1px 0 1px 5px;color:#aaa;font-size:9px;white-space:nowrap">${note}</td></tr>`;
+      scHtml = `<br><div style="margin-top:4px;border-top:1px solid #e0e0e0;padding-top:3px">
+        <small style="color:#555;font-weight:700">🔬 預防保健目標人數</small>
+        <table style="font-size:10px;border-collapse:collapse;margin-top:2px;width:100%">
+          ${row('乳房X光攝影',  s.br,'br','女40-70')}
+          ${row('子宮頸抹片',   s.cx,'cx','女25-70')}
+          ${row('糞便/胃癌篩檢',s.fc,'fc','45-70')}
+          ${row('肝癌篩檢',     s.lv,'lv','40-79')}
+          ${row('口腔黏膜',     s.om,'om','男30-70')}
+          ${row('肺癌LDCT男',   s.lm,'lm','男45-70')}
+          ${row('肺癌LDCT女',   s.lf,'lf','女40-70')}
+          ${row('成人健康檢查', s.ac,'ac','40-64')}
+          <tr><td style="padding:1px 6px 1px 0;color:#555;white-space:nowrap">長者量六力</td>`+
+          `<td style="padding:1px 0;font-weight:600;color:${elClr()};text-align:right;white-space:nowrap">${d.o.toLocaleString()}</td>`+
+          `<td style="padding:1px 0 1px 5px;color:#aaa;font-size:9px;white-space:nowrap">65+</td></tr>
+        </table>
+        <small style="color:#bbb;font-size:9px">🔵高於全區平均 ⬛持平 ▪灰色低於平均</small>
+      </div>`;
+    }
+    return `<br><small style="color:#444">👥 ${d.pop.toLocaleString()}人（♂${d.m.toLocaleString()} · ♀${d.f.toLocaleString()}）</small>${bar}${abLine}${scHtml}`;
   }
 }
 

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.408</title>
+<title>佳里 GIS v6.409</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1691,10 +1691,11 @@ function renderVilLayers(){
 /* ── 篩檢 Choropleth 疊加（圖表面板開啟時著色＋%標籤） ── */
 // 固定閾值（平均=6.25%，雙倍=12.5%，半=3.125%）
 const SC_CHORO=[
-  {min:12.5,  fill:'#7b1fa2',border:'#4a148c',label:'極度重要',text:'#7b1fa2'},
-  {min:6.25,  fill:'#e53935',border:'#b71c1c',label:'重要',    text:'#c62828'},
-  {min:3.125, fill:'#f9a825',border:'#f57f17',label:'普通',    text:'#e65100'},
-  {min:0,     fill:'#f0f0f0',border:'#c0c0c0',label:'不重要',  text:'#999999'},
+  {min:9.375,  fill:'#7b1fa2',border:'#4a148c',label:'極度重要',text:'#7b1fa2'},
+  {min:6.25,   fill:'#e53935',border:'#b71c1c',label:'重要',    text:'#c62828'},
+  {min:4.6875, fill:'#ef6c00',border:'#e65100',label:'普通',    text:'#e65100'},
+  {min:3.125,  fill:'#f9a825',border:'#f57f17',label:'次要',    text:'#c77700'},
+  {min:0,      fill:'#f0f0f0',border:'#c0c0c0',label:'不重要',  text:'#999999'},
 ];
 function _scChoroClass(p){return SC_CHORO.find(c=>p>=c.min)||SC_CHORO[3];}
 let _scChoroActive=false;
@@ -1723,7 +1724,7 @@ function _applyScChoropleth(){
   const meta=SC_META.find(m=>m.k===_scPanelKey)||SC_META[0];
   leg.innerHTML=`<div style="font-weight:700;color:#333;margin-bottom:3px;font-size:10px">📊 ${meta.l} 佔全區比例</div>`+
     SC_CHORO.map(c=>`<div><span style="display:inline-block;width:12px;height:12px;background:${c.fill};border:1px solid ${c.border};border-radius:2px;margin-right:5px;vertical-align:middle"></span><span style="color:${c.text};font-weight:600">${c.label}</span></div>`).join('')+
-    `<div style="color:#aaa;font-size:9px;margin-top:3px">≥12.5% / 6.25% / 3.125%</div>`;
+    `<div style="color:#aaa;font-size:9px;margin-top:3px">9.375% / 6.25% / 4.6875% / 3.125%</div>`;
   leg.style.display='block';
   _scChoroActive=true;
 }
@@ -1956,7 +1957,7 @@ function _showScPanel(vilName, key, sort){
         <div><div style="font-size:13px;font-weight:700;color:#1a1a2e">📊 各里篩檢排名</div>
           <div style="font-size:10px;color:#888;margin-top:1px">${curVil} · ${meta.l}（${meta.n}）· 第 <b style="color:#1565c0">${curRank}</b>/${n16} 名</div>
         </div>
-        <button onclick="document.getElementById('sc-rank-panel').style.display='none';_clearScChoropleth()" style="border:none;background:#f0f0f0;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#888;flex-shrink:0">✕</button>
+        <button onclick="document.getElementById('sc-rank-panel').style.display='none';_clearScChoropleth();if(window._scPanelCollapsedSheet){window._scPanelCollapsedSheet=false;toggleSheetPanel();}" style="border:none;background:#f0f0f0;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#888;flex-shrink:0">✕</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">${tabs}</div>
       <div style="display:flex;align-items:center;gap:6px">
@@ -1970,10 +1971,18 @@ function _showScPanel(vilName, key, sort){
     <div style="overflow-y:auto;padding:0 8px 12px;flex:1">${bars}</div>
     <div style="padding:6px 14px 10px;border-top:1px solid #f0f0f0;font-size:9px;flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap">
       ${SC_CHORO.map(c=>`<span><span style="display:inline-block;width:9px;height:9px;background:${c.fill};border-radius:2px;margin-right:2px;vertical-align:middle"></span><span style="color:${c.text};font-weight:600">${c.label}</span></span>`).join('')}
-      <span style="color:#bbb;margin-left:auto">≥12.5% / 6.25% / 3.125%</span>
+      <span style="color:#bbb;margin-left:auto">9.375% / 6.25% / 4.6875% / 3.125%</span>
     </div>`;
   panel.style.display='flex';
   _applyScChoropleth();
+  // 桌機：自動摺疊右側資訊欄以露出地圖
+  if(window.innerWidth>=768){
+    const sheet=document.getElementById('sheet');
+    if(sheet && !sheet.classList.contains('panel-collapsed')){
+      window._scPanelCollapsedSheet=true;
+      toggleSheetPanel();
+    }
+  }
 }
 
 function clickVil(name){

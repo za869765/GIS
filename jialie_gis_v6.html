@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.416</title>
+<title>佳里 GIS v6.417</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5037,7 +5037,7 @@ let _doorLayerOn = false;
 // 切換按鈕
 const _doorBtn = document.createElement('div');
 _doorBtn.title = '顯示/隱藏門牌點';
-_doorBtn.innerHTML = '🔴 門牌點';
+_doorBtn.innerHTML = '🔵 門牌點';
 _doorBtn.style.cssText = 'position:fixed;left:14px;bottom:360px;z-index:550;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);user-select:none';
 document.body.appendChild(_doorBtn);
 _doorBtn.addEventListener('click',()=>{
@@ -5198,10 +5198,10 @@ function _refreshDoorLayer(){
       // 一般門牌：circleMarker
       let dotC,fillC,fillO,w,rad;
       if(hasRadius){
-        if(inRadius){ dotC='#c0392b'; fillC='#e74c3c'; fillO=0.92; w=1.5; rad=5; }
+        if(inRadius){ dotC='#1565c0'; fillC='#2196f3'; fillO=0.92; w=1.5; rad=5; }
         else { dotC='#aaa'; fillC='#ccc'; fillO=0.22; w=0.8; rad=4; }
       } else {
-        dotC='#c0392b'; fillC='#e74c3c'; fillO=0.85; w=1.5; rad=5;
+        dotC='#1565c0'; fillC='#2196f3'; fillO=0.85; w=1.5; rad=5;
       }
       const cm=L.circleMarker([r[0],r[1]],{renderer:_doorRenderer,radius:rad,color:dotC,fillColor:fillC,fillOpacity:fillO,weight:w});
       cm.on('click',(ev)=>{

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.406</title>
+<title>佳里 GIS v6.407</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1693,8 +1693,8 @@ function renderVilLayers(){
 const SC_CHORO=[
   {min:12.5,  fill:'#7b1fa2',border:'#4a148c',label:'極度重要',text:'#7b1fa2'},
   {min:6.25,  fill:'#e53935',border:'#b71c1c',label:'重要',    text:'#c62828'},
-  {min:3.125, fill:'#43a047',border:'#1b5e20',label:'普通',    text:'#2e7d32'},
-  {min:0,     fill:'#81d4fa',border:'#0277bd',label:'不重要',  text:'#0277bd'},
+  {min:3.125, fill:'#f9a825',border:'#f57f17',label:'普通',    text:'#e65100'},
+  {min:0,     fill:'#bdbdbd',border:'#757575',label:'不重要',  text:'#757575'},
 ];
 function _scChoroClass(p){return SC_CHORO.find(c=>p>=c.min)||SC_CHORO[3];}
 let _scChoroActive=false;

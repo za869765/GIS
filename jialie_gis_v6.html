@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.422</title>
+<title>佳里 GIS v6.423</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -709,7 +709,6 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
       <div id="topbar-h1" style="font-size:14px;font-weight:700;line-height:1.2">佳里 GIS</div>
       <div class="topbar-sub">臺南市佳里區衛生所</div>
     </div>
-    <button class="tb-icon-btn" onclick="exportCSV()" title="匯出CSV">📥</button>
   </div>
   <div id="stats-strip" style="display:none">
     <div class="stat-item"><div class="num" id="cnt-all">0</div><div class="lbl">總個案</div></div>
@@ -6004,6 +6003,9 @@ function setMeasureMode(mode){
   if(_measMode!==mode){
     // 切換到新模式：先清除舊的，啟動新模式
     clearMeasure();
+    // 清除單點門牌/地段殘留
+    if(pendingMarker){map.removeLayer(pendingMarker);pendingMarker=null;}
+    if(_parcelHighlight){map.removeLayer(_parcelHighlight);_parcelHighlight=null;}
     _measMode=mode; _measState=1; _measPts=[];
     _updateMeasBtns();
     map.getContainer().style.cursor='crosshair';

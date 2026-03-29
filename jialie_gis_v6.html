@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.390</title>
+<title>佳里 GIS v6.391</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -576,7 +576,7 @@ input,select,textarea,button{font-family:inherit}
 }
 #map-search-results{
   background:rgba(255,255,255,.99);border-radius:12px;
-  margin-top:6px;max-height:300px;overflow-y:auto;
+  margin-top:6px;max-height:420px;overflow-y:auto;
   box-shadow:0 4px 24px rgba(0,0,0,.22);display:none;
   -webkit-overflow-scrolling:touch;
   border:1px solid rgba(27,79,114,.12);
@@ -594,6 +594,12 @@ input,select,textarea,button{font-family:inherit}
 .msr-item:last-child{border-bottom:none}
 .msr-item:active,.msr-item:hover,.msr-item.msr-focused{background:var(--surface2)}
 .msr-item.msr-focused{outline:2px solid var(--blue);outline-offset:-2px}
+/* 搜尋分頁列 */
+.msr-pager{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-top:1px solid var(--border);background:var(--surface2);border-radius:0 0 12px 12px;gap:6px}
+.msr-pg-btn{border:1.5px solid var(--border2);background:var(--surface);border-radius:6px;padding:4px 12px;font-size:13px;cursor:pointer;color:var(--text2);line-height:1;flex-shrink:0;touch-action:manipulation}
+.msr-pg-btn:disabled{opacity:.35;cursor:default}
+.msr-pg-btn:not(:disabled):active{background:var(--surface2)}
+.msr-pg-info{font-size:11px;color:var(--text3);text-align:center;flex:1}
 .msr-hl{color:var(--blue);font-weight:800}
 .msr-icon{font-size:16px;flex-shrink:0;width:24px;text-align:center}
 .msr-main{flex:1;min-width:0}
@@ -662,6 +668,14 @@ input,select,textarea,button{font-family:inherit}
 .dc-vils{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
 .dc-vil{font-size:11px;padding:3px 8px;border-radius:8px;font-weight:600;cursor:pointer;transition:.12s}
 .dc-org{font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:6px}
+/* 基本資訊分區折疊 */
+.sec-hdr{cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;
+  font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;
+  margin:14px 0 2px;padding:4px 2px;border-radius:4px;transition:background .12s}
+.sec-hdr:hover{background:var(--surface2)}
+.sec-hdr .sec-arr{font-size:10px;opacity:.6;flex-shrink:0;margin-left:4px;transition:transform .2s}
+.sec-hdr.open .sec-arr{transform:rotate(90deg)}
+.sec-body{overflow:hidden;transition:max-height .25s ease,opacity .2s}
 /* 行動裝置觸碰優化：消除 300ms 延遲、取消點擊高亮 */
 button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.leg-close,
 .leaflet-interactive,.msr-item{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
@@ -2425,6 +2439,7 @@ async function clearVilCache(){
 cases.forEach(c=>addMarker(c));
 updateStats();renderList();buildDistStrip();renderLegend();
 expandSheet('peek');
+_initFacCollapsible();
 // 動態量測 topbar 高度並設置 CSS var
 (function(){
   function measureTopbar(){
@@ -3628,7 +3643,6 @@ function editCase(id){
 ══════════════════════════════════════════════════════════ */
 let _searchMarker = null;
 let _radiusCircle = null;
-let _searchResults = [];
 
 /* ═══════════════════════════════════════════════════
    地圖搜尋：解析輸入字串，拆分路名 + 號碼
@@ -3828,7 +3842,7 @@ async function onMapSearch(){
           }
           return a.num - b.num || a.ext - b.ext;
         });
-        doorHits = candidates.slice(0, 20).map(c => c.r);
+        doorHits = candidates.map(c => c.r); // 全部，分頁顯示
       }
     }
 
@@ -3852,69 +3866,74 @@ async function onMapSearch(){
         .slice(0,3);
     }
 
-    if(!addrPts.length && !doorHits.length && !pureRoadMatches.length){
+    // 合併所有門牌結果（IndexedDB + DOOR_DB），去重
+    const seen = new Set();
+    _searchAllResults = [];
+    [...addrPts.map(p=>{
+      const label=p.road+(p.lane||'')+(p.num?p.num+'號':'')+(p.numExt?'之'+p.numExt:'');
+      return {lat:p.lat,lng:p.lng,addr:label,disp:label};
+    }), ...doorHits.map(r=>{
+      const full=r[2], disp=full.replace('臺南市佳里區','').replace('台南市佳里區','');
+      return {lat:r[0],lng:r[1],addr:full,disp};
+    })].forEach(item=>{
+      if(!seen.has(item.disp)){seen.add(item.disp);_searchAllResults.push(item);}
+    });
+
+    if(!_searchAllResults.length){
       resultsEl.style.display='block';
       resultsEl.innerHTML=`<div style="padding:14px 16px;font-size:12px;color:var(--text3);text-align:center">
         查無結果<br><small>可按 Enter 用線上 Nominatim 搜尋</small></div>`;
       return;
     }
 
-    let html = '';
-    let itemIdx = 0;
+    _searchQuery = q;
+    _searchCurrentPage = 0;
     _searchNavIdx = -1;
-
-    // ── 路名區塊 ──
-    if(pureRoadMatches.length){
-      html += '<div class="msr-section">路名</div>';
-      html += pureRoadMatches.map(r=>{
-        const esc = r.name.replace(/'/g,"\\'");
-        const hl = _hlMatch(r.name, roadQ);
-        return `<div class="msr-item" data-idx="${itemIdx++}" onclick="mapSearchSelectRoad('${esc}')">
-          <span class="msr-icon">🛣</span>
-          <div class="msr-main">
-            <div class="msr-name">${hl}</div>
-            <div class="msr-sub">佳里區</div>
-          </div>
-        </div>`;
-      }).join('');
-    }
-
-    // ── IndexedDB 門牌地址 ──
-    if(addrPts.length){
-      html += `<div class="msr-section">門牌地址</div>`;
-      html += addrPts.map(p=>{
-        const addrLabel = p.road+(p.lane||'')+(p.num?p.num+'號':'')+(p.numExt?'之'+p.numExt:'');
-        const esc = addrLabel.replace(/'/g,"\\'");
-        const hl = _hlMatch(addrLabel, q);
-        return `<div class="msr-item" data-idx="${itemIdx++}" onclick="mapSearchSelectPoint(${p.lat},${p.lng},'${esc}')">
-          <span class="msr-icon">📍</span>
-          <div class="msr-main">
-            <div class="msr-name">${hl}</div>
-          </div>
-        </div>`;
-      }).join('');
-    }
-
-    // ── DOOR_DB 門牌地址 ──
-    if(doorHits.length){
-      if(!addrPts.length) html += `<div class="msr-section">門牌地址</div>`;
-      html += doorHits.map(r=>{
-        const fullAddr = r[2];
-        const dispAddr = fullAddr.replace('臺南市佳里區','').replace('台南市佳里區','');
-        const esc = fullAddr.replace(/'/g,"\\'");
-        const hl = _hlMatch(dispAddr, q);
-        return `<div class="msr-item" data-idx="${itemIdx++}" onclick="mapSearchSelectPoint(${r[0]},${r[1]},'${esc}')">
-          <span class="msr-icon">📍</span>
-          <div class="msr-main">
-            <div class="msr-name">${hl}</div>
-          </div>
-        </div>`;
-      }).join('');
-    }
-
-    resultsEl.innerHTML = html;
-    resultsEl.style.display = 'block';
+    _renderSearchPage();
   }, 200);
+}
+
+const _SEARCH_PAGE_SIZE = 8;
+let _searchAllResults = [];
+let _searchCurrentPage = 0;
+let _searchQuery = '';
+
+function _renderSearchPage(){
+  const resultsEl = document.getElementById('map-search-results');
+  const total = _searchAllResults.length;
+  const totalPages = Math.ceil(total / _SEARCH_PAGE_SIZE);
+  const start = _searchCurrentPage * _SEARCH_PAGE_SIZE;
+  const end = Math.min(start + _SEARCH_PAGE_SIZE, total);
+  const pageItems = _searchAllResults.slice(start, end);
+
+  let itemIdx = 0;
+  let html = pageItems.map(item=>{
+    const esc = item.addr.replace(/'/g,"\\'");
+    const hl = _hlMatch(item.disp, _searchQuery);
+    return `<div class="msr-item" data-idx="${itemIdx++}" onclick="mapSearchSelectPoint(${item.lat},${item.lng},'${esc}')">
+      <span class="msr-icon">📍</span>
+      <div class="msr-main"><div class="msr-name">${hl}</div></div>
+    </div>`;
+  }).join('');
+
+  if(total > _SEARCH_PAGE_SIZE){
+    const prevDis = _searchCurrentPage===0 ? 'disabled' : '';
+    const nextDis = _searchCurrentPage>=totalPages-1 ? 'disabled' : '';
+    html += `<div class="msr-pager">
+      <button class="msr-pg-btn" ${prevDis} onclick="searchGoPage(${_searchCurrentPage-1})">◀</button>
+      <span class="msr-pg-info">顯示 ${start+1}–${end} 筆，共 ${total} 筆<br>第 ${_searchCurrentPage+1} / ${totalPages} 頁</span>
+      <button class="msr-pg-btn" ${nextDis} onclick="searchGoPage(${_searchCurrentPage+1})">▶</button>
+    </div>`;
+  }
+
+  resultsEl.innerHTML = html;
+  resultsEl.style.display = 'block';
+}
+
+function searchGoPage(page){
+  _searchCurrentPage = page;
+  _searchNavIdx = -1;
+  _renderSearchPage();
 }
 
 function onMapSearchKey(e){
@@ -3939,6 +3958,62 @@ function onMapSearchKey(e){
     const q = document.getElementById('map-search-input').value.trim();
     if(q) geocodeMapSearch(`臺南市佳里區${q}`);
   }
+}
+
+/* ── 基本資訊分區折疊初始化 ── */
+function _initFacCollapsible(){
+  const tab = document.getElementById('tab-fac');
+  if(!tab) return;
+
+  // 統計卡：插入一個可折疊標題列
+  const statsCard = document.getElementById('jialie-stats-card');
+  if(statsCard){
+    const hdr = document.createElement('div');
+    hdr.className = 'sec-hdr';
+    hdr.innerHTML = '📊 佳里區基本統計 <span class="sec-arr">▶</span>';
+    tab.insertBefore(hdr, statsCard);
+    const body = document.createElement('div');
+    body.className = 'sec-body';
+    body.style.display = 'none';
+    statsCard.parentNode.insertBefore(body, statsCard.nextSibling);
+    body.appendChild(statsCard);
+    hdr.addEventListener('click',()=>_toggleSec(hdr,body));
+  }
+
+  // 各資料表區塊：掃描直接子 div，找具有 text-transform:uppercase 的標題
+  Array.from(tab.children).forEach(el=>{
+    if(el.tagName!=='DIV') return;
+    const st = el.getAttribute('style')||'';
+    if(!st.includes('uppercase')) return;
+    const next = el.nextElementSibling;
+    if(!next) return;
+    // 建立新標題
+    const hdr = document.createElement('div');
+    hdr.className = 'sec-hdr';
+    hdr.innerHTML = el.innerHTML + ' <span class="sec-arr">▶</span>';
+    el.parentNode.insertBefore(hdr, el);
+    el.remove(); // 移除原始標題
+    // 包裝 body
+    const body = document.createElement('div');
+    body.className = 'sec-body';
+    body.style.display = 'none';
+    hdr.parentNode.insertBefore(body, next);
+    // 把緊跟的 table / div（到下一個標題前）都移入 body
+    let sib = hdr.nextElementSibling;
+    while(sib && sib !== body){
+      const tmp = sib.nextElementSibling;
+      body.appendChild(sib);
+      sib = tmp;
+      if(sib && (sib.classList.contains('sec-hdr')||((sib.getAttribute('style')||'').includes('uppercase')))) break;
+    }
+    hdr.addEventListener('click',()=>_toggleSec(hdr,body));
+  });
+}
+
+function _toggleSec(hdr, body){
+  const open = body.style.display!=='none';
+  body.style.display = open ? 'none' : '';
+  hdr.classList.toggle('open',!open);
 }
 
 function clearMapSearch(){
@@ -4695,20 +4770,25 @@ function _refreshDoorLayer(){
   const _cosLat = hasRadius ? Math.cos(_lastSelLat * Math.PI/180) : 1;
   let cnt = 0;
 
-  // 預先分組：圓圈內的公寓（同座標為同棟）→ coordKey → floors[]
-  const aptInRadius = new Map();
+  // 預先分組：視野範圍內所有公寓（同座標同棟）→ coordKey → floors[]
+  const aptGroups = new Map();
+  for(let i=0;i<DOOR_DB.length;i++){
+    const r=DOOR_DB[i];
+    if(!r[2].includes('樓')) continue;
+    if(!bounds.contains([r[0],r[1]])) continue;
+    const key=r[0].toFixed(5)+','+r[1].toFixed(5);
+    if(!aptGroups.has(key)) aptGroups.set(key,{r,floors:[]});
+    const disp=r[2].replace('臺南市佳里區','').replace('台南市佳里區','');
+    const fl=_floorLabel(disp);
+    if(fl) aptGroups.get(key).floors.push(fl);
+  }
+  // 圓圈內公寓子集
+  const aptInRadius = new Set();
   if(hasRadius){
-    for(let i=0;i<DOOR_DB.length;i++){
-      const r=DOOR_DB[i];
-      if(!r[2].includes('樓')) continue;
-      if(!bounds.contains([r[0],r[1]])) continue;
+    for(const [key,val] of aptGroups){
+      const r=val.r;
       const dist=Math.sqrt(Math.pow(r[0]-_lastSelLat,2)+Math.pow((r[1]-_lastSelLng)*_cosLat,2))*111000;
-      if(dist>RADIUS_M) continue;
-      const key=r[0].toFixed(5)+','+r[1].toFixed(5);
-      if(!aptInRadius.has(key)) aptInRadius.set(key,{r,floors:[]});
-      const disp=r[2].replace('臺南市佳里區','').replace('台南市佳里區','');
-      const fl=_floorLabel(disp);
-      if(fl) aptInRadius.get(key).floors.push(fl);
+      if(dist<=RADIUS_M) aptInRadius.add(key);
     }
   }
 
@@ -4727,11 +4807,20 @@ function _refreshDoorLayer(){
       inRadius=dist<=RADIUS_M;
     }
 
-    // 圓圈內公寓：用 divIcon 顯示樓層標籤，同棟只渲染一次
-    if(isApt && hasRadius && inRadius){
+    if(isApt){
       if(renderedAptKeys.has(key)) continue;
       renderedAptKeys.add(key);
-      const group=aptInRadius.get(key)||{floors:[]};
+
+      // 圓圈外公寓：淡灰圓點
+      if(hasRadius && !inRadius){
+        const cm=L.circleMarker([r[0],r[1]],{renderer:_doorRenderer,radius:4,color:'#aaa',fillColor:'#ccc',fillOpacity:0.22,weight:0.8});
+        cm.on('click',(ev)=>{ L.DomEvent.stop(ev); _aptClickFn(r[0],r[1]); });
+        _doorLayerGroup.addLayer(cm); cnt++;
+        continue;
+      }
+
+      // 單點模式 或 圓圈內公寓：divIcon 顯示樓層標籤
+      const group=aptGroups.get(key)||{floors:[]};
       const floors=[...new Set(group.floors)].sort();
       const dot=`<div style="width:8px;height:8px;background:#2ecc71;border-radius:50%;border:1.5px solid #27ae60;box-shadow:0 1px 3px rgba(0,0,0,.3);flex-shrink:0"></div>`;
       const lbl=`font-size:9px;font-weight:700;color:#1a7a44;text-shadow:0 0 2px #fff,-1px 0 #fff,1px 0 #fff,0 1px #fff,0 -1px #fff;line-height:1.5`;
@@ -4741,37 +4830,25 @@ function _refreshDoorLayer(){
             ? `<div style="display:flex;align-items:center;gap:3px">${dot}<span style="${lbl}">${f}</span></div>`
             : `<div style="padding-left:11px"><span style="${lbl}">${f}</span></div>`
           ).join('');
-      const icon=L.divIcon({
-        html:`<div style="display:flex;flex-direction:column;white-space:nowrap">${inner}</div>`,
-        className:'', iconAnchor:[4,4]
-      });
+      const icon=L.divIcon({html:`<div style="display:flex;flex-direction:column;white-space:nowrap">${inner}</div>`,className:'',iconAnchor:[4,4]});
       const cm=L.marker([r[0],r[1]],{icon});
       cm.on('click',(ev)=>{ L.DomEvent.stopPropagation(ev); _aptClickFn(r[0],r[1]); });
-      _doorLayerGroup.addLayer(cm);
-      cnt++;
+      _doorLayerGroup.addLayer(cm); cnt++;
     } else {
-      // 一般圓點（圓外公寓僅各座標渲染一次避免重疊）
-      if(isApt && hasRadius && !inRadius){
-        if(renderedAptKeys.has(key)) continue;
-        renderedAptKeys.add(key);
-      }
+      // 一般門牌：circleMarker
       let dotC,fillC,fillO,w,rad;
       if(hasRadius){
-        if(inRadius){ dotC=isApt?'#27ae60':'#c0392b'; fillC=isApt?'#2ecc71':'#e74c3c'; fillO=0.92; w=1.5; rad=5; }
+        if(inRadius){ dotC='#c0392b'; fillC='#e74c3c'; fillO=0.92; w=1.5; rad=5; }
         else { dotC='#aaa'; fillC='#ccc'; fillO=0.22; w=0.8; rad=4; }
       } else {
-        dotC=isApt?'#27ae60':'#c0392b'; fillC=isApt?'#2ecc71':'#e74c3c'; fillO=0.85; w=1.5; rad=5;
+        dotC='#c0392b'; fillC='#e74c3c'; fillO=0.85; w=1.5; rad=5;
       }
-      const cm=L.circleMarker([r[0],r[1]],{
-        renderer:_doorRenderer, radius:rad, color:dotC, fillColor:fillC, fillOpacity:fillO, weight:w
-      });
+      const cm=L.circleMarker([r[0],r[1]],{renderer:_doorRenderer,radius:rad,color:dotC,fillColor:fillC,fillOpacity:fillO,weight:w});
       cm.on('click',(ev)=>{
-        L.DomEvent.stop(ev); // stop + preventDefault，防止 canvas 事件也觸發地圖 click
-        if(isApt){ _aptClickFn(r[0],r[1]); }
-        else { _placePin(r[0],r[1],disp); show50mList(r[0],r[1],disp); }
+        L.DomEvent.stop(ev);
+        _placePin(r[0],r[1],disp); show50mList(r[0],r[1],disp);
       });
-      _doorLayerGroup.addLayer(cm);
-      cnt++;
+      _doorLayerGroup.addLayer(cm); cnt++;
     }
     if(cnt>2000) break;
   }

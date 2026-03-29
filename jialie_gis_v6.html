@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.392</title>
+<title>佳里 GIS v6.393</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -3979,14 +3979,7 @@ function _initFacCollapsible(){
   const tab = document.getElementById('tab-fac');
   if(!tab) return;
 
-  // 先快照出所有原始 section 標題 div（uppercase style）
-  const origHdrs = new Set(
-    Array.from(tab.children).filter(el=>
-      el.tagName==='DIV' && (el.getAttribute('style')||'').includes('uppercase')
-    )
-  );
-
-  // 統計卡：插入折疊標題
+  // 統計卡折疊
   const statsCard = document.getElementById('jialie-stats-card');
   if(statsCard){
     const hdr = document.createElement('div');
@@ -4001,23 +3994,33 @@ function _initFacCollapsible(){
     hdr.addEventListener('click',()=>_toggleSec(hdr,body));
   }
 
-  // 處理各資料表區塊
+  // 各區塊標題與表格在 tab-fac 的子 wrapper div 內
+  const wrapper = Array.from(tab.children).find(el=>
+    el.tagName==='DIV' && el.id!=='jialie-stats-card' && !el.classList.contains('sec-hdr')
+  );
+  if(!wrapper) return;
+
+  // 收集 wrapper 直接子元素中的標題 div
+  const origHdrs = Array.from(wrapper.children).filter(el=>
+    el.tagName==='DIV' && (el.getAttribute('style')||'').includes('uppercase')
+  );
+  const origHdrSet = new Set(origHdrs);
+
   origHdrs.forEach(el=>{
-    if(!el.parentNode) return; // 已被移除則跳過
-    // 建立新 sec-hdr
     const hdr = document.createElement('div');
     hdr.className = 'sec-hdr';
     hdr.innerHTML = el.innerHTML + ' <span class="sec-arr">▶</span>';
     el.parentNode.insertBefore(hdr, el);
     el.remove();
-    // 建立 body wrapper，插在 hdr 後
+
     const body = document.createElement('div');
     body.className = 'sec-body';
     body.style.display = 'none';
     hdr.insertAdjacentElement('afterend', body);
-    // 把 body 後面的元素逐個移入，直到碰到下一個原始標題或 sec-hdr
+
+    // 移入後續元素直到下一個標題
     let next = body.nextElementSibling;
-    while(next && !origHdrs.has(next) && !next.classList.contains('sec-hdr')){
+    while(next && !origHdrSet.has(next) && !next.classList.contains('sec-hdr')){
       const tmp = next.nextElementSibling;
       body.appendChild(next);
       next = tmp;

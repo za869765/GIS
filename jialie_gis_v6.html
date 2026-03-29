@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.417</title>
+<title>佳里 GIS v6.418</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -187,6 +187,7 @@ input,select,textarea,button{font-family:inherit}
 }
 .meas-btn:hover{background:#f0f4ff}
 .meas-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.meas-btn.paused{background:#e65100;color:#fff;border-color:#bf360c}
 .meas-label{
   background:#e63946;color:#000;padding:4px 10px;border-radius:7px;
   font-size:14px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4);line-height:1.5;
@@ -5880,6 +5881,7 @@ function searchDoorNum(){
    量測工具（距離 / 面積 / 圓形 / 清除）
 ══════════════════════════════════════════════════════════ */
 let _measMode   = null; // 'dist' | 'area' | 'circle'
+let _measState  = 0;   // 0=off, 1=active(drawing), 2=paused(results visible)
 let _measPts    = [];
 let _measLayers = [];
 let _measTemp   = null;
@@ -5907,23 +5909,59 @@ function _measLabel(latlng, html){
   _measLayers.push(mk);
 }
 
+function _updateMeasBtns(){
+  ['dist','area','circle'].forEach(m=>{
+    const b=document.getElementById('meas-btn-'+m);
+    if(!b) return;
+    b.classList.remove('active','paused');
+    if(_measMode===m){
+      if(_measState===1) b.classList.add('active');
+      else if(_measState===2) b.classList.add('paused');
+    }
+  });
+}
+
 function setMeasureMode(mode){
-  if(_measMode===mode){ clearMeasure(); return; }
-  _measMode=mode; _measPts=[];
-  ['dist','area','circle'].forEach(m=>{const b=document.getElementById('meas-btn-'+m);if(b)b.classList.toggle('active',m===mode);});
-  map.getContainer().style.cursor='crosshair';
+  if(_measMode!==mode){
+    // 切換到新模式：先清除舊的，啟動新模式
+    clearMeasure();
+    _measMode=mode; _measState=1; _measPts=[];
+    _updateMeasBtns();
+    map.getContainer().style.cursor='crosshair';
+  } else {
+    if(_measState===1){
+      // 第二下：暫停，保留量測結果
+      _measState=2;
+      if(_measTemp){map.removeLayer(_measTemp);_measTemp=null;}
+      if(_measTempLbl){map.removeLayer(_measTempLbl);_measTempLbl=null;}
+      _measPts=[];
+      _updateMeasBtns();
+      map.getContainer().style.cursor='';
+    } else if(_measState===2){
+      // 第三下：清除所有，結束
+      clearMeasure();
+    }
+  }
 }
 
 function clearMeasure(){
-  _measMode=null; _measPts=[];
+  _measMode=null; _measState=0; _measPts=[];
   _measLayers.forEach(l=>map.removeLayer(l)); _measLayers=[];
   if(_measTemp){map.removeLayer(_measTemp);_measTemp=null;}
-  ['dist','area','circle'].forEach(m=>{const b=document.getElementById('meas-btn-'+m);if(b)b.classList.remove('active');});
+  if(_measTempLbl){map.removeLayer(_measTempLbl);_measTempLbl=null;}
+  _updateMeasBtns();
   map.getContainer().style.cursor='';
 }
 
 map.on('click',function(e){
   if(!_measMode||addMode) return;
+
+  /* 暫停狀態下點地圖 → 恢復啟動，開始新段 */
+  if(_measState===2){
+    _measState=1; _measPts=[];
+    _updateMeasBtns();
+    map.getContainer().style.cursor='crosshair';
+  }
 
   /* ── 距離量測 ── */
   if(_measMode==='dist'){
@@ -5975,7 +6013,7 @@ map.on('click',function(e){
 /* ── 滑鼠移動：距離即時拉線 + 圓形即時拉伸預覽 ── */
 let _measTempLbl = null;
 map.on('mousemove',function(e){
-  if(!_measMode||_measPts.length===0) return;
+  if(!_measMode||_measState!==1||_measPts.length===0) return;
 
   /* 距離：從最後一點到游標拉虛線 + 顯示累計距離 */
   if(_measMode==='dist'){

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.433</title>
+<title>佳里 GIS v6.434</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -725,7 +725,16 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 <!-- ── MAP ── -->
 <div id="map"></div>
 <!-- 里界模式徽章 -->
-<div id="vil-mode-badge" onclick="toggleVilLayer()" style="display:none;position:fixed;top:calc(var(--topbar-h,52px) + 8px);left:50%;transform:translateX(-50%);z-index:560;background:var(--blue);color:#fff;border-radius:20px;padding:6px 16px;font-size:13px;font-weight:700;pointer-events:auto;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);letter-spacing:.3px;user-select:none" title="點擊關閉里別統計模式">📊 里別統計模式　關閉</div>
+<div id="vil-mode-badge" style="display:none;position:fixed;top:calc(var(--topbar-h,52px) + 8px);left:50%;transform:translateX(-50%);z-index:560;background:var(--blue);color:#fff;border-radius:16px;padding:7px 14px 8px;box-shadow:0 2px 10px rgba(0,0,0,.32);user-select:none;min-width:230px;text-align:center;pointer-events:auto">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.3px;pointer-events:none">📊 里別統計模式</span>
+    <button onclick="toggleVilLayer()" style="font-size:11px;font-weight:700;padding:3px 11px;border-radius:10px;border:1.5px solid rgba(255,255,255,.5);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;letter-spacing:.2px;flex-shrink:0" title="關閉里別統計模式">關閉</button>
+  </div>
+  <div style="display:flex;gap:2px;margin-top:6px;background:rgba(0,0,0,.18);border-radius:9px;padding:2px">
+    <button id="vil-bs-abs" onclick="event.stopPropagation();_setScSort('abs')" style="flex:1;padding:4px 0;border-radius:7px;border:none;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;background:#fff;color:var(--blue);box-shadow:0 1px 3px rgba(0,0,0,.18)">人數多寡</button>
+    <button id="vil-bs-rate" onclick="event.stopPropagation();_setScSort('rate')" style="flex:1;padding:4px 0;border-radius:7px;border:none;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;background:transparent;color:rgba(255,255,255,.7);box-shadow:none">人口比率</button>
+  </div>
+</div>
 <!-- ── 右側欄收起按鈕 ── -->
 <div id="sheet-toggle-btn" onclick="toggleSheetPanel()" title="收起/展開側欄">▶</div>
 <!-- ── 列印按鈕 ── -->
@@ -1758,12 +1767,14 @@ function _setScSort(sort){
 }
 function _updateScSortUI(){
   var byRate=(_scPanelSort==='rate');
-  var pairs=[['sc-sd-abs','sc-sd-rate'],['sc-sm-abs','sc-sm-rate']];
+  var pairs=[['sc-sd-abs','sc-sd-rate'],['sc-sm-abs','sc-sm-rate'],['vil-bs-abs','vil-bs-rate']];
   for(var i=0;i<pairs.length;i++){
     var ab=document.getElementById(pairs[i][0]);
     var rb=document.getElementById(pairs[i][1]);
-    if(ab){ab.style.background=byRate?'transparent':'#fff';ab.style.color=byRate?'#999':'var(--blue)';ab.style.boxShadow=byRate?'none':'0 1px 4px rgba(0,0,0,.12)';}
-    if(rb){rb.style.background=byRate?'#fff':'transparent';rb.style.color=byRate?'var(--blue)':'#999';rb.style.boxShadow=byRate?'0 1px 4px rgba(0,0,0,.12)':'none';}
+    // badge buttons have different inactive color (white+blue vs grey)
+    var isBadge=(pairs[i][0]==='vil-bs-abs');
+    if(ab){ab.style.background=byRate?'transparent':'#fff';ab.style.color=byRate?(isBadge?'rgba(255,255,255,.7)':'#999'):'var(--blue)';ab.style.boxShadow=byRate?'none':'0 1px 3px rgba(0,0,0,.18)';}
+    if(rb){rb.style.background=byRate?'#fff':'transparent';rb.style.color=byRate?'var(--blue)':(isBadge?'rgba(255,255,255,.7)':'#999');rb.style.boxShadow=byRate?'0 1px 3px rgba(0,0,0,.18)':'none';}
   }
 }
 function _showScSortRow(show){
@@ -1814,20 +1825,26 @@ function _applyScChoropleth(){
     // 手機：排名面板開啟時圖例收入面板底部，不另顯示
     leg.style.display='none'; _scChoroActive=true; _showScSortRow(true); return;
   } else if(_lw<1024){
-    leg.style.cssText='position:fixed;left:10px;bottom:80px;z-index:700;background:rgba(255,255,255,.95);border-radius:10px;padding:8px 11px;box-shadow:0 2px 10px rgba(0,0,0,.2);font-size:10px;pointer-events:none;line-height:1.9;min-width:120px';
+    leg.style.cssText='position:fixed;left:10px;bottom:80px;z-index:700;background:rgba(255,255,255,.95);border-radius:10px;padding:8px 11px;box-shadow:0 2px 10px rgba(0,0,0,.2);font-size:10px;pointer-events:auto;line-height:1.9;min-width:140px';
   } else {
-    leg.style.cssText='position:fixed;right:310px;top:60px;z-index:700;background:rgba(255,255,255,.95);border-radius:12px;padding:10px 13px;box-shadow:0 4px 16px rgba(0,0,0,.15);font-size:11px;pointer-events:none;line-height:2;min-width:130px';
+    leg.style.cssText='position:fixed;right:310px;top:60px;z-index:700;background:rgba(255,255,255,.95);border-radius:12px;padding:10px 13px;box-shadow:0 4px 16px rgba(0,0,0,.15);font-size:11px;pointer-events:auto;line-height:2;min-width:150px';
   }
   const meta=SC_META.find(m=>m.k===_scPanelKey)||SC_META[0];
   var byRateLeg=(_scPanelSort==='rate');
-  var modeLabel=byRateLeg?'人口比率':'佔全區比例';
   var footNote=byRateLeg?'排名1-4 / 5-8 / 9-11 / 12-14 / 15-16':'9.375% / 6.25% / 4.6875% / 3.125%';
-  leg.innerHTML='<div style="font-weight:700;color:#333;margin-bottom:3px;font-size:10px">📊 '+meta.l+'　'+modeLabel+'</div>'+
+  var absStyle='flex:1;padding:4px 0;border-radius:5px;border:none;font-size:10px;font-weight:700;cursor:pointer;transition:.15s;background:'+(byRateLeg?'transparent':'#fff')+';color:'+(byRateLeg?'#999':'var(--blue)')+';box-shadow:'+(byRateLeg?'none':'0 1px 3px rgba(0,0,0,.12)');
+  var rateStyle='flex:1;padding:4px 0;border-radius:5px;border:none;font-size:10px;font-weight:700;cursor:pointer;transition:.15s;background:'+(byRateLeg?'#fff':'transparent')+';color:'+(byRateLeg?'var(--blue)':'#999')+';box-shadow:'+(byRateLeg?'0 1px 3px rgba(0,0,0,.12)':'none');
+  leg.innerHTML=
+    '<div style="font-weight:700;color:#333;margin-bottom:4px;font-size:10px">📊 '+meta.l+'</div>'+
+    '<div style="display:flex;background:var(--surface2,#f4f6f8);border-radius:6px;padding:2px;gap:2px;margin-bottom:5px">'+
+      '<button style="'+absStyle+'" onclick="_setScSort(\'abs\')">人數多寡</button>'+
+      '<button style="'+rateStyle+'" onclick="_setScSort(\'rate\')">人口比率</button>'+
+    '</div>'+
     SC_CHORO.map(c=>'<div><span style="display:inline-block;width:12px;height:12px;background:'+c.fill+';border:1px solid '+c.border+';border-radius:2px;margin-right:5px;vertical-align:middle"></span><span style="color:'+c.text+';font-weight:600">'+c.label+'</span></div>').join('')+
     '<div style="color:#aaa;font-size:9px;margin-top:3px">'+footNote+'</div>';
+  leg.style.pointerEvents='auto';
   leg.style.display='block';
   _scChoroActive=true;
-  _showScSortRow(true);
 }
 function _clearScChoropleth(){
   if(!_scChoroActive) return;
@@ -1934,6 +1951,21 @@ function _getScRanks(){
   return _scRankCache;
 }
 
+/* ── 篩檢人數絕對排名（人數多寡模式） ── */
+let _scRankAbsCache=null;
+function _getScRanksAbs(){
+  if(_scRankAbsCache) return _scRankAbsCache;
+  _scRankAbsCache={};
+  SC_META.forEach(function(m){
+    var k=m.k;
+    var isEl=['el','pn','cv'].includes(k);
+    var getR=function(vn){return isEl?VIL_DEMOG[vn].o:(VIL_DEMOG[vn].sc?.[k]||0);};
+    var sorted=Object.keys(VIL_DEMOG).sort(function(a,b){return getR(b)-getR(a);});
+    sorted.forEach(function(n,i){if(!_scRankAbsCache[n])_scRankAbsCache[n]={};_scRankAbsCache[n][k]=i+1;});
+  });
+  return _scRankAbsCache;
+}
+
 /* ── 人口年齡結構 mini bar HTML ── */
 function _demogHtml(name, forToast=false){
   const d=VIL_DEMOG[name]; if(!d) return '';
@@ -1967,7 +1999,7 @@ function _demogHtml(name, forToast=false){
     const abLine=abStr?`<br><small style="color:#777">🪶 ${abStr}</small>`:'';
     let scHtml='';
     if(d.sc){
-      const ranks=_getScRanks();
+      const ranks=(_scPanelSort==='abs')?_getScRanksAbs():_getScRanks();
       const r=ranks[name]||{};
       const n16=Object.keys(VIL_DEMOG).length;
       const rBadge=(k)=>{
@@ -2002,7 +2034,7 @@ function _demogHtml(name, forToast=false){
           ${row('肺鏈疫苗',     d.o,'pn','65+')}
           ${row('新冠疫苗',     d.o,'cv','65+')}
         </table>
-        <small style="color:#bbb;font-size:9px">#排名依各里人口比率（最大16）</small>
+        <small style="color:#bbb;font-size:9px">#排名依${_scPanelSort==='abs'?'人數多寡':'人口比率'}（最大16）</small>
       </div>`;
     }
     return `<br><small style="color:#444">👥 ${d.pop.toLocaleString()}人</small>${gBar}${ageBar}${abLine}${scHtml}`;
@@ -4826,6 +4858,32 @@ function toggleSheetPanel(){
   setTimeout(()=>map.invalidateSize(), 260);
 }
 
+/* ── 凍結 / 解凍 ctrl-panel 工具按鈕 ── */
+function _freezeCtrlPanel(freeze){
+  var ids=['measure-bar','radius-bar'];
+  ids.forEach(function(id){
+    var el=document.getElementById(id);
+    if(!el) return;
+    el.style.opacity=freeze?'0.35':'';
+    el.style.pointerEvents=freeze?'none':'';
+  });
+  if(typeof _doorBtn!=='undefined'&&_doorBtn){
+    _doorBtn.style.opacity=freeze?'0.35':'';
+    _doorBtn.style.pointerEvents=freeze?'none':'';
+  }
+  var panel=document.getElementById('ctrl-panel');
+  if(!panel) return;
+  var note=document.getElementById('vil-freeze-note');
+  if(freeze&&!note){
+    note=document.createElement('div');
+    note.id='vil-freeze-note';
+    note.style.cssText='font-size:9px;color:var(--blue);text-align:center;padding:4px 4px 0;pointer-events:none;white-space:nowrap;font-weight:700;';
+    note.textContent='📊 里別統計中 暫停使用';
+    panel.appendChild(note);
+  }
+  if(note) note.style.display=freeze?'block':'none';
+}
+
 /* ══════════════════════════════════════════════════════════
    里界圖層切換（預設隱藏）
 ══════════════════════════════════════════════════════════ */
@@ -4855,6 +4913,13 @@ function toggleVilLayer(){
       if(pendingMarker){map.removeLayer(pendingMarker);pendingMarker=null;}
     }
     if(_parcelHighlight){map.removeLayer(_parcelHighlight);_parcelHighlight=null;}
+    // 清除選取的門牌地址/地段標記
+    if(typeof _searchMarker!=='undefined'&&_searchMarker){map.removeLayer(_searchMarker);_searchMarker=null;}
+    if(pendingMarker){map.removeLayer(pendingMarker);pendingMarker=null;}
+    // 停止量測
+    if(typeof clearMeasure==='function') clearMeasure();
+    // 凍結工具按鈕
+    _freezeCtrlPanel(true);
     // 隱藏門牌點
     _vilHidDoor=_doorLayerOn;
     if(_doorLayerOn){_clearDoorLayer();_doorLayerOn=false;_doorBtn.style.background='rgba(255,255,255,.94)';_doorBtn.style.color='var(--text1)';}
@@ -4880,6 +4945,7 @@ function toggleVilLayer(){
     const scPanel=document.getElementById('sc-rank-panel');
     if(scPanel) scPanel.style.display='none';
     _clearScChoropleth(); // 內含 _showScSortRow(false)
+    _freezeCtrlPanel(false);
     if(window._scPanelCollapsedSheet){window._scPanelCollapsedSheet=false;}
     // 隱藏右側里別資訊面板
     const vip=document.getElementById('vil-info-panel');

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.414</title>
+<title>佳里 GIS v6.415</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -172,17 +172,14 @@ input,select,textarea,button{font-family:inherit}
   display:flex;flex-direction:column;gap:4px;
 }
 
-/* 左側工具列容器（可拖曳） */
+/* 機關圖層卡（可拖曳，點空白處移動） */
 #left-tools{
   position:fixed;left:14px;bottom:calc(var(--panel-h) + 14px + env(safe-area-inset-bottom,0px));z-index:550;
-  display:flex;flex-direction:column;gap:6px;user-select:none;
+  display:flex;flex-direction:column;gap:6px;user-select:none;touch-action:none;
+  background:rgba(255,255,255,.92);border:1px solid var(--border2);border-radius:12px;
+  padding:8px 8px 6px;box-shadow:var(--shadow);cursor:grab;
 }
-#left-tools-handle{
-  background:rgba(200,210,220,.7);border:none;border-radius:6px;
-  padding:2px 0;cursor:grab;text-align:center;color:rgba(100,120,140,.8);font-size:11px;
-  touch-action:none;letter-spacing:2px;line-height:1;
-}
-#left-tools-handle:active{cursor:grabbing;background:rgba(240,244,255,.95)}
+#left-tools:active{cursor:grabbing;}
 .meas-btn{
   width:36px;height:36px;border-radius:8px;border:1px solid var(--border2);
   background:rgba(255,255,255,.94);color:var(--text1);font-size:15px;cursor:pointer;
@@ -728,12 +725,14 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 <!-- ── FAB ── -->
 <button id="fab" onclick="startAddMode()">＋</button>
 
-<!-- ── 左側工具列（可拖曳） ── -->
+<!-- ── 量測按鈕（獨立，由ctrl-panel接管） ── -->
+<div id="measure-bar">
+  <button class="meas-btn" id="meas-btn-dist"   onclick="setMeasureMode('dist')"   title="距離量測">📏</button>
+  <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測">⭕</button>
+</div>
+
+<!-- ── 機關圖層卡（可拖曳，點空白處移動） ── -->
 <div id="left-tools">
-  <div id="measure-bar">
-    <button class="meas-btn" id="meas-btn-dist"   onclick="setMeasureMode('dist')"   title="距離量測">📏</button>
-    <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測">⭕</button>
-  </div>
   <button id="leg-toggle" onclick="openLegend()">🗂 里別</button>
   <div id="fac-group-btns" style="display:flex;flex-direction:column;gap:4px">
     <button class="fac-grp-btn" id="fac-grp-gov"       onclick="toggleFacGroup('gov')"      >🏛 機關</button>
@@ -744,7 +743,6 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
     <button class="fac-grp-btn" id="fac-grp-medical"  onclick="toggleFacGroup('medical')"  >🏥 醫療</button>
     <button class="fac-grp-btn" id="fac-grp-dental"   onclick="toggleFacGroup('dental')"   >🦷 牙醫</button>
   </div>
-  <div id="left-tools-handle" title="按住拖曳移動">⠿</div>
 </div>
 
 <!-- ── ROAD LOADING TOAST ── -->
@@ -6013,73 +6011,35 @@ map.on('dblclick',function(e){
 </div>
 
 <script>
-/* ── 左側工具列拖曳 ── */
+/* ── 機關圖層卡拖曳（點空白處移動） ── */
 (function(){
   const wrap = document.getElementById('left-tools');
-  const handle = document.getElementById('left-tools-handle');
-  if(!wrap || !handle) return;
-
-  // 還原上次位置
+  if(!wrap) return;
   try{
-    const saved = JSON.parse(localStorage.getItem('leftToolsPos')||'null');
-    if(saved){
-      wrap.style.left   = saved.left;
-      wrap.style.bottom = saved.bottom;
-      wrap.style.top    = 'auto';
-    }
+    const saved=JSON.parse(localStorage.getItem('leftToolsPos')||'null');
+    if(saved){ wrap.style.left=saved.left; wrap.style.top=saved.top; wrap.style.bottom='auto'; }
   }catch(e){}
-
-  let startX, startY, startLeft, startTop, dragging = false;
-
-  function dragStart(cx, cy){
-    const r = wrap.getBoundingClientRect();
-    startX    = cx;
-    startY    = cy;
-    startLeft = r.left;
-    startTop  = r.top;
-    dragging  = false;
-    wrap.style.bottom = 'auto';
-    wrap.style.top    = startTop + 'px';
-    wrap.style.left   = startLeft + 'px';
-  }
-
-  function dragMove(cx, cy){
-    const dx = cx - startX, dy = cy - startY;
-    if(!dragging && Math.abs(dx)<5 && Math.abs(dy)<5) return;
-    dragging = true;
-    const maxL = window.innerWidth  - wrap.offsetWidth  - 4;
-    const maxT = window.innerHeight - wrap.offsetHeight - 4;
-    wrap.style.left = Math.max(4, Math.min(maxL, startLeft + dx)) + 'px';
-    wrap.style.top  = Math.max(4, Math.min(maxT, startTop  + dy)) + 'px';
-  }
-
-  function dragEnd(){
-    if(dragging){
-      try{ localStorage.setItem('leftToolsPos', JSON.stringify({left:wrap.style.left, bottom:'auto', top:wrap.style.top})); }catch(e){}
-    }
-    dragging = false;
-  }
-
-  // Mouse
-  handle.addEventListener('mousedown', e=>{ e.preventDefault(); dragStart(e.clientX, e.clientY); });
-  document.addEventListener('mousemove', e=>{ if(handle._down) dragMove(e.clientX, e.clientY); });
-  document.addEventListener('mouseup',   ()=>{ handle._down=false; dragEnd(); });
-  handle.addEventListener('mousedown',   ()=>{ handle._down=true; });
-
-  // Touch
-  handle.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragStart(t.clientX, t.clientY); }, {passive:true});
-  handle.addEventListener('touchmove',  e=>{ e.preventDefault(); const t=e.touches[0]; dragMove(t.clientX, t.clientY); }, {passive:false});
-  handle.addEventListener('touchend',   dragEnd);
+  let sx,sy,sl,st,dragging=false;
+  function ds(cx,cy){ const r=wrap.getBoundingClientRect(); sx=cx;sy=cy;sl=r.left;st=r.top;dragging=false; wrap.style.bottom='auto';wrap.style.top=st+'px';wrap.style.left=sl+'px'; }
+  function dm(cx,cy){ const dx=cx-sx,dy=cy-sy; if(!dragging&&Math.abs(dx)<5&&Math.abs(dy)<5)return; dragging=true; wrap.style.cursor='grabbing'; wrap.style.left=Math.max(4,Math.min(window.innerWidth-wrap.offsetWidth-4,sl+dx))+'px'; wrap.style.top=Math.max(4,Math.min(window.innerHeight-wrap.offsetHeight-4,st+dy))+'px'; }
+  function de(){ if(dragging){try{localStorage.setItem('leftToolsPos',JSON.stringify({left:wrap.style.left,top:wrap.style.top}));}catch(e){}} dragging=false; wrap.style.cursor='grab'; }
+  wrap.addEventListener('mousedown',e=>{ if(e.target.closest('button,input,select')) return; e.preventDefault(); ds(e.clientX,e.clientY); wrap._d=true; });
+  document.addEventListener('mousemove',e=>{ if(wrap._d) dm(e.clientX,e.clientY); });
+  document.addEventListener('mouseup',()=>{ wrap._d=false; de(); });
+  wrap.addEventListener('touchstart',e=>{ if(e.target.closest('button,input,select')) return; const t=e.touches[0]; ds(t.clientX,t.clientY); },{passive:true});
+  wrap.addEventListener('touchmove',e=>{ if(!dragging&&Math.abs(e.touches[0].clientX-sx)<5&&Math.abs(e.touches[0].clientY-sy)<5)return; e.preventDefault(); const t=e.touches[0]; dm(t.clientX,t.clientY); },{passive:false});
+  wrap.addEventListener('touchend',de);
 })();
 
 /* ── 控制面板拖曳（方圓／門牌點／選取） ── */
 (function(){
   const panel = document.createElement('div');
   panel.id = 'ctrl-panel';
-  panel.style.cssText = 'position:fixed;left:14px;bottom:280px;z-index:551;display:flex;flex-direction:column;gap:6px;user-select:none;touch-action:none;padding:4px;cursor:grab';
+  panel.style.cssText = 'position:fixed;left:50px;bottom:10px;z-index:551;display:flex;flex-direction:column;gap:4px;user-select:none;touch-action:none;padding:4px;cursor:grab';
 
-  // 移入面板（自動從 body 搬移）並清除固定定位
-  [_radiusBar, _doorBtn].forEach(el=>{
+  // 移入面板（量測 + 方圓 + 門牌點）並清除固定定位
+  const _measureBar = document.getElementById('measure-bar');
+  [_measureBar, _radiusBar, _doorBtn].filter(Boolean).forEach(el=>{
     el.style.position='relative';
     el.style.left=el.style.right=el.style.top=el.style.bottom=el.style.zIndex='';
     el.style.cursor='default';

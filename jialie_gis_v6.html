@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.413</title>
+<title>佳里 GIS v6.414</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -763,7 +763,7 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
   </div>
   <div id="leg-drawer-body"></div>
   <div style="padding:10px 12px;border-top:1px solid rgba(255,255,255,.15);background:#f7f9fc;display:flex;gap:6px;flex-wrap:wrap">
-    <button id="vil-layer-btn-mobile" onclick="toggleVilLayer()" style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:11px;cursor:pointer;color:var(--text2);font-weight:600">里界 OFF</button>
+    <button id="vil-layer-btn-mobile" onclick="toggleVilLayer()" style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:11px;cursor:pointer;color:var(--text2);font-weight:600">📊 統計 OFF</button>
     <button onclick="clearVilCache()" style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:10px;cursor:pointer;color:#555">🔄 更新里界</button>
     <button onclick="clearRoadCache()" style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:10px;cursor:pointer;color:#555">🔄 更新路名</button>
     <button onclick="openTileModal()" style="width:100%;margin-top:5px;background:#1b4f72;border:none;border-radius:6px;padding:8px;font-size:11px;cursor:pointer;color:#fff;font-weight:700">🗺 下載離線地圖磚塊</button>
@@ -773,8 +773,8 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 <!-- ── DESKTOP LEGEND ── -->
 <div id="legend-desktop" style="display:none;flex-direction:column">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border)">
-    <span style="font-size:11px;font-weight:700;color:var(--text1)">里別圖例</span>
-    <button id="vil-layer-btn" onclick="toggleVilLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">里界 OFF</button>
+    <span style="font-size:11px;font-weight:700;color:var(--text1)">里別統計模式</span>
+    <button id="vil-layer-btn" onclick="toggleVilLayer()" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">統計 OFF</button>
   </div>
   <div id="leg-desktop-body" style="overflow-y:auto;flex:1"></div>
 </div>
@@ -4729,7 +4729,7 @@ function toggleVilLayer(){
   ['vil-layer-btn','vil-layer-btn-mobile'].forEach(id=>{
     const btn=document.getElementById(id);
     if(!btn) return;
-    btn.textContent = _vilBoundaryOn ? '里界 ON' : '里界 OFF';
+    btn.textContent = _vilBoundaryOn ? (id==='vil-layer-btn-mobile'?'📊 統計 ON':'統計 ON') : (id==='vil-layer-btn-mobile'?'📊 統計 OFF':'統計 OFF');
     btn.style.background = _vilBoundaryOn ? 'var(--blue)' : 'var(--surface2)';
     btn.style.color = _vilBoundaryOn ? '#fff' : 'var(--text2)';
     btn.style.borderColor = _vilBoundaryOn ? 'var(--blue)' : 'var(--border2)';

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.394</title>
+<title>佳里 GIS v6.395</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4839,19 +4839,24 @@ function _refreshDoorLayer(){
         continue;
       }
 
-      // 單點模式 或 圓圈內公寓：divIcon 顯示樓層標籤
-      const group=aptGroups.get(key)||{floors:[]};
-      const floors=[...new Set(group.floors)].sort();
-      const dot=`<div style="width:8px;height:8px;background:#2ecc71;border-radius:50%;border:1.5px solid #27ae60;box-shadow:0 1px 3px rgba(0,0,0,.3);flex-shrink:0"></div>`;
-      const lbl=`font-size:9px;font-weight:700;color:#1a7a44;text-shadow:0 0 2px #fff,-1px 0 #fff,1px 0 #fff,0 1px #fff,0 -1px #fff;line-height:1.5`;
-      const inner=floors.length===0
-        ? `<div style="display:flex;align-items:center;gap:3px">${dot}</div>`
-        : floors.map((f,i)=>i===0
-            ? `<div style="display:flex;align-items:center;gap:3px">${dot}<span style="${lbl}">${f}</span></div>`
-            : `<div style="padding-left:11px"><span style="${lbl}">${f}</span></div>`
-          ).join('');
-      const icon=L.divIcon({html:`<div style="display:flex;flex-direction:column;white-space:nowrap">${inner}</div>`,className:'',iconAnchor:[4,4]});
-      const cm=L.marker([r[0],r[1]],{icon});
+      // 圓圈內公寓：divIcon 顯示樓層標籤；單點模式：純綠點
+      let cm;
+      if(hasRadius){
+        const group=aptGroups.get(key)||{floors:[]};
+        const floors=[...new Set(group.floors)].sort();
+        const dot=`<div style="width:8px;height:8px;background:#2ecc71;border-radius:50%;border:1.5px solid #27ae60;box-shadow:0 1px 3px rgba(0,0,0,.3);flex-shrink:0"></div>`;
+        const lbl=`font-size:9px;font-weight:700;color:#1a7a44;text-shadow:0 0 2px #fff,-1px 0 #fff,1px 0 #fff,0 1px #fff,0 -1px #fff;line-height:1.5`;
+        const inner=floors.length===0
+          ? `<div style="display:flex;align-items:center;gap:3px">${dot}</div>`
+          : floors.map((f,i)=>i===0
+              ? `<div style="display:flex;align-items:center;gap:3px">${dot}<span style="${lbl}">${f}</span></div>`
+              : `<div style="padding-left:11px"><span style="${lbl}">${f}</span></div>`
+            ).join('');
+        const icon=L.divIcon({html:`<div style="display:flex;flex-direction:column;white-space:nowrap">${inner}</div>`,className:'',iconAnchor:[4,4]});
+        cm=L.marker([r[0],r[1]],{icon});
+      } else {
+        cm=L.circleMarker([r[0],r[1]],{renderer:_doorRenderer,radius:5,color:'#27ae60',fillColor:'#2ecc71',fillOpacity:0.9,weight:1.5});
+      }
       cm.on('click',(ev)=>{ L.DomEvent.stopPropagation(ev); _aptClickFn(r[0],r[1]); });
       _doorLayerGroup.addLayer(cm); cnt++;
     } else {
@@ -5734,19 +5739,13 @@ map.on('dblclick',function(e){
 (function(){
   const panel = document.createElement('div');
   panel.id = 'ctrl-panel';
-  panel.style.cssText = 'position:fixed;left:14px;bottom:280px;z-index:551;display:flex;flex-direction:column;gap:4px;user-select:none;touch-action:none';
-
-  const h = document.createElement('div');
-  h.id = 'ctrl-panel-handle';
-  h.title = '按住拖曳移動';
-  h.innerHTML = '⠿⠿';
-  h.style.cssText = 'background:rgba(255,255,255,.85);border:1px solid var(--border2);border-radius:8px;padding:4px 0;cursor:grab;text-align:center;color:var(--text3);font-size:15px;box-shadow:var(--shadow);letter-spacing:3px;touch-action:none';
-  panel.appendChild(h);
+  panel.style.cssText = 'position:fixed;left:14px;bottom:280px;z-index:551;display:flex;flex-direction:column;gap:6px;user-select:none;touch-action:none;padding:4px;cursor:grab';
 
   // 移入面板（自動從 body 搬移）並清除固定定位
   [_radiusBar, _doorBtn].forEach(el=>{
     el.style.position='relative';
     el.style.left=el.style.right=el.style.top=el.style.bottom=el.style.zIndex='';
+    el.style.cursor='default';
     panel.appendChild(el);
   });
   document.body.appendChild(panel);
@@ -5759,15 +5758,25 @@ map.on('dblclick',function(e){
 
   let sx,sy,sl,st,dragging=false;
   function ds(cx,cy){ const r=panel.getBoundingClientRect(); sx=cx;sy=cy;sl=r.left;st=r.top;dragging=false; panel.style.bottom='auto';panel.style.top=st+'px';panel.style.left=sl+'px'; }
-  function dm(cx,cy){ const dx=cx-sx,dy=cy-sy; if(!dragging&&Math.abs(dx)<5&&Math.abs(dy)<5)return; dragging=true; panel.style.left=Math.max(4,Math.min(window.innerWidth-panel.offsetWidth-4,sl+dx))+'px'; panel.style.top=Math.max(4,Math.min(window.innerHeight-panel.offsetHeight-4,st+dy))+'px'; }
-  function de(){ if(dragging){try{localStorage.setItem('ctrlPanelPos',JSON.stringify({left:panel.style.left,top:panel.style.top}));}catch{}} dragging=false; }
+  function dm(cx,cy){ const dx=cx-sx,dy=cy-sy; if(!dragging&&Math.abs(dx)<5&&Math.abs(dy)<5)return; dragging=true; panel.style.cursor='grabbing'; panel.style.left=Math.max(4,Math.min(window.innerWidth-panel.offsetWidth-4,sl+dx))+'px'; panel.style.top=Math.max(4,Math.min(window.innerHeight-panel.offsetHeight-4,st+dy))+'px'; }
+  function de(){ if(dragging){try{localStorage.setItem('ctrlPanelPos',JSON.stringify({left:panel.style.left,top:panel.style.top}));}catch{}} dragging=false; panel.style.cursor='grab'; }
 
-  h.addEventListener('mousedown',e=>{e.preventDefault();ds(e.clientX,e.clientY);h._d=true;});
-  document.addEventListener('mousemove',e=>{if(h._d)dm(e.clientX,e.clientY);});
-  document.addEventListener('mouseup',()=>{h._d=false;de();});
-  h.addEventListener('touchstart',e=>{const t=e.touches[0];ds(t.clientX,t.clientY);},{passive:true});
-  h.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];dm(t.clientX,t.clientY);},{passive:false});
-  h.addEventListener('touchend',de);
+  // 只在點擊面板背景（非按鈕、非互動元素）時啟動拖曳
+  panel.addEventListener('mousedown',e=>{
+    if(e.target.closest('button,input,select')) return;
+    e.preventDefault(); ds(e.clientX,e.clientY); panel._d=true;
+  });
+  document.addEventListener('mousemove',e=>{if(panel._d)dm(e.clientX,e.clientY);});
+  document.addEventListener('mouseup',()=>{panel._d=false;de();});
+  panel.addEventListener('touchstart',e=>{
+    if(e.target.closest('button,input,select')) return;
+    const t=e.touches[0];ds(t.clientX,t.clientY);
+  },{passive:true});
+  panel.addEventListener('touchmove',e=>{
+    if(!dragging&&Math.abs(e.touches[0].clientX-sx)<5&&Math.abs(e.touches[0].clientY-sy)<5)return;
+    e.preventDefault();const t=e.touches[0];dm(t.clientX,t.clientY);
+  },{passive:false});
+  panel.addEventListener('touchend',de);
 })();
 </script>
 </body>

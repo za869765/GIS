@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.404</title>
+<title>佳里 GIS v6.405</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1687,6 +1687,14 @@ function renderVilLayers(){
 }
 
 /* ── 篩檢 Choropleth 疊加（圖表面板開啟時著色＋%標籤） ── */
+// 固定閾值（平均=6.25%，雙倍=12.5%，半=3.125%）
+const SC_CHORO=[
+  {min:12.5,  fill:'#7b1fa2',border:'#4a148c',label:'極度重要',text:'#7b1fa2'},
+  {min:6.25,  fill:'#e53935',border:'#b71c1c',label:'重要',    text:'#c62828'},
+  {min:3.125, fill:'#43a047',border:'#1b5e20',label:'普通',    text:'#2e7d32'},
+  {min:0,     fill:'#81d4fa',border:'#0277bd',label:'不重要',  text:'#0277bd'},
+];
+function _scChoroClass(p){return SC_CHORO.find(c=>p>=c.min)||SC_CHORO[3];}
 let _scChoroActive=false;
 function _applyScChoropleth(){
   if(!_vilBoundaryOn) return;
@@ -1696,20 +1704,25 @@ function _applyScChoropleth(){
   if(!total) return;
   const pcts={};
   Object.keys(VIL_DEMOG).forEach(vn=>{pcts[vn]=getVal(vn)/total*100;});
-  const sorted=Object.values(pcts).sort((a,b)=>a-b);
-  const n=sorted.length;
-  // 5-class quantile breaks
-  const q=(i)=>sorted[Math.min(n-1,Math.floor(i/5*n))];
-  const breaks=[q(1),q(2),q(3),q(4)];
-  const palette=['#dbeafe','#93c5fd','#3b82f6','#1d4ed8','#1e3a8a'];
-  const getColor=(p)=>{for(let i=0;i<breaks.length;i++){if(p<=breaks[i])return palette[i];}return palette[4];};
   Object.entries(vilLayers).forEach(([vn,lyr])=>{
     const p=pcts[vn]; if(p===undefined) return;
-    const col=getColor(p);
-    lyr.setStyle({fillColor:col,fillOpacity:0.65,color:'#1d4ed8',weight:1.5,opacity:0.7});
+    const cls=_scChoroClass(p);
+    lyr.setStyle({fillColor:cls.fill,fillOpacity:0.68,color:cls.border,weight:1.8,opacity:0.85});
     const lbl=vilLabelMap[vn];
-    if(lbl) lbl.setIcon(L.divIcon({className:'vl-label',html:`<div style="text-align:center;line-height:1.3">${vn}<br><span style="font-size:9px;font-weight:700;color:#1d4ed8">${p.toFixed(1)}%</span></div>`,iconSize:null}));
+    if(lbl) lbl.setIcon(L.divIcon({className:'vl-label',html:`<div style="text-align:center;line-height:1.3">${vn}<br><span style="font-size:9px;font-weight:700;color:${cls.text}">${p.toFixed(1)}%</span></div>`,iconSize:null}));
   });
+  // 顯示地圖圖例
+  let leg=document.getElementById('sc-choro-legend');
+  if(!leg){
+    leg=document.createElement('div');leg.id='sc-choro-legend';
+    leg.style.cssText='position:fixed;left:10px;bottom:80px;z-index:700;background:rgba(255,255,255,.93);border-radius:10px;padding:8px 11px;box-shadow:0 2px 10px rgba(0,0,0,.2);font-size:11px;pointer-events:none;line-height:1.9';
+    document.body.appendChild(leg);
+  }
+  const meta=SC_META.find(m=>m.k===_scPanelKey)||SC_META[0];
+  leg.innerHTML=`<div style="font-weight:700;color:#333;margin-bottom:3px;font-size:10px">📊 ${meta.l} 佔全區比例</div>`+
+    SC_CHORO.map(c=>`<div><span style="display:inline-block;width:12px;height:12px;background:${c.fill};border:1px solid ${c.border};border-radius:2px;margin-right:5px;vertical-align:middle"></span><span style="color:${c.text};font-weight:600">${c.label}</span></div>`).join('')+
+    `<div style="color:#aaa;font-size:9px;margin-top:3px">≥12.5% / 6.25% / 3.125%</div>`;
+  leg.style.display='block';
   _scChoroActive=true;
 }
 function _clearScChoropleth(){
@@ -1724,6 +1737,8 @@ function _clearScChoropleth(){
     const lbl=vilLabelMap[vn];
     if(lbl) lbl.setIcon(L.divIcon({className:'vl-label',html:`<div>${vn}</div>`,iconSize:null}));
   });
+  const leg=document.getElementById('sc-choro-legend');
+  if(leg) leg.style.display='none';
   _scChoroActive=false;
 }
 
@@ -1865,7 +1880,7 @@ function _showScPanel(vilName, key, sort){
   if(!panel){
     panel=document.createElement('div');
     panel.id='sc-rank-panel';
-    panel.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:900;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:310px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;font-family:inherit';
+    panel.style.cssText='position:fixed;right:10px;top:60px;z-index:900;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:290px;max-height:calc(100vh - 80px);overflow:hidden;display:flex;flex-direction:column;font-family:inherit';
     document.body.appendChild(panel);
   }
 
@@ -1919,7 +1934,10 @@ function _showScPanel(vilName, key, sort){
       <div style="display:flex;gap:4px"><span style="font-size:9px;color:#aaa;width:38px;text-align:right">人數</span><span style="font-size:9px;color:#aaa;width:32px;text-align:right">佔全區</span></div>
     </div>
     <div style="overflow-y:auto;padding:0 8px 12px;flex:1">${bars}</div>
-    <div style="padding:6px 14px 10px;border-top:1px solid #f0f0f0;font-size:9px;color:#bbb;flex-shrink:0">${byRate?'依篩檢對象÷總人口比率排序':'依篩檢對象絕對人數排序'}　點擊上方項目切換</div>`;
+    <div style="padding:6px 14px 10px;border-top:1px solid #f0f0f0;font-size:9px;flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap">
+      ${SC_CHORO.map(c=>`<span><span style="display:inline-block;width:9px;height:9px;background:${c.fill};border-radius:2px;margin-right:2px;vertical-align:middle"></span><span style="color:${c.text};font-weight:600">${c.label}</span></span>`).join('')}
+      <span style="color:#bbb;margin-left:auto">≥12.5% / 6.25% / 3.125%</span>
+    </div>`;
   panel.style.display='flex';
   _applyScChoropleth();
 }

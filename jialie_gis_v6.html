@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.403</title>
+<title>佳里 GIS v6.404</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1354,7 +1354,7 @@ const SC={active:'s-active',followup:'s-followup',pending:'s-pending',closed:'s-
    STATE
 ═══════════════════════════════════════════ */
 let cases=JSON.parse(localStorage.getItem('jialie_v5')||'[]');
-let markers={},vilLayers={},vilLabels=[];
+let markers={},vilLayers={},vilLabels=[],vilLabelMap={};
 let vilFeatures=[],vilColorMap={};
 let addMode=false,pendingMarker=null;
 let selectedId=null,deleteTargetId=null;
@@ -1649,7 +1649,7 @@ function getVN(f){return f.properties.VILLNAME||f.properties.villname||'未知';
 const _vilRenderer = L.canvas({padding:0.5});
 function renderVilLayers(){
   Object.values(vilLayers).forEach(l=>map.removeLayer(l));vilLayers={};
-  vilLabels.forEach(l=>map.removeLayer(l));vilLabels=[];
+  vilLabels.forEach(l=>map.removeLayer(l));vilLabels=[];vilLabelMap={};
   vilFeatures.forEach(f=>{
     const name=getVN(f);const dist=VIL_TO_DIST[name];
     const col=vilColorMap[name]||{fill:'#eee',border:'#aaa'};
@@ -1681,9 +1681,50 @@ function renderVilLayers(){
     try{
       const c=layer.getBounds().getCenter();
       const lbl=L.marker(c,{icon:L.divIcon({className:'vl-label',html:`<div>${name}</div>`,iconSize:null}),interactive:false}).addTo(map);
-      vilLabels.push(lbl);
+      vilLabels.push(lbl);vilLabelMap[name]=lbl;
     }catch{}
   });
+}
+
+/* ── 篩檢 Choropleth 疊加（圖表面板開啟時著色＋%標籤） ── */
+let _scChoroActive=false;
+function _applyScChoropleth(){
+  if(!_vilBoundaryOn) return;
+  const isEl=['el','pn','cv'].includes(_scPanelKey);
+  const getVal=(vn)=>{const d=VIL_DEMOG[vn];if(!d)return 0;return isEl?d.o:(d.sc?.[_scPanelKey]||0);};
+  const total=Object.keys(VIL_DEMOG).reduce((s,vn)=>s+getVal(vn),0);
+  if(!total) return;
+  const pcts={};
+  Object.keys(VIL_DEMOG).forEach(vn=>{pcts[vn]=getVal(vn)/total*100;});
+  const sorted=Object.values(pcts).sort((a,b)=>a-b);
+  const n=sorted.length;
+  // 5-class quantile breaks
+  const q=(i)=>sorted[Math.min(n-1,Math.floor(i/5*n))];
+  const breaks=[q(1),q(2),q(3),q(4)];
+  const palette=['#dbeafe','#93c5fd','#3b82f6','#1d4ed8','#1e3a8a'];
+  const getColor=(p)=>{for(let i=0;i<breaks.length;i++){if(p<=breaks[i])return palette[i];}return palette[4];};
+  Object.entries(vilLayers).forEach(([vn,lyr])=>{
+    const p=pcts[vn]; if(p===undefined) return;
+    const col=getColor(p);
+    lyr.setStyle({fillColor:col,fillOpacity:0.65,color:'#1d4ed8',weight:1.5,opacity:0.7});
+    const lbl=vilLabelMap[vn];
+    if(lbl) lbl.setIcon(L.divIcon({className:'vl-label',html:`<div style="text-align:center;line-height:1.3">${vn}<br><span style="font-size:9px;font-weight:700;color:#1d4ed8">${p.toFixed(1)}%</span></div>`,iconSize:null}));
+  });
+  _scChoroActive=true;
+}
+function _clearScChoropleth(){
+  if(!_scChoroActive) return;
+  Object.entries(vilLayers).forEach(([vn,lyr])=>{
+    const col=vilColorMap[vn]||{fill:'#eee',border:'#aaa'};
+    const dist=VIL_TO_DIST[vn];
+    const dm=filterDist==='all'||filterDist===dist;
+    const vm=filterVil==='all'||filterVil===vn;
+    const opacity=dm?(vm?.55:.22):.07;
+    lyr.setStyle({fillColor:col.fill,fillOpacity:opacity,color:col.border,weight:dm&&vm?2.5:1.2,opacity:dm?1:.3});
+    const lbl=vilLabelMap[vn];
+    if(lbl) lbl.setIcon(L.divIcon({className:'vl-label',html:`<div>${vn}</div>`,iconSize:null}));
+  });
+  _scChoroActive=false;
 }
 
 /* ── 點座標所在里別（射線法點在多邊形判斷） ── */
@@ -1866,7 +1907,7 @@ function _showScPanel(vilName, key, sort){
         <div><div style="font-size:13px;font-weight:700;color:#1a1a2e">📊 各里篩檢排名</div>
           <div style="font-size:10px;color:#888;margin-top:1px">${curVil} · ${meta.l}（${meta.n}）· 第 <b style="color:#1565c0">${curRank}</b>/${n16} 名</div>
         </div>
-        <button onclick="document.getElementById('sc-rank-panel').style.display='none'" style="border:none;background:#f0f0f0;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#888;flex-shrink:0">✕</button>
+        <button onclick="document.getElementById('sc-rank-panel').style.display='none';_clearScChoropleth()" style="border:none;background:#f0f0f0;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#888;flex-shrink:0">✕</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">${tabs}</div>
       <div style="display:flex;align-items:center;gap:6px">
@@ -1880,6 +1921,7 @@ function _showScPanel(vilName, key, sort){
     <div style="overflow-y:auto;padding:0 8px 12px;flex:1">${bars}</div>
     <div style="padding:6px 14px 10px;border-top:1px solid #f0f0f0;font-size:9px;color:#bbb;flex-shrink:0">${byRate?'依篩檢對象÷總人口比率排序':'依篩檢對象絕對人數排序'}　點擊上方項目切換</div>`;
   panel.style.display='flex';
+  _applyScChoropleth();
 }
 
 function clickVil(name){

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.399</title>
+<title>佳里 GIS v6.400</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1671,7 +1671,7 @@ function renderVilLayers(){
           if(_phones) _tt+=`<br><small style="color:#888">${_phones}</small>`;
         }
         _tt+=_demogHtml(name,false);
-        lyr.bindTooltip(_tt,{sticky:true,className:'tip-own'});}
+        lyr.bindTooltip(_tt,{sticky:true,className:'tip-own',interactive:true});}
         lyr.on('click',(e)=>{L.DomEvent.stopPropagation(e);clickVil(name);});
         lyr.on('mouseover',()=>lyr.setStyle({fillOpacity:Math.min(opacity+.2,.75)}));
         lyr.on('mouseout',()=>lyr.setStyle({fillOpacity:opacity}));
@@ -1705,20 +1705,27 @@ function getVillageAt(lat,lng){
   return '';
 }
 
-/* ── 全區預防保健基準比率（一次性計算，與全區各里平均比較） ── */
-let _scDistAvg = null;
-function _getScDistAvg(){
-  if(_scDistAvg) return _scDistAvg;
-  const sums={br:0,cx:0,fc:0,lv:0,om:0,lm:0,lf:0,ac:0,el:0};
-  let totPop=0;
-  Object.values(VIL_DEMOG).forEach(v=>{
-    totPop+=v.pop;
-    if(v.sc) Object.keys(sums).forEach(k=>{ if(k!=='el') sums[k]+=(v.sc[k]||0); });
-    sums.el+=(v.o||0);
+/* ── 篩檢項目定義 ── */
+const SC_META=[
+  {k:'br',l:'乳房X光攝影', n:'女40-70'},{k:'cx',l:'子宮頸抹片',  n:'女25-70'},
+  {k:'fc',l:'糞便/胃癌篩檢',n:'45-70'}, {k:'lv',l:'肝癌篩檢',    n:'40-79'},
+  {k:'om',l:'口腔黏膜',    n:'男30-70'},{k:'lm',l:'肺癌LDCT男',  n:'男45-70'},
+  {k:'lf',l:'肺癌LDCT女',  n:'女40-70'},{k:'ac',l:'成人健康檢查', n:'40-64'},
+  {k:'el',l:'長者量六力',  n:'65+'},
+];
+
+/* ── 各里篩檢比率排名（依人口比率排序，一次性計算） ── */
+let _scRankCache=null;
+function _getScRanks(){
+  if(_scRankCache) return _scRankCache;
+  _scRankCache={};
+  SC_META.forEach(({k})=>{
+    const isEl=k==='el';
+    const getR=(vn)=>isEl?VIL_DEMOG[vn].o:(VIL_DEMOG[vn].sc?.[k]||0);
+    const sorted=Object.keys(VIL_DEMOG).sort((a,b)=>(getR(b)/VIL_DEMOG[b].pop)-(getR(a)/VIL_DEMOG[a].pop));
+    sorted.forEach((n,i)=>{ if(!_scRankCache[n]) _scRankCache[n]={}; _scRankCache[n][k]=i+1; });
   });
-  _scDistAvg={};
-  Object.keys(sums).forEach(k=>{ _scDistAvg[k]=sums[k]/totPop; });
-  return _scDistAvg;
+  return _scRankCache;
 }
 
 /* ── 人口年齡結構 mini bar HTML ── */
@@ -1726,77 +1733,142 @@ function _demogHtml(name, forToast=false){
   const d=VIL_DEMOG[name]; if(!d) return '';
   const pct=v=>Math.round(v/d.pop*100);
   const py=pct(d.y),pw=pct(d.w),po=pct(d.o);
+  const mPct=Math.round(d.m/d.pop*100);
   const aging=d.y>0?Math.round(d.o/d.y*100):999;
-  const abStr = d.ab>0 ? `原住民 ${d.ab}人（平地${d.abp}・山地${d.abm}）` : '';
+  const abStr=d.ab>0?`原住民 ${d.ab}人（平地${d.abp}・山地${d.abm}）`:'';
 
   if(forToast){
-    const bar=`<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:5px 0 2px;width:160px">
-      <div style="width:${py}%;background:#3498db"></div>
-      <div style="width:${pw}%;background:#2ecc71"></div>
-      <div style="width:${po}%;background:#e67e22"></div>
-    </div>
-    <div style="display:flex;gap:8px;font-size:10px;opacity:.85">
-      <span>🔵幼${py}%</span><span>🟢壯${pw}%</span><span>🟠老${po}%</span>
-    </div>`;
-    const abLine = abStr ? `<div style="font-size:10px;opacity:.75;margin-top:2px">🪶 ${abStr}</div>` : '';
-    return `<div style="margin-top:5px;font-size:12px">👥 ${d.pop.toLocaleString()}人（♂${d.m.toLocaleString()} · ♀${d.f.toLocaleString()}）</div>${bar}<div style="font-size:10px;opacity:.7;margin-top:1px">老化指數 ${aging}</div>${abLine}`;
+    const ageBar=`<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:4px 0 2px;width:160px">
+      <div style="width:${py}%;background:#3498db"></div><div style="width:${pw}%;background:#2ecc71"></div><div style="width:${po}%;background:#e67e22"></div>
+    </div><div style="display:flex;gap:8px;font-size:10px;opacity:.85"><span>🔵幼${py}%</span><span>🟢壯${pw}%</span><span>🟠老${po}%</span></div>`;
+    const abLine=abStr?`<div style="font-size:10px;opacity:.75;margin-top:2px">🪶 ${abStr}</div>`:'';
+    return `<div style="margin-top:5px;font-size:12px">👥 ${d.pop.toLocaleString()}人</div>
+      <div style="display:flex;height:5px;border-radius:2px;overflow:hidden;margin:3px 0 1px;width:160px">
+        <div style="width:${mPct}%;background:#1976d2"></div><div style="flex:1;background:#e91e63"></div>
+      </div>
+      <div style="font-size:10px;opacity:.85">♂${d.m.toLocaleString()}(${mPct}%) · ♀${d.f.toLocaleString()}(${100-mPct}%)</div>
+      ${ageBar}<div style="font-size:10px;opacity:.7;margin-top:1px">老化指數 ${aging}</div>${abLine}`;
   } else {
-    // 桌機 tooltip：人口結構 + 預防保健
-    const bar=`<div style="display:flex;height:5px;border-radius:2px;overflow:hidden;margin:3px 0 1px;min-width:120px">
-      <div style="width:${py}%;background:#3498db"></div>
-      <div style="width:${pw}%;background:#2ecc71"></div>
-      <div style="width:${po}%;background:#e67e22"></div>
+    // 桌機 tooltip：男女bar + 年齡bar + 預防保健排名
+    const gBar=`<div style="display:flex;height:4px;border-radius:2px;overflow:hidden;margin:2px 0">
+      <div style="width:${mPct}%;background:#1976d2"></div><div style="flex:1;background:#e91e63"></div>
     </div>
-    <small style="color:#666;display:flex;gap:6px"><span>幼${py}%</span><span>壯${pw}%</span><span>老${po}%</span><span style="margin-left:4px;color:#aaa">老化指數${aging}</span></small>`;
-    const abLine = abStr ? `<br><small style="color:#777">🪶 ${abStr}</small>` : '';
-    let scHtml = '';
+    <small style="color:#666;display:flex;gap:4px"><span style="color:#1976d2">♂${d.m.toLocaleString()}(${mPct}%)</span><span>·</span><span style="color:#e91e63">♀${d.f.toLocaleString()}(${100-mPct}%)</span></small>`;
+    const ageBar=`<div style="display:flex;height:5px;border-radius:2px;overflow:hidden;margin:3px 0 1px">
+      <div style="width:${py}%;background:#3498db"></div><div style="width:${pw}%;background:#2ecc71"></div><div style="width:${po}%;background:#e67e22"></div>
+    </div>
+    <small style="color:#666;display:flex;gap:5px"><span>幼${py}%</span><span>壯${pw}%</span><span>老${po}%</span><span style="color:#aaa">老化指數${aging}</span></small>`;
+    const abLine=abStr?`<br><small style="color:#777">🪶 ${abStr}</small>`:'';
+    let scHtml='';
     if(d.sc){
-      const avg = _getScDistAvg();
-      const p = d.pop;
-      const s = d.sc;
-      // 顏色：超過全區平均+6% → 藍；低於-6% → 灰；其餘黑
-      const clr = (val, key) => {
-        const r = val/p, a = avg[key];
-        if(r >= a*1.06) return '#1565c0';
-        if(r <= a*0.94) return '#999';
-        return '#333';
+      const ranks=_getScRanks();
+      const r=ranks[name]||{};
+      const n16=Object.keys(VIL_DEMOG).length;
+      const rBadge=(k)=>{
+        const rank=r[k]||0;
+        const c=rank<=4?'#1565c0':rank>=n16-3?'#bbb':'#888';
+        return `<span style="font-size:9px;color:${c};font-weight:700;margin-left:3px">#${rank}</span>`;
       };
-      const elClr = () => {
-        const r = d.o/p, a = avg.el;
-        if(r >= a*1.06) return '#1565c0';
-        if(r <= a*0.94) return '#999';
-        return '#333';
-      };
-      const row = (label, val, key, note='') =>
-        `<tr><td style="padding:1px 6px 1px 0;color:#555;white-space:nowrap">${label}</td>`+
-        `<td style="padding:1px 0;font-weight:600;color:${clr(val,key)};text-align:right;white-space:nowrap">${val.toLocaleString()}</td>`+
-        `<td style="padding:1px 0 1px 5px;color:#aaa;font-size:9px;white-space:nowrap">${note}</td></tr>`;
-      scHtml = `<br><div style="margin-top:4px;border-top:1px solid #e0e0e0;padding-top:3px">
-        <small style="color:#555;font-weight:700">🔬 預防保健目標人數</small>
+      const row=(label,val,key,note='')=>
+        `<tr style="cursor:pointer" onclick="_showScPanel('${name}','${key}')" title="點擊查看各里排名圖表">
+          <td style="padding:1px 5px 1px 0;color:#555;white-space:nowrap">${label}</td>
+          <td style="padding:1px 0;font-weight:600;color:#333;text-align:right;white-space:nowrap">${val.toLocaleString()}${rBadge(key)}</td>
+          <td style="padding:1px 0 1px 4px;color:#aaa;font-size:9px;white-space:nowrap">${note}</td>
+        </tr>`;
+      const elRank=r.el||0, elC=elRank<=4?'#1565c0':elRank>=n16-3?'#bbb':'#888';
+      scHtml=`<br><div style="margin-top:4px;border-top:1px solid #e0e0e0;padding-top:3px">
+        <small style="color:#555;font-weight:700">🔬 預防保健目標人數 <span style="font-weight:400;color:#aaa;font-size:9px">（點任一列查看各里排名）</span></small>
         <table style="font-size:10px;border-collapse:collapse;margin-top:2px;width:100%">
-          ${row('乳房X光攝影',  s.br,'br','女40-70')}
-          ${row('子宮頸抹片',   s.cx,'cx','女25-70')}
-          ${row('糞便/胃癌篩檢',s.fc,'fc','45-70')}
-          ${row('肝癌篩檢',     s.lv,'lv','40-79')}
-          ${row('口腔黏膜',     s.om,'om','男30-70')}
-          ${row('肺癌LDCT男',   s.lm,'lm','男45-70')}
-          ${row('肺癌LDCT女',   s.lf,'lf','女40-70')}
-          ${row('成人健康檢查', s.ac,'ac','40-64')}
-          <tr><td style="padding:1px 6px 1px 0;color:#555;white-space:nowrap">長者量六力</td>`+
-          `<td style="padding:1px 0;font-weight:600;color:${elClr()};text-align:right;white-space:nowrap">${d.o.toLocaleString()}</td>`+
-          `<td style="padding:1px 0 1px 5px;color:#aaa;font-size:9px;white-space:nowrap">65+</td></tr>
+          ${row('乳房X光攝影',  d.sc.br,'br','女40-70')}
+          ${row('子宮頸抹片',   d.sc.cx,'cx','女25-70')}
+          ${row('糞便/胃癌篩檢',d.sc.fc,'fc','45-70')}
+          ${row('肝癌篩檢',     d.sc.lv,'lv','40-79')}
+          ${row('口腔黏膜',     d.sc.om,'om','男30-70')}
+          ${row('肺癌LDCT男',   d.sc.lm,'lm','男45-70')}
+          ${row('肺癌LDCT女',   d.sc.lf,'lf','女40-70')}
+          ${row('成人健康檢查', d.sc.ac,'ac','40-64')}
+          <tr style="cursor:pointer" onclick="_showScPanel('${name}','el')" title="點擊查看各里排名圖表">
+            <td style="padding:1px 5px 1px 0;color:#555;white-space:nowrap">長者量六力</td>
+            <td style="padding:1px 0;font-weight:600;color:#333;text-align:right;white-space:nowrap">${d.o.toLocaleString()}<span style="font-size:9px;color:${elC};font-weight:700;margin-left:3px">#${elRank}</span></td>
+            <td style="padding:1px 0 1px 4px;color:#aaa;font-size:9px;white-space:nowrap">65+</td>
+          </tr>
         </table>
-        <small style="color:#bbb;font-size:9px">🔵高於全區平均 ⬛持平 ▪灰色低於平均</small>
+        <small style="color:#bbb;font-size:9px">#排名依各里人口比率（最大16）</small>
       </div>`;
     }
-    return `<br><small style="color:#444">👥 ${d.pop.toLocaleString()}人（♂${d.m.toLocaleString()} · ♀${d.f.toLocaleString()}）</small>${bar}${abLine}${scHtml}`;
+    return `<br><small style="color:#444">👥 ${d.pop.toLocaleString()}人</small>${gBar}${ageBar}${abLine}${scHtml}`;
   }
+}
+
+/* ── 各里篩檢排名圖表面板 ── */
+let _scPanelKey='br';
+function _showScPanel(vilName, key){
+  if(vilName) window._scPanelVil=vilName;
+  if(key) _scPanelKey=key;
+  const curVil=window._scPanelVil||vilName||'';
+  const meta=SC_META.find(m=>m.k===_scPanelKey)||SC_META[0];
+  const isEl=_scPanelKey==='el';
+  const getVal=(vn)=>isEl?VIL_DEMOG[vn].o:(VIL_DEMOG[vn].sc?.[_scPanelKey]||0);
+  const getPop=(vn)=>VIL_DEMOG[vn].pop;
+  const sorted=Object.keys(VIL_DEMOG).sort((a,b)=>(getVal(b)/getPop(b))-(getVal(a)/getPop(a)));
+  const maxRate=getVal(sorted[0])/getPop(sorted[0]);
+  const n16=sorted.length;
+
+  let panel=document.getElementById('sc-rank-panel');
+  if(!panel){
+    panel=document.createElement('div');
+    panel.id='sc-rank-panel';
+    panel.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:900;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:300px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;font-family:inherit';
+    document.body.appendChild(panel);
+  }
+
+  const tabs=SC_META.map(m=>{
+    const active=m.k===_scPanelKey;
+    return `<button onclick="_showScPanel('','${m.k}')" style="font-size:10px;padding:3px 7px;border-radius:20px;border:1.5px solid ${active?'#1565c0':'#e0e0e0'};background:${active?'#1565c0':'#fafafa'};color:${active?'#fff':'#666'};cursor:pointer;white-space:nowrap;font-weight:${active?700:400}">${m.l}</button>`;
+  }).join('');
+
+  const bars=sorted.map((vn,i)=>{
+    const val=getVal(vn), rate=val/getPop(vn);
+    const barPct=Math.round(rate/maxRate*100);
+    const isCur=vn===curVil;
+    const rColor=i<=3?'#1565c0':i>=n16-4?'#bbb':'#666';
+    const barColor=isCur?'#1565c0':i<=3?'#90caf9':'#c8e6c9';
+    return `<div style="display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:6px;${isCur?'background:#f0f6ff;':''}">
+      <span style="width:18px;text-align:right;font-size:10px;font-weight:700;color:${rColor}">${i+1}</span>
+      <span style="width:52px;font-size:11px;color:${isCur?'#1565c0':'#333'};font-weight:${isCur?700:400};flex-shrink:0">${vn}${isCur?' ◀':''}</span>
+      <div style="flex:1;height:11px;background:#f0f0f0;border-radius:4px;overflow:hidden">
+        <div style="width:${barPct}%;height:100%;background:${barColor};border-radius:4px"></div>
+      </div>
+      <span style="width:40px;text-align:right;font-size:10px;color:${isCur?'#1565c0':'#555'};font-weight:${isCur?700:400}">${val.toLocaleString()}</span>
+    </div>`;
+  }).join('');
+
+  const curRank=sorted.indexOf(curVil)+1;
+  panel.innerHTML=`
+    <div style="padding:12px 14px 8px;flex-shrink:0;border-bottom:1px solid #f0f0f0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div><div style="font-size:13px;font-weight:700;color:#1a1a2e">📊 各里篩檢排名</div>
+          <div style="font-size:10px;color:#888;margin-top:1px">${curVil} · ${meta.l}（${meta.n}）· 第 <b style="color:#1565c0">${curRank}</b>/${n16} 名</div>
+        </div>
+        <button onclick="document.getElementById('sc-rank-panel').style.display='none'" style="border:none;background:#f0f0f0;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#888;flex-shrink:0">✕</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${tabs}</div>
+    </div>
+    <div style="padding:4px 8px 4px;flex-shrink:0;display:flex;justify-content:space-between">
+      <span style="font-size:9px;color:#aaa">排名（人口比率）</span><span style="font-size:9px;color:#aaa">人數</span>
+    </div>
+    <div style="overflow-y:auto;padding:0 8px 12px;flex:1">${bars}</div>
+    <div style="padding:6px 14px 10px;border-top:1px solid #f0f0f0;font-size:9px;color:#bbb;flex-shrink:0">依各里篩檢對象÷總人口比率排序　點擊上方項目切換</div>`;
+  panel.style.display='flex';
 }
 
 function clickVil(name){
   if(addMode){document.getElementById('f-village').value=name;onVillageChange();return;}
-  // 里界模式 = 純瀏覽移動，桌機已有 hover tooltip；行動裝置改用 toast 顯示
-  if(!window.matchMedia('(pointer:coarse)').matches) return;
+  // 里界模式：桌機點擊開啟篩檢排名圖表；行動裝置用 toast
+  if(!window.matchMedia('(pointer:coarse)').matches){
+    _showScPanel(name, _scPanelKey||'br');
+    return;
+  }
   const _m=VIL_TO_MANAGER[name]||'', _ch=VIL_CHIEF[name];
   const dist=VIL_TO_DIST[name]||'';
   let msg=`<b style="font-size:14px">${name}</b>`;

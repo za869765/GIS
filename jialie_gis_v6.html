@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.396</title>
+<title>佳里 GIS v6.397</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1216,6 +1216,26 @@ const VIL_CHIEF={
   '民安里':{n:'周天財',   tel:'06-7227609',mob:'0910747992',addr:'同安寮44號之11'},
   '塭內里':{n:'黃明輝',   tel:'06-7872518',mob:'0910848527',addr:'埔頂18號之2'},
 };
+// 各里人口年齡結構（資料來源：內政部戶政司）
+// pop=總人口 m=男 f=女 y=0-14幼年 w=15-64壯年 o=65+老年
+const VIL_DEMOG={
+  '安西里':{pop:6869,m:3330,f:3539,y:966,w:4572,o:1331},
+  '鎮山里':{pop:6426,m:3171,f:3255,y:734,w:4437,o:1255},
+  '佳化里':{pop:2338,m:1182,f:1156,y:191,w:1655,o:492},
+  '忠仁里':{pop:3220,m:1585,f:1635,y:346,w:2171,o:703},
+  '塭內里':{pop:2986,m:1566,f:1420,y:223,w:2008,o:755},
+  '文新里':{pop:6122,m:2904,f:3218,y:819,w:4451,o:852},
+  '民安里':{pop:2033,m:1007,f:1026,y:237,w:1438,o:358},
+  '海澄里':{pop:2433,m:1234,f:1199,y:207,w:1733,o:493},
+  '六安里':{pop:4799,m:2340,f:2459,y:592,w:3294,o:913},
+  '南勢里':{pop:5771,m:2819,f:2952,y:854,w:4180,o:737},
+  '下營里':{pop:1857,m:962,f:895,y:97,w:1324,o:436},
+  '營溪里':{pop:1124,m:585,f:539,y:62,w:776,o:286},
+  '佳興里':{pop:2307,m:1183,f:1124,y:151,w:1566,o:590},
+  '建南里':{pop:4878,m:2327,f:2551,y:548,w:3305,o:1025},
+  '子龍里':{pop:2653,m:1349,f:1304,y:201,w:1803,o:649},
+  '東寧里':{pop:2416,m:1163,f:1253,y:269,w:1527,o:620},
+};
 
 /* ── 佳里區官方統計資料（來源：臺南市政府開放資料） ── */
 const JIALIE_AREA={面積:'38.9422',里數:16,鄰數:257};
@@ -1646,6 +1666,7 @@ function renderVilLayers(){
           const _phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
           if(_phones) _tt+=`<br><small style="color:#888">${_phones}</small>`;
         }
+        _tt+=_demogHtml(name,false);
         lyr.bindTooltip(_tt,{sticky:true,className:'tip-own'});}
         lyr.on('click',(e)=>{L.DomEvent.stopPropagation(e);clickVil(name);});
         lyr.on('mouseover',()=>lyr.setStyle({fillOpacity:Math.min(opacity+.2,.75)}));
@@ -1680,6 +1701,34 @@ function getVillageAt(lat,lng){
   return '';
 }
 
+/* ── 人口年齡結構 mini bar HTML ── */
+function _demogHtml(name, forToast=false){
+  const d=VIL_DEMOG[name]; if(!d) return '';
+  const pct=v=>Math.round(v/d.pop*100);
+  const py=pct(d.y),pw=pct(d.w),po=pct(d.o);
+  const aging=d.y>0?Math.round(d.o/d.y*100):999;
+  if(forToast){
+    const bar=`<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:5px 0 2px;width:160px">
+      <div style="width:${py}%;background:#3498db"></div>
+      <div style="width:${pw}%;background:#2ecc71"></div>
+      <div style="width:${po}%;background:#e67e22"></div>
+    </div>
+    <div style="display:flex;gap:8px;font-size:10px;opacity:.85">
+      <span>🔵幼${py}%</span><span>🟢壯${pw}%</span><span>🟠老${po}%</span>
+    </div>`;
+    return `<div style="margin-top:5px;font-size:12px">👥 ${d.pop.toLocaleString()}人（♂${d.m.toLocaleString()} · ♀${d.f.toLocaleString()}）</div>${bar}<div style="font-size:10px;opacity:.7;margin-top:1px">老化指數 ${aging}</div>`;
+  } else {
+    // tooltip 用（較窄）
+    const bar=`<div style="display:flex;height:5px;border-radius:2px;overflow:hidden;margin:3px 0 1px;min-width:120px">
+      <div style="width:${py}%;background:#3498db"></div>
+      <div style="width:${pw}%;background:#2ecc71"></div>
+      <div style="width:${po}%;background:#e67e22"></div>
+    </div>
+    <small style="color:#666;display:flex;gap:6px"><span>幼${py}%</span><span>壯${pw}%</span><span>老${po}%</span><span style="margin-left:4px;color:#aaa">老化指數${aging}</span></small>`;
+    return `<br><small style="color:#444">👥 ${d.pop.toLocaleString()}人（♂${d.m.toLocaleString()} · ♀${d.f.toLocaleString()}）</small>${bar}`;
+  }
+}
+
 function clickVil(name){
   if(addMode){document.getElementById('f-village').value=name;onVillageChange();return;}
   // 里界模式 = 純瀏覽移動，桌機已有 hover tooltip；行動裝置改用 toast 顯示
@@ -1694,6 +1743,7 @@ function clickVil(name){
     const phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
     if(phones) msg+=`<br><span style="font-size:12px;opacity:.85">☎ ${phones}</span>`;
   }
+  msg+=_demogHtml(name,true);
   _showVilToast(msg);
 }
 

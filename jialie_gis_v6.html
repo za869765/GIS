@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.415</title>
+<title>佳里 GIS v6.416</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5927,6 +5927,8 @@ map.on('click',function(e){
 
   /* ── 距離量測 ── */
   if(_measMode==='dist'){
+    if(_measTemp){map.removeLayer(_measTemp);_measTemp=null;}
+    if(_measTempLbl){map.removeLayer(_measTempLbl);_measTempLbl=null;}
     const pt=e.latlng; _measPts.push(pt);
     const mk=L.circleMarker([pt.lat,pt.lng],{radius:5,color:'#e63946',fillColor:'#e63946',fillOpacity:1,weight:2}).addTo(map);
     _measLayers.push(mk);
@@ -5970,18 +5972,39 @@ map.on('click',function(e){
   }
 });
 
-/* ── 滑鼠移動：圓形即時拉伸預覽 ── */
+/* ── 滑鼠移動：距離即時拉線 + 圓形即時拉伸預覽 ── */
 let _measTempLbl = null;
 map.on('mousemove',function(e){
-  if(_measMode!=='circle'||_measPts.length===0) return;
-  const r=_measDist(_measPts[0],e.latlng);
-  if(_measTemp) map.removeLayer(_measTemp);
-  if(_measTempLbl){ map.removeLayer(_measTempLbl); _measTempLbl=null; }
-  _measTemp=L.circle([_measPts[0].lat,_measPts[0].lng],{radius:r,color:'#e67e22',weight:1.5,dashArray:'5,4',fillOpacity:.08,interactive:false}).addTo(map);
-  _measTempLbl=L.marker([_measPts[0].lat,_measPts[0].lng],{
-    icon:L.divIcon({html:`<div class="meas-label">${_fmtDist(r)}<br>${_fmtArea(Math.PI*r*r)}</div>`,className:'',iconAnchor:[0,-14]}),
-    interactive:false
-  }).addTo(map);
+  if(!_measMode||_measPts.length===0) return;
+
+  /* 距離：從最後一點到游標拉虛線 + 顯示累計距離 */
+  if(_measMode==='dist'){
+    const last=_measPts[_measPts.length-1];
+    if(_measTemp){map.removeLayer(_measTemp);_measTemp=null;}
+    if(_measTempLbl){map.removeLayer(_measTempLbl);_measTempLbl=null;}
+    _measTemp=L.polyline([[last.lat,last.lng],[e.latlng.lat,e.latlng.lng]],
+      {color:'#e63946',weight:2,dashArray:'6,5',opacity:.65,interactive:false}).addTo(map);
+    let total=0;
+    for(let i=1;i<_measPts.length;i++) total+=_measDist(_measPts[i-1],_measPts[i]);
+    total+=_measDist(last,e.latlng);
+    _measTempLbl=L.marker([e.latlng.lat,e.latlng.lng],{
+      icon:L.divIcon({html:`<div class="meas-label">${_fmtDist(total)}</div>`,className:'',iconAnchor:[0,-14]}),
+      interactive:false
+    }).addTo(map);
+    return;
+  }
+
+  /* 圓形：從圓心到游標即時預覽圓 */
+  if(_measMode==='circle'){
+    const r=_measDist(_measPts[0],e.latlng);
+    if(_measTemp) map.removeLayer(_measTemp);
+    if(_measTempLbl){map.removeLayer(_measTempLbl);_measTempLbl=null;}
+    _measTemp=L.circle([_measPts[0].lat,_measPts[0].lng],{radius:r,color:'#e67e22',weight:1.5,dashArray:'5,4',fillOpacity:.08,interactive:false}).addTo(map);
+    _measTempLbl=L.marker([_measPts[0].lat,_measPts[0].lng],{
+      icon:L.divIcon({html:`<div class="meas-label">${_fmtDist(r)}<br>${_fmtArea(Math.PI*r*r)}</div>`,className:'',iconAnchor:[0,-14]}),
+      interactive:false
+    }).addTo(map);
+  }
 });
 
 map.on('dblclick',function(e){

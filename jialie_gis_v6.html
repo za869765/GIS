@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.405</title>
+<title>佳里 GIS v6.406</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1662,19 +1662,21 @@ function renderVilLayers(){
       renderer:_vilRenderer,
       style:{fillColor:col.fill,fillOpacity:opacity,color:col.border,weight,opacity:dm?1:.3},
       onEachFeature:(_,lyr)=>{
-        {const _m=VIL_TO_MANAGER[name]||'',_ch=VIL_CHIEF[name];
-        let _tt=`<b>${name}</b><small style="color:#888;margin-left:4px">${dist||''}</small>`;
-        if(_m) _tt+=`<br><small style="color:#555">地段：${_m}</small>`;
-        if(_ch){
-          _tt+=`<br><small style="color:#555">🏠 里長：${_ch.n}</small>`;
-          const _phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
-          if(_phones) _tt+=`<br><small style="color:#888">${_phones}</small>`;
-        }
-        _tt+=_demogHtml(name,false);
-        lyr.bindTooltip(_tt,{sticky:true,className:'tip-own',interactive:true});}
         lyr.on('click',(e)=>{L.DomEvent.stopPropagation(e);clickVil(name);});
-        lyr.on('mouseover',()=>lyr.setStyle({fillOpacity:Math.min(opacity+.2,.75)}));
-        lyr.on('mouseout',()=>lyr.setStyle({fillOpacity:opacity}));
+        lyr.on('mouseover',()=>{
+          lyr.setStyle({fillOpacity:Math.min(opacity+.2,.75)});
+          const _m=VIL_TO_MANAGER[name]||'',_ch=VIL_CHIEF[name];
+          let _tt=`<b style="font-size:13px">${name}</b><small style="color:#888;margin-left:5px">${dist||''}</small>`;
+          if(_m) _tt+=`<br><small style="color:#555">地段：${_m}</small>`;
+          if(_ch){
+            _tt+=`<br><small style="color:#555">🏠 里長：${_ch.n}</small>`;
+            const _phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
+            if(_phones) _tt+=`<br><small style="color:#888">${_phones}</small>`;
+          }
+          _tt+=_demogHtml(name,false);
+          _showVilInfoPanel(_tt);
+        });
+        lyr.on('mouseout',()=>{lyr.setStyle({fillOpacity:opacity});_hideVilInfoPanel();});
       }
     }).addTo(map);
     vilLayers[name]=layer;
@@ -1740,6 +1742,38 @@ function _clearScChoropleth(){
   const leg=document.getElementById('sc-choro-legend');
   if(leg) leg.style.display='none';
   _scChoroActive=false;
+}
+
+/* ── 里界瀏覽：右側固定資訊面板（hover 觸發） ── */
+let _vilInfoHideTimer=null;
+function _showVilInfoPanel(html){
+  // 行動裝置不顯示（用 toast）
+  if(window.matchMedia('(pointer:coarse)').matches) return;
+  clearTimeout(_vilInfoHideTimer);
+  let p=document.getElementById('vil-info-panel');
+  if(!p){
+    p=document.createElement('div');
+    p.id='vil-info-panel';
+    p.style.cssText='position:fixed;right:10px;top:60px;z-index:800;background:#fff;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.2);padding:10px 14px;font-size:12px;line-height:1.65;max-width:260px;max-height:calc(100vh - 80px);overflow-y:auto;pointer-events:none;transition:opacity .15s';
+    document.body.appendChild(p);
+  }
+  // 若排名圖表已開啟，在其下方顯示
+  const sc=document.getElementById('sc-rank-panel');
+  if(sc && sc.style.display!=='none'){
+    const rect=sc.getBoundingClientRect();
+    p.style.top=(rect.bottom+8)+'px';
+  } else {
+    p.style.top='60px';
+  }
+  p.innerHTML=html;
+  p.style.opacity='1';
+  p.style.display='block';
+}
+function _hideVilInfoPanel(){
+  _vilInfoHideTimer=setTimeout(()=>{
+    const p=document.getElementById('vil-info-panel');
+    if(p){p.style.opacity='0';setTimeout(()=>{p.style.display='none';},150);}
+  },120);
 }
 
 /* ── 點座標所在里別（射線法點在多邊形判斷） ── */

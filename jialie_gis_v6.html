@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.420</title>
+<title>佳里 GIS v6.422</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -191,6 +191,14 @@ input,select,textarea,button{font-family:inherit}
 .meas-label{
   background:#e63946;color:#000;padding:4px 10px;border-radius:7px;
   font-size:14px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4);line-height:1.5;
+}
+
+/* 佳里區邊界 鄰近行政區標籤 */
+.jialie-neighbor-label{
+  background:rgba(255,255,255,.88);border:1.5px solid #546e7a;border-radius:6px;
+  padding:3px 9px;font-size:12px;font-weight:700;color:#37474f;
+  white-space:nowrap;pointer-events:none;box-shadow:0 1px 5px rgba(0,0,0,.22);
+  letter-spacing:.3px;
 }
 
 /* Road loading toast */
@@ -715,7 +723,7 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 <!-- ── MAP ── -->
 <div id="map"></div>
 <!-- 里界模式徽章 -->
-<div id="vil-mode-badge" style="display:none;position:fixed;top:calc(var(--topbar-h,52px) + 8px);left:50%;transform:translateX(-50%);z-index:560;background:var(--blue);color:#fff;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);letter-spacing:.3px">📊 里別統計模式</div>
+<div id="vil-mode-badge" onclick="toggleVilLayer()" style="display:none;position:fixed;top:calc(var(--topbar-h,52px) + 8px);left:50%;transform:translateX(-50%);z-index:560;background:var(--blue);color:#fff;border-radius:20px;padding:6px 16px;font-size:13px;font-weight:700;pointer-events:auto;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);letter-spacing:.3px;user-select:none" title="點擊關閉里別統計模式">📊 里別統計模式　✕</div>
 <!-- ── 右側欄收起按鈕 ── -->
 <div id="sheet-toggle-btn" onclick="toggleSheetPanel()" title="收起/展開側欄">▶</div>
 <!-- ── 列印按鈕 ── -->
@@ -1617,6 +1625,90 @@ async function fetchAndCacheVillages(showResult=true){
     if(showResult){buildDistStrip();renderLegend();}
   }
 }
+
+/* ══════════════════════════════════════════════════════════
+   佳里區外框線 + 鄰近行政區標記
+══════════════════════════════════════════════════════════ */
+const IDB_TOWNS_KEY = 'jialie_towns_v1';
+let _jialiBoundaryLayer = null;
+let _jialiNeighborLayers = [];
+
+async function loadJialiBoundary(){
+  try {
+    // 1. 先試 IndexedDB 快取
+    let townsFeatures = null;
+    try {
+      const cached = await idbGet(IDB_TOWNS_KEY);
+      if(cached && cached.features && cached.features.length){
+        townsFeatures = cached.features;
+      }
+    } catch(e){}
+
+    // 2. 若無快取且有網路則下載
+    if(!townsFeatures && navigator.onLine){
+      const res = await fetch('https://cdn.jsdelivr.net/npm/taiwan-atlas@latest/towns-10t.json');
+      const topo = await res.json();
+      const geo = topojson.feature(topo, topo.objects.towns);
+      townsFeatures = geo.features;
+      try { await idbSet(IDB_TOWNS_KEY, {features: townsFeatures, savedAt: Date.now()}); } catch(e){}
+    }
+    if(!townsFeatures) return;
+
+    // 3. 找佳里區
+    const jialiF = townsFeatures.find(f=>{
+      const p = f.properties;
+      const code = p.TOWNCODE||p.towncode||'';
+      const name = p.TOWNNAME||p.townname||'';
+      return code==='67000230' || name==='佳里區';
+    });
+    if(!jialiF) return;
+
+    // 4. 畫佳里區外框（厚實虛線）
+    _jialiBoundaryLayer = L.geoJSON(jialiF, {
+      style:{ color:'#1a237e', weight:3.5, dashArray:'10,6', fillOpacity:0, opacity:.85 },
+      interactive: false
+    }).addTo(map);
+
+    // 5. 找鄰近行政區（bbox 與佳里區重疊的其他 town）並加標籤
+    const jBounds = L.geoJSON(jialiF).getBounds();
+    const expanded = jBounds.pad(0.5); // 50% 擴張搜尋範圍
+
+    _jialiNeighborLayers.forEach(l=>map.removeLayer(l));
+    _jialiNeighborLayers = [];
+
+    townsFeatures.forEach(f=>{
+      const p = f.properties;
+      const code = p.TOWNCODE||p.towncode||'';
+      if(code==='67000230') return; // 跳過佳里區本身
+      const tname = p.TOWNNAME||p.townname||'';
+      const cname = p.COUNTYNAME||p.countyname||p.CITYNAME||p.cityname||'';
+      if(!tname) return;
+      // 只顯示臺南市鄰近行政區
+      if(cname && !cname.includes('臺南') && !cname.includes('台南')) return;
+      try {
+        const b = L.geoJSON(f).getBounds();
+        if(!expanded.intersects(b)) return;
+        const c = b.getCenter();
+        // 標籤
+        const mk = L.marker([c.lat, c.lng], {
+          icon: L.divIcon({
+            html: `<div class="jialie-neighbor-label">${tname}</div>`,
+            className: '',
+            iconAnchor: [30, 10]
+          }),
+          interactive: false,
+          zIndexOffset: -100
+        }).addTo(map);
+        _jialiNeighborLayers.push(mk);
+      } catch(e){}
+    });
+
+    console.log('[GIS] 佳里區邊界 + 鄰近行政區標記完成');
+  } catch(e){
+    console.warn('[GIS] 佳里區邊界載入失敗', e);
+  }
+}
+
 
 function showOfflineVilMsg(){
   const hint=document.createElement('div');
@@ -2781,6 +2873,7 @@ _initFacCollapsible();
 updateOnlineStatus();   // 初始化時設定離線狀態
 loadVillages();
 loadRoads();
+loadJialiBoundary();
 showCacheStatus();      // 顯示快取狀態
 updateAddrDbBadge();    // 顯示門牌DB狀態
 populateRoadSelect();   // 初始化路名下拉選單

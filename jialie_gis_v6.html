@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.391</title>
+<title>佳里 GIS v6.392</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -3893,17 +3893,31 @@ async function onMapSearch(){
   }, 200);
 }
 
-const _SEARCH_PAGE_SIZE = 8;
 let _searchAllResults = [];
 let _searchCurrentPage = 0;
 let _searchQuery = '';
 
+function _getSearchPageSize(){
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const topH=(document.getElementById('topbar')?.offsetHeight||52);
+  const pagerH=50, itemH=44, searchH=64;
+  let avail;
+  if(vw>=768){
+    avail=Math.min(vh*0.55,480)-pagerH;
+  } else {
+    const botH=56;
+    avail=vh-topH-botH-searchH-pagerH-24;
+  }
+  return Math.max(4, Math.floor(avail/itemH));
+}
+
 function _renderSearchPage(){
   const resultsEl = document.getElementById('map-search-results');
+  const pageSize = _getSearchPageSize();
   const total = _searchAllResults.length;
-  const totalPages = Math.ceil(total / _SEARCH_PAGE_SIZE);
-  const start = _searchCurrentPage * _SEARCH_PAGE_SIZE;
-  const end = Math.min(start + _SEARCH_PAGE_SIZE, total);
+  const totalPages = Math.ceil(total / pageSize);
+  const start = _searchCurrentPage * pageSize;
+  const end = Math.min(start + pageSize, total);
   const pageItems = _searchAllResults.slice(start, end);
 
   let itemIdx = 0;
@@ -3916,7 +3930,7 @@ function _renderSearchPage(){
     </div>`;
   }).join('');
 
-  if(total > _SEARCH_PAGE_SIZE){
+  if(total > pageSize){
     const prevDis = _searchCurrentPage===0 ? 'disabled' : '';
     const nextDis = _searchCurrentPage>=totalPages-1 ? 'disabled' : '';
     html += `<div class="msr-pager">
@@ -3965,7 +3979,14 @@ function _initFacCollapsible(){
   const tab = document.getElementById('tab-fac');
   if(!tab) return;
 
-  // 統計卡：插入一個可折疊標題列
+  // 先快照出所有原始 section 標題 div（uppercase style）
+  const origHdrs = new Set(
+    Array.from(tab.children).filter(el=>
+      el.tagName==='DIV' && (el.getAttribute('style')||'').includes('uppercase')
+    )
+  );
+
+  // 統計卡：插入折疊標題
   const statsCard = document.getElementById('jialie-stats-card');
   if(statsCard){
     const hdr = document.createElement('div');
@@ -3975,36 +3996,31 @@ function _initFacCollapsible(){
     const body = document.createElement('div');
     body.className = 'sec-body';
     body.style.display = 'none';
-    statsCard.parentNode.insertBefore(body, statsCard.nextSibling);
+    hdr.insertAdjacentElement('afterend', body);
     body.appendChild(statsCard);
     hdr.addEventListener('click',()=>_toggleSec(hdr,body));
   }
 
-  // 各資料表區塊：掃描直接子 div，找具有 text-transform:uppercase 的標題
-  Array.from(tab.children).forEach(el=>{
-    if(el.tagName!=='DIV') return;
-    const st = el.getAttribute('style')||'';
-    if(!st.includes('uppercase')) return;
-    const next = el.nextElementSibling;
-    if(!next) return;
-    // 建立新標題
+  // 處理各資料表區塊
+  origHdrs.forEach(el=>{
+    if(!el.parentNode) return; // 已被移除則跳過
+    // 建立新 sec-hdr
     const hdr = document.createElement('div');
     hdr.className = 'sec-hdr';
     hdr.innerHTML = el.innerHTML + ' <span class="sec-arr">▶</span>';
     el.parentNode.insertBefore(hdr, el);
-    el.remove(); // 移除原始標題
-    // 包裝 body
+    el.remove();
+    // 建立 body wrapper，插在 hdr 後
     const body = document.createElement('div');
     body.className = 'sec-body';
     body.style.display = 'none';
-    hdr.parentNode.insertBefore(body, next);
-    // 把緊跟的 table / div（到下一個標題前）都移入 body
-    let sib = hdr.nextElementSibling;
-    while(sib && sib !== body){
-      const tmp = sib.nextElementSibling;
-      body.appendChild(sib);
-      sib = tmp;
-      if(sib && (sib.classList.contains('sec-hdr')||((sib.getAttribute('style')||'').includes('uppercase')))) break;
+    hdr.insertAdjacentElement('afterend', body);
+    // 把 body 後面的元素逐個移入，直到碰到下一個原始標題或 sec-hdr
+    let next = body.nextElementSibling;
+    while(next && !origHdrs.has(next) && !next.classList.contains('sec-hdr')){
+      const tmp = next.nextElementSibling;
+      body.appendChild(next);
+      next = tmp;
     }
     hdr.addEventListener('click',()=>_toggleSec(hdr,body));
   });

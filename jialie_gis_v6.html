@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.432</title>
+<title>佳里 GIS v6.433</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4868,6 +4868,7 @@ function toggleVilLayer(){
       if(_vilCollapsedSheet) toggleSheetPanel();
     }
     renderVilLayers();
+    _showScSortRow(true);
   } else {
     /* ── 切出里界模式 ── */
     map.getContainer().style.cursor='crosshair';
@@ -4878,7 +4879,7 @@ function toggleVilLayer(){
     // 關閉篩檢面板
     const scPanel=document.getElementById('sc-rank-panel');
     if(scPanel) scPanel.style.display='none';
-    _clearScChoropleth();
+    _clearScChoropleth(); // 內含 _showScSortRow(false)
     if(window._scPanelCollapsedSheet){window._scPanelCollapsedSheet=false;}
     // 隱藏右側里別資訊面板
     const vip=document.getElementById('vil-info-panel');

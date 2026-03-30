@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.444</title>
+<title>佳里 GIS v6.445</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -908,6 +908,7 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
     <button class="fac-grp-btn" id="fac-grp-dental"   onclick="toggleFacGroup('dental')"   >🦷 牙醫</button>
     <button class="fac-grp-btn" id="fac-grp-nursery"  onclick="toggleFacGroup('nursery')"  >🍼 托嬰中心</button>
     <button class="fac-grp-btn" id="fac-grp-kinder"   onclick="toggleFacGroup('kinder')"   >🧒 幼兒園</button>
+    <button class="fac-grp-btn" id="fac-grp-gogoro"   onclick="toggleFacGroup('gogoro')"   >🔋 Gogoro換電</button>
   </div>
 </div>
 
@@ -3794,6 +3795,12 @@ const MANUAL_COORDS = {
   '中山路233號':      [23.160062576796584, 120.17687650765332],
   // 衛生所（導航預設起點）
   '進學路159號':      [23.163877779179685, 120.17772634728972],
+  // Gogoro 換電站
+  '中山路452號':      [23.164711616883093, 120.17752760650558],
+  '文化路359號':      [23.163011944874548, 120.17229774720020],
+  '安西路205號':      [23.164376294302333, 120.17106101442040],
+  '同安寮1之9號':     [23.165383172646585, 120.18878183490827],
+  '仁愛路388號':      [23.154691854591870, 120.17648370731459],
   // 托嬰中心
   '同心街128號':      [23.16111587617277,  120.16805646454287],
   '中山路430號':      [23.163981593449726, 120.17725671528318],
@@ -4054,6 +4061,12 @@ const FACILITY_DB = [
   {n:'新安牙醫診所',  a:'博愛街165號',  t:'dental', p:'7215266'},
   {n:'遠東牙醫診所',  a:'光復路236號',  t:'dental', p:'7238333'},
   {n:'御品牙醫診所',  a:'中山路233號',  t:'dental', p:'7212780'},
+  // Gogoro 換電站
+  {n:'Gogoro 全聯佳里中山店站',       a:'中山路452號',   t:'gogoro'},
+  {n:'Gogoro 佳里國小廣停二停車場站', a:'文化路359號',   t:'gogoro'},
+  {n:'Gogoro 全聯佳里安西店站',       a:'安西路205號',   t:'gogoro'},
+  {n:'Gogoro 中油國賓加油站',         a:'同安寮1之9號',  t:'gogoro'},
+  {n:'Gogoro 全聯佳里仁愛店站A',      a:'仁愛路388號',   t:'gogoro'},
   // 托嬰中心
   {n:'勁寶兒唯馨托嬰中心', a:'同心街128號1-2樓',     t:'nursery', p:'7227375'},
   {n:'凱恩國際托嬰中心',   a:'中山路430號(2-3樓)',   t:'nursery', p:'7217755'},
@@ -4096,6 +4109,7 @@ function _facIcon(type){
     dental:     {c:'#8e44ad', e:'🦷'},
     nursery:    {c:'#e91e8c', e:'🍼'},
     kinder:     {c:'#f39c12', e:'🧒'},
+    gogoro:     {c:'#00c853', e:'🔋'},
   };
   const {c, e} = cfg[type] || {c:'#555', e:'📍'};
   return L.divIcon({
@@ -4175,6 +4189,7 @@ const FAC_GROUPS = {
   dental:    {label:'🦷 牙醫',     types:['dental']},
   nursery:   {label:'🍼 托嬰中心', types:['nursery']},
   kinder:    {label:'🧒 幼兒園',   types:['kinder']},
+  gogoro:    {label:'🔋 Gogoro換電', types:['gogoro']},
 };
 const _facGroups = {};
 const _facGroupBuilding = {};
@@ -4205,9 +4220,12 @@ async function toggleFacGroup(gid){
   for(const [addr, {names, phones, t}] of byAddr){
     const coord = await _resolveFacCoord(addr);
     if(!coord) continue;
+    const dispName = names[0]||addr;
+    const navLabel = dispName.replace(/'/g,"\\'");
+    const navBtn = `<button onclick="showNavBar(${coord[0]},${coord[1]},'${navLabel}');openNavPanel(false)" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>`;
     const label = names.map((n,i)=>
       `<b>${n}</b>${phones[i]?`<br><span style="font-size:11px;color:#555">☎ ${phones[i]}</span>`:''}`
-    ).join('<br>') + `<br><span style="font-size:11px;color:#888">${addr}</span>`;
+    ).join('<br>') + `<br><span style="font-size:11px;color:#888">${addr}</span>${navBtn}`;
     L.marker(coord, {icon:_facIcon(t)})
       .bindPopup(label, {maxWidth:220})
       .addTo(lg);

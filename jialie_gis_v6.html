@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.468</title>
+<title>佳里 GIS v6.469</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5083,25 +5083,26 @@ function showRadiusPanel(lat,lng,pts,label=''){
 }
 
 function _updatePrintBtn(){
-  var wrap = document.getElementById('print-btn-wrap');
-  if(!wrap) return;
-  if(typeof _radiusOn === 'undefined' || typeof _radiusCircle === 'undefined') return;
-  var show = _radiusOn && _radiusCircle !== null;
-  wrap.style.display = show ? 'flex' : 'none';
-  // 側欄收起時跟著移位
-  var sheetEl = document.getElementById('sheet');
-  var collapsed = sheetEl && sheetEl.classList.contains('panel-collapsed');
-  wrap.style.right = collapsed ? '14px' : '360px';
-  // 收合時在匯出鈕左側顯示摘要
-  var infoEl = document.getElementById('radius-info-float');
-  if(infoEl){
-    if(show && collapsed){
-      infoEl.style.display = 'block';
-      infoEl.textContent = (_radiusLabel||'—') + ' 方圓' + RADIUS_M + 'm ' + ((_radiusPts||[]).length) + '筆';
-    } else {
-      infoEl.style.display = 'none';
+  try {
+    var wrap = document.getElementById('print-btn-wrap');
+    if(!wrap) return;
+    var show = _radiusOn && _radiusCircle !== null;
+    wrap.style.display = show ? 'flex' : 'none';
+    // 側欄收起時跟著移位
+    var sheetEl = document.getElementById('sheet');
+    var collapsed = sheetEl && sheetEl.classList.contains('panel-collapsed');
+    wrap.style.right = collapsed ? '14px' : '360px';
+    // 收合時在匯出鈕左側顯示摘要
+    var infoEl = document.getElementById('radius-info-float');
+    if(infoEl){
+      if(show && collapsed){
+        infoEl.style.display = 'block';
+        infoEl.textContent = (_radiusLabel||'—') + ' 方圓' + RADIUS_M + 'm ' + ((_radiusPts||[]).length) + '筆';
+      } else {
+        infoEl.style.display = 'none';
+      }
     }
-  }
+  } catch(e) { /* init 期間變數尚未宣告，忽略 */ }
 }
 
 function printRadiusArea(){
@@ -7488,12 +7489,13 @@ function togglePtEditMode(){
 }
 /* 更新編輯按鈕可用狀態 */
 function _updatePtEditBtn(){
-  var btn = document.getElementById('pt-edit-btn');
-  if(!btn) return;
-  if(typeof _doorLayerOn === 'undefined') return;
-  var can = _doorLayerOn && !_radiusOn && !_vilBoundaryOn;
-  btn.disabled = !can;
-  if(!can && _ptEditMode) togglePtEditMode();
+  try {
+    var btn = document.getElementById('pt-edit-btn');
+    if(!btn) return;
+    var can = _doorLayerOn && !_radiusOn && !_vilBoundaryOn;
+    btn.disabled = !can;
+    if(!can && _ptEditMode) togglePtEditMode();
+  } catch(e) { /* init 期間變數尚未宣告，忽略 */ }
 }
 
 /* 設定建物型態 radio + 高亮 */

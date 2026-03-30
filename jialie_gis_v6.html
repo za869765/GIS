@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.453</title>
+<title>佳里 GIS v6.454</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5435,7 +5435,7 @@ function hideNavBar(){
 /* 查詢按鈕顯示邏輯：起訖點皆有資料才顯示 */
 function _updateNavBarQuery(){
   const btn=document.getElementById('nav-bar-query');
-  if(btn) btn.style.display=(_navFromLat&&_navToLat)?'':'none';
+  if(btn) btn.style.display=(_navFromLat&&_navToLat)?'inline-block':'none';
 }
 
 /* 導航列：設為起點 */

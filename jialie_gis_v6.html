@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.443</title>
+<title>佳里 GIS v6.444</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -165,7 +165,7 @@ input,select,textarea,button{font-family:inherit}
 /* ── 導航浮動列 ── */
 #nav-bar{
   position:fixed;bottom:calc(var(--panel-h)+10px+env(safe-area-inset-bottom,0px));
-  left:50%;transform:translateX(-50%);z-index:630;
+  left:50%;transform:translateX(-50%);z-index:720;
   background:rgba(18,52,74,.96);color:#fff;border-radius:24px;
   padding:9px 8px 9px 16px;display:flex;align-items:center;gap:8px;
   box-shadow:0 4px 20px rgba(0,0,0,.4);transition:opacity .25s,transform .25s;
@@ -177,6 +177,8 @@ input,select,textarea,button{font-family:inherit}
 #nav-bar-from:active{background:rgba(255,255,255,.35)}
 #nav-bar-to{background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:12px;padding:6px 10px;flex-shrink:0;white-space:nowrap;transition:.15s}
 #nav-bar-to:active{background:#1e8449}
+#nav-bar-query{background:#e67e22;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:12px;padding:6px 10px;flex-shrink:0;white-space:nowrap;transition:.15s;display:none}
+#nav-bar-query:active{background:#ca6f1e}
 #nav-bar-x{background:none;border:none;color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;padding:2px 5px;line-height:1;flex-shrink:0}
 #nav-min-btn{background:rgba(255,255,255,.18);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:6px;padding:1px 8px;line-height:1;transition:.15s}
 #nav-min-btn:active{background:rgba(255,255,255,.32)}
@@ -836,9 +838,10 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 <!-- ── 導航浮動列 ── -->
 <div id="nav-bar" class="gone">
   <div id="nav-bar-dest">—</div>
-  <button id="nav-bar-from" onclick="navBarSetFrom()">設起點</button>
-  <button id="nav-bar-to"   onclick="navBarSetTo()">設迄點</button>
-  <button id="nav-bar-x"    onclick="hideNavBar()" title="關閉">✕</button>
+  <button id="nav-bar-from"  onclick="navBarSetFrom()">設起點</button>
+  <button id="nav-bar-to"    onclick="navBarSetTo()">設迄點</button>
+  <button id="nav-bar-query" onclick="navBarQuery()">🔍 查詢</button>
+  <button id="nav-bar-x"     onclick="hideNavBar()" title="關閉">✕</button>
 </div>
 
 <!-- ── 導航面板背景 ── -->
@@ -2799,7 +2802,7 @@ function selectCase(id){
     ${c.notes?`<div class="detail-notes">${c.notes}</div>`:''}
     <div class="detail-actions">
       <button class="btn-edit" onclick="editCase('${c.id}')">✏️ 編輯</button>
-      ${c.lat?`<button class="btn-nav" onclick="showNavBar(${c.lat},${c.lng},${JSON.stringify((addrStr(c)||c.name).replace('臺南市佳里區','').replace('台南市佳里區',''))});openNavPanel()">🧭 導航</button>`:''}
+      ${c.lat?`<button class="btn-nav" onclick="showNavBar(${c.lat},${c.lng},${JSON.stringify((addrStr(c)||c.name).replace('臺南市佳里區','').replace('台南市佳里區',''))});openNavPanel(true)">🧭 導航</button>`:''}
       <button class="btn-del" onclick="promptDelete('${c.id}')">刪除</button>
     </div>`;
   switchTab('detail');
@@ -3066,6 +3069,17 @@ cases.forEach(c=>addMarker(c));
 updateStats();renderList();buildDistStrip();renderLegend();
 /* 手機預設收合，桌機才開 peek */
 if(window.innerWidth>=768) expandSheet('peek');
+/* 桌機：右側欄預設收折（無動畫） */
+if(window.innerWidth>=768){
+  const _is=document.getElementById('sheet');
+  const _im=document.getElementById('map');
+  if(_is&&!_is.classList.contains('panel-collapsed')){
+    if(_is) _is.style.transition='none';
+    if(_im) _im.style.transition='none';
+    toggleSheetPanel();
+    setTimeout(()=>{if(_is)_is.style.transition='';if(_im)_im.style.transition='';},80);
+  }
+}
 _initFacCollapsible();
 // 動態量測 topbar 高度並設置 CSS var
 (function(){
@@ -3778,6 +3792,8 @@ const MANUAL_COORDS = {
   '博愛街165號':      [23.157577239586228, 120.17670153771807],
   '光復路236號':      [23.161857520554157, 120.17489765618019],
   '中山路233號':      [23.160062576796584, 120.17687650765332],
+  // 衛生所（導航預設起點）
+  '進學路159號':      [23.163877779179685, 120.17772634728972],
   // 托嬰中心
   '同心街128號':      [23.16111587617277,  120.16805646454287],
   '中山路430號':      [23.163981593449726, 120.17725671528318],
@@ -4784,6 +4800,7 @@ function _placePin(lat, lng, labelText, color){
   const _isParcelLabel = /^佳里段\s*\d/.test(shortLabel)||/^佳里段\s*\d/.test(labelText);
   const _isValidAddr = shortLabel && shortLabel.length>2 && shortLabel!=='查詢中…' && !_isParcelLabel;
   if(typeof showNavBar==='function' && _isValidAddr) showNavBar(lat, lng, shortLabel||labelText);
+  else if(typeof hideNavBar==='function') hideNavBar();
   return _searchMarker;
 }
 
@@ -5351,9 +5368,16 @@ function showNavBar(lat, lng, label){
   if(!bar||!nm) return;
   nm.textContent=label||`${parseFloat(lat).toFixed(5)}, ${parseFloat(lng).toFixed(5)}`;
   bar.classList.remove('gone');
+  _updateNavBarQuery();
 }
 function hideNavBar(){
   document.getElementById('nav-bar')?.classList.add('gone');
+}
+
+/* 查詢按鈕顯示邏輯：起訖點皆有資料才顯示 */
+function _updateNavBarQuery(){
+  const btn=document.getElementById('nav-bar-query');
+  if(btn) btn.style.display=(_navFromLat&&_navToLat)?'':'none';
 }
 
 /* 導航列：設為起點 */
@@ -5361,18 +5385,27 @@ function navBarSetFrom(){
   _navFromLat=_navBarLat; _navFromLng=_navBarLng;
   _navFromLabel=document.getElementById('nav-bar-dest')?.textContent||'';
   const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
-  openNavPanel();
+  _updateNavBarQuery();
+  openNavPanel(false);
 }
 /* 導航列：設為迄點 */
 function navBarSetTo(){
   _navToLat=_navBarLat; _navToLng=_navBarLng;
   _navToLabel=document.getElementById('nav-bar-dest')?.textContent||'';
   const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=_navToLabel;
-  openNavPanel();
+  _updateNavBarQuery();
+  openNavPanel(false);
+}
+/* 導航列：直接查詢（起訖點皆已設定時才出現） */
+function navBarQuery(){
+  openNavPanel(true);
+  calcNavRoute();
 }
 
-/* 開啟導航面板 */
-function openNavPanel(){
+/* 開啟導航面板
+   expanded=false → 預設最小化（僅標題列）
+   expanded=true  → 展開完整面板（含查詢結果） */
+function openNavPanel(expanded=false){
   /* 里別統計模式下不開放導航 */
   if(_vilBoundaryOn){ alert('請先關閉「里別統計」模式，再使用導航功能。'); return; }
   /* GPS 精度好（< 200m）且在佳里區內 → 自動填起點（僅當起點尚未設定時） */
@@ -5384,23 +5417,25 @@ function openNavPanel(){
       if(fi) fi.value=_navFromLabel;
     }
   }
-  /* 收起側欄，避免與導航面板重疊（手機收底部 sheet、桌機收右側欄） */
+  /* 收起側欄，避免與導航面板重疊 */
   if(window.innerWidth<768){
     expandSheet('collapsed');
   } else {
     const _s=document.getElementById('sheet');
     if(_s&&!_s.classList.contains('panel-collapsed')) toggleSheetPanel();
   }
-  /* 確保面板未最小化 */
+  /* 展開/最小化狀態 */
   const nb=document.getElementById('nav-panel-body');
   const mb=document.getElementById('nav-min-btn');
-  if(nb) nb.style.display='';
-  if(mb) mb.textContent='−';
+  if(nb) nb.style.display=expanded?'':'none';
+  if(mb) mb.textContent=expanded?'−':'+';
   document.getElementById('nav-backdrop')?.classList.add('show');
   document.getElementById('nav-panel')?.classList.add('open');
-  /* 重置結果顯示 */
-  document.getElementById('nav-route-info')?.classList.remove('show');
-  const lb=document.getElementById('nav-launch-btn'); if(lb) lb.style.display='none';
+  if(expanded){
+    document.getElementById('nav-route-info')?.classList.remove('show');
+    const lb=document.getElementById('nav-launch-btn'); if(lb) lb.style.display='none';
+    const sw=document.getElementById('nav-steps-wrap'); if(sw) sw.style.display='none';
+  }
 }
 function closeNavPanel(){
   document.getElementById('nav-backdrop')?.classList.remove('show');
@@ -5414,14 +5449,17 @@ function _isInJiali(lat, lng){
 
 /* 預設起點：進學路159號（GPS不在佳里區時使用） */
 async function _getDefaultNavStart(){
+  /* 優先用 MANUAL_COORDS 精確座標 */
+  if(typeof MANUAL_COORDS!=='undefined'&&MANUAL_COORDS['進學路159號'])
+    return {lat:MANUAL_COORDS['進學路159號'][0],lng:MANUAL_COORDS['進學路159號'][1],label:'進學路159號（預設起點）'};
+  /* 備援：搜尋 DOOR_DB */
   if(typeof DOOR_DB!=='undefined'&&DOOR_DB.length){
-    const q=normAddr('進學路159號');
     for(let i=0;i<DOOR_DB.length;i++){
-      if(normAddr(DOOR_DB[i][2]).includes(q))
+      if((DOOR_DB[i][2]||'').includes('進學路159號'))
         return {lat:DOOR_DB[i][0],lng:DOOR_DB[i][1],label:'進學路159號（預設起點）'};
     }
   }
-  return {lat:23.1726,lng:120.1783,label:'進學路159號（預設起點）'};
+  return {lat:23.163877779179685,lng:120.17772634728972,label:'進學路159號（預設起點）'};
 }
 
 /* 使用 GPS 目前位置 */

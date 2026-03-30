@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.447</title>
+<title>佳里 GIS v6.448</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -506,8 +506,8 @@ input,select,textarea,button{font-family:inherit}
   #gps-btn{right:calc(340px + 14px);bottom:74px}
   #nav-bar{left:calc(50% - 170px)}
   #nav-bar.gone{transform:translateX(-50%) translateY(14px)}
-  #nav-panel{width:360px;left:auto;right:calc(340px + 14px);bottom:20px;border-radius:12px;transform:scale(.95) translateY(10px);transform-origin:bottom right}
-  #nav-panel.open{transform:scale(1) translateY(0)}
+  #nav-panel{width:360px;left:auto;right:calc(340px + 14px);bottom:20px;border-radius:12px;transform:translateY(calc(100% + 40px));transform-origin:bottom right}
+  #nav-panel.open{transform:translateY(0)}
   #dist-strip{top:calc(env(safe-area-inset-top,0px) + 68px)}
   /* Search bar inside right panel on desktop */
   #map-search-bar{
@@ -852,11 +852,11 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
   <div id="nav-panel-hd">
     <span style="font-weight:700;font-size:14px">🧭 導航規劃</span>
     <div style="display:flex;gap:6px;align-items:center">
-      <button id="nav-min-btn" onclick="toggleNavPanelMin()" title="最小化">−</button>
+      <button id="nav-min-btn" onclick="toggleNavPanelMin()" title="展開/最小化">+</button>
       <button onclick="closeNavPanel()" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:20px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
     </div>
   </div>
-  <div id="nav-panel-body">
+  <div id="nav-panel-body" style="display:none">
     <div style="margin-bottom:4px">
       <div class="nav-field-lbl">🟢 起點</div>
       <div class="nav-input-row">

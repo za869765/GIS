@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.497</title>
+<title>佳里 GIS v6.498</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -730,6 +730,8 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
   /* FAB 新增模式中凍結 radius/measure */
   body.cpt-fab-mode #radius-bar,
   body.cpt-fab-mode #measure-bar{pointer-events:none !important;opacity:0.35 !important;}
+  /* 手機：機構圖層按鈕移至 leg-drawer，left-tools 只保留里別開關 */
+  #left-tools #fac-group-btns{display:none !important;}
 }
 #map-search-input{
   flex:1;border:none;outline:none;font-size:14px;
@@ -5226,13 +5228,11 @@ function exportRadiusList(){
     const vil = (typeof getVillageAt==='function') ? (getVillageAt(p.lat,p.lng)||'') : '';
     rows.push([vil, ..._parseAddrParts(addr)]);
   });
-  /* HTML 表格格式（.xls）：Android WPS/Excel 最相容，無亂碼問題 */
-  const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body><table>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table></body></html>`;
+  const csv = '\uFEFF' + rows.map(r=>r.join(',')).join('\n');
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'}));
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   const safeName = (_radiusLabel||'地點').replace(/[\\/:*?"<>|]/g,'');
-  a.download = `${safeName}半徑${RADIUS_M}公尺清單.xls`;
+  a.download = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
   a.click();
 }
 
@@ -5619,7 +5619,7 @@ function _stopGpsWatch() {
 let _navBarLat=null, _navBarLng=null;
 let _navFromLat=null, _navFromLng=null, _navFromLabel='';
 let _navToLat=null,   _navToLng=null,   _navToLabel='';
-let _navRouteLayer=null, _navSugTimer=null;
+let _navRouteLayer=null, _navSugTimer=null, _preNavView=null;
 let _gpsAccuracy=9999; /* 由 locateMe 寫入 */
 let _navFromMarker=null, _navToMarker=null;
 
@@ -5785,6 +5785,8 @@ function closeNavPanel(){
 function resetNavPanel(){
   closeNavPanel();
   hideNavBar();
+  /* 恢復導航前的地圖視角 */
+  if(_preNavView){ map.setView(_preNavView.center, _preNavView.zoom, {animate:false}); _preNavView=null; }
   if(_navFromMarker){ map.removeLayer(_navFromMarker); _navFromMarker=null; }
   if(_navToMarker){   map.removeLayer(_navToMarker);   _navToMarker=null; }
   if(_navRouteLayer){ map.removeLayer(_navRouteLayer); _navRouteLayer=null; }
@@ -6023,6 +6025,8 @@ async function calcNavRoute(){
   if(!_navFromLat && fi){ const r=_navDbSearch(fi)[0]; if(r){_navFromLat=r.lat;_navFromLng=r.lng;_navFromLabel=r.label;} }
   if(!_navToLat   && ti){ const r=_navDbSearch(ti)[0]; if(r){_navToLat=r.lat;_navToLng=r.lng;_navToLabel=r.label;} }
   if(!_navFromLat||!_navToLat){alert('請填寫起訖點，或從下拉選單選擇地址');return;}
+  /* 儲存 fitBounds 前的視角，供關閉導航時恢復 */
+  _preNavView={center:map.getCenter(),zoom:map.getZoom()};
 
   const btn=document.getElementById('nav-calc-btn');
   btn.disabled=true; btn.textContent='查詢中…';

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.464</title>
+<title>佳里 GIS v6.465</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -193,12 +193,13 @@ body.vil-mode .nav-fac-btn{background:rgba(150,150,150,.45)!important;color:rgba
 
 /* ── 自定義地點編輯模式 ── */
 body.pt-edit-mode #map{cursor:crosshair !important}
-body.vil-mode #pt-edit-btn-wrap{display:none!important}
+/* pt-edit-btn-wrap visibility handled by _updatePtEditBtn() */
 @media(max-width:1023px){#pt-edit-btn-wrap{display:none!important}}
 @media print{#pt-edit-btn-wrap,#cpt-modal,#pt-edit-banner,#pt-pick-banner{display:none!important}}
-#pt-edit-btn{width:100%;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;transition:.15s;text-align:left;font-family:inherit}
-#pt-edit-btn:hover{background:var(--surface3)}
+#pt-edit-btn{font-size:12px;padding:5px 14px;border-radius:8px;border:2px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-weight:700;font-family:inherit;transition:.15s}
 #pt-edit-btn.active{background:#e67e22;border-color:#e67e22;color:#fff}
+#pt-edit-btn:disabled{opacity:.38;cursor:not-allowed}
+#radius-info-float{font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap;display:none}
 #pt-edit-banner{display:none;position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:1500;background:#e67e22;color:#fff;border-radius:20px;padding:7px 18px;font-size:12px;font-weight:700;box-shadow:0 2px 12px rgba(0,0,0,.28);white-space:nowrap;gap:10px;align-items:center}
 #pt-edit-banner.show{display:flex}
 #pt-pick-banner{display:none;position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:1600;background:#1b4f72;color:#fff;border-radius:20px;padding:7px 18px;font-size:12px;font-weight:700;box-shadow:0 2px 12px rgba(0,0,0,.28);white-space:nowrap;gap:10px;align-items:center}
@@ -856,6 +857,7 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 <div id="sheet-toggle-btn" onclick="toggleSheetPanel()" title="收起/展開側欄">▶</div>
 <!-- ── 列印／匯出按鈕組 ── -->
 <div id="print-btn-wrap" style="display:none;position:fixed;top:14px;right:360px;z-index:600;display:none;gap:6px;transition:right .25s ease;align-items:center">
+  <div id="radius-info-float"></div>
   <button id="export-btn" onclick="exportRadiusList()" title="匯出範圍門牌清單" style="background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);color:var(--text1)">⬇ 匯出</button>
   <button id="print-btn" onclick="printRadiusArea()" title="列印範圍地圖" style="background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);color:var(--text1)">🖨 列印</button>
 </div>
@@ -990,7 +992,10 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
     <button id="sc-sd-rate" onclick="_setScSort('rate')" style="flex:1;padding:5px 0;border-radius:6px;border:none;font-size:11px;font-weight:700;cursor:pointer">人口比率</button>
   </div>
   <div id="pt-edit-btn-wrap" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
-    <button id="pt-edit-btn" onclick="togglePtEditMode()">📌 新增／編輯地點</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 4px">
+      <span style="font-size:12px;font-weight:800;color:var(--text1);letter-spacing:.3px">📌 編輯模式</span>
+      <button id="pt-edit-btn" onclick="togglePtEditMode()">編輯 OFF</button>
+    </div>
   </div>
 </div>
 
@@ -4970,6 +4975,7 @@ document.body.appendChild(_radiusBar);
 function setRadius(m){
   _radiusOn = m > 0;
   RADIUS_M = m || 50;
+  setTimeout(_updatePtEditBtn, 0);
   ['off','50','100'].forEach(k=>{
     const btn = document.getElementById('r-'+k);
     if(!btn) return;
@@ -5037,6 +5043,15 @@ function show50mList(lat, lng, label=''){
     }
     nearby.sort((a,b) => a.dist - b.dist);
   }
+  /* 加入自定義地點 */
+  if(typeof _cpts!=='undefined'){
+    const cosLat2=Math.cos(lat*Math.PI/180);
+    for(const p of _cpts){
+      const d=Math.sqrt(Math.pow(p.lat-lat,2)+Math.pow((p.lng-lng)*cosLat2,2))*111000;
+      if(d<=RADIUS_M) nearby.push({lat:p.lat,lng:p.lng,addr:`${p.name}（${p.addr}）`,dist:Math.round(d),isCpt:true,cptId:p.id});
+    }
+    nearby.sort((a,b)=>a.dist-b.dist);
+  }
   // 若無傳入 label，找最近的門牌當標題
   if(!label && nearby.length) label = nearby[0].addr;
   showRadiusPanel(lat, lng, nearby, label);
@@ -5063,6 +5078,7 @@ function showRadiusPanel(lat,lng,pts,label=''){
   </div>`;
   resultsEl.innerHTML = html;
   if(_radiusOn && pts.length) setTimeout(toggleRadiusDots, 0);
+  _updatePrintBtn();
 }
 
 function _updatePrintBtn(){
@@ -5070,9 +5086,18 @@ function _updatePrintBtn(){
   if(!wrap) return;
   const show = _radiusOn && _radiusCircle !== null;
   wrap.style.display = show ? 'flex' : 'none';
-  // 側欄收起時跟著移位
   const collapsed = document.getElementById('sheet')?.classList.contains('panel-collapsed');
   wrap.style.right = collapsed ? '14px' : '360px';
+  /* 側欄收起時在匯出按鈕左側顯示範圍摘要 */
+  const infoEl = document.getElementById('radius-info-float');
+  if(infoEl){
+    if(show && collapsed && typeof _radiusLabel!=='undefined'){
+      infoEl.style.cssText='display:block;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap';
+      infoEl.textContent=`${_radiusLabel||'—'}　方圓${RADIUS_M}m　${(_radiusPts||[]).length}筆`;
+    } else {
+      infoEl.style.display='none';
+    }
+  }
 }
 
 function printRadiusArea(){
@@ -5195,6 +5220,7 @@ function toggleSheetPanel(){
   btn.classList.toggle('panel-collapsed', collapsed);
   btn.textContent = collapsed ? '◀' : '▶';
   if(leg) leg.style.right = collapsed ? '14px' : '354px';
+  _updatePrintBtn();
   const gpsBtnEl = document.getElementById('gps-btn');
   if(gpsBtnEl) gpsBtnEl.style.right = collapsed ? '14px' : 'calc(340px + 14px)';
   const npEl = document.getElementById('nav-panel');
@@ -5239,6 +5265,7 @@ function toggleVilLayer(){
   _vilBoundaryOn = !_vilBoundaryOn;
   document.body.classList.toggle('vil-mode', _vilBoundaryOn);
   if(_vilBoundaryOn && _ptEditMode) togglePtEditMode(); // 里界模式開啟時自動關閉地點編輯模式
+  setTimeout(_updatePtEditBtn, 0);
   ['vil-layer-btn','vil-layer-btn-mobile'].forEach(id=>{
     const btn=document.getElementById(id);
     if(!btn) return;
@@ -5513,8 +5540,9 @@ function _placeNavToMarker(lat, lng, label){
 
 /* 顯示浮動導航列（搜尋 pin 時自動呼叫） */
 function showNavBar(lat, lng, label){
-  /* 里別統計模式中不顯示導航列 */
+  /* 里別統計模式或方圓模式中不顯示導航列 */
   if(_vilBoundaryOn) return;
+  if(_radiusOn) return;
   _navBarLat=lat; _navBarLng=lng;
   const bar=document.getElementById('nav-bar');
   const nm=document.getElementById('nav-bar-dest');
@@ -6131,6 +6159,7 @@ _doorBtn.addEventListener('click',()=>{
   _doorBtn.style.background = _doorLayerOn ? 'var(--blue)' : 'rgba(255,255,255,.94)';
   _doorBtn.style.color = _doorLayerOn ? '#fff' : 'var(--text1)';
   if(_doorLayerOn) _refreshDoorLayer(); else _clearDoorLayer();
+  _updatePtEditBtn();
 });
 
 /* ── 地號圖層 legend 按鈕控制 ── */
@@ -6255,7 +6284,7 @@ function _refreshDoorLayer(){
       // 圓圈外公寓：淡灰圓點
       if(hasRadius && !inRadius){
         const cm=L.circleMarker([r[0],r[1]],{renderer:_doorRenderer,radius:4,color:'#aaa',fillColor:'#ccc',fillOpacity:0.22,weight:0.8});
-        cm.on('click',(ev)=>{ L.DomEvent.stop(ev); _aptClickFn(r[0],r[1]); });
+        cm.on('click',(ev)=>{ L.DomEvent.stop(ev); if(_ptEditMode){openCptEditFromDoor(r);return;} _aptClickFn(r[0],r[1]); });
         _doorLayerGroup.addLayer(cm); cnt++;
         continue;
       }
@@ -6278,7 +6307,7 @@ function _refreshDoorLayer(){
       } else {
         cm=L.circleMarker([r[0],r[1]],{renderer:_doorRenderer,radius:5,color:'#27ae60',fillColor:'#2ecc71',fillOpacity:0.9,weight:1.5});
       }
-      cm.on('click',(ev)=>{ L.DomEvent.stopPropagation(ev); _aptClickFn(r[0],r[1]); });
+      cm.on('click',(ev)=>{ L.DomEvent.stopPropagation(ev); if(_ptEditMode){openCptEditFromDoor(r);return;} _aptClickFn(r[0],r[1]); });
       _doorLayerGroup.addLayer(cm); cnt++;
     } else {
       // 一般門牌：circleMarker
@@ -6292,6 +6321,7 @@ function _refreshDoorLayer(){
       const cm=L.circleMarker([r[0],r[1]],{renderer:_doorRenderer,radius:rad,color:dotC,fillColor:fillC,fillOpacity:fillO,weight:w});
       cm.on('click',(ev)=>{
         L.DomEvent.stop(ev);
+        if(_ptEditMode){ openCptEditFromDoor(r); return; }
         _placePin(r[0],r[1],disp); show50mList(r[0],r[1],disp);
       });
       _doorLayerGroup.addLayer(cm); cnt++;
@@ -7275,6 +7305,79 @@ function _saveCpts(){
   try{ localStorage.setItem(_CPT_KEY,JSON.stringify(_cpts)); }catch{}
 }
 
+/* ── DOOR_DB 門牌修改 Override 系統 ── */
+const _CPT_OVR_KEY='jialie-cpt-ovr-v1';
+let _cptOverrides={};  // {originalFullAddr: {name,addr,lat,lng,bldType,tel,group,modifiedAt}}
+let _ovrLayer=null;
+function _loadOverrides(){ try{_cptOverrides=JSON.parse(localStorage.getItem(_CPT_OVR_KEY)||'{}');}catch{_cptOverrides={};} }
+function _saveOverrides(){ try{localStorage.setItem(_CPT_OVR_KEY,JSON.stringify(_cptOverrides));}catch{} }
+
+/* 渲染 Override（已修改的 DOOR_DB 點，橘框藍/綠點） */
+function _renderCptOverrides(){
+  if(_ovrLayer){ map.removeLayer(_ovrLayer); _ovrLayer=null; }
+  const keys=Object.keys(_cptOverrides); if(!keys.length) return;
+  _ovrLayer=L.layerGroup();
+  for(const origAddr of keys){
+    const ovr=_cptOverrides[origAddr];
+    const isApt=ovr.bldType==='apt';
+    const cm=L.circleMarker([ovr.lat,ovr.lng],{
+      radius:6, color:'#e67e22', fillColor:isApt?'#2ecc71':'#2196f3', fillOpacity:0.92, weight:2.5
+    });
+    const ts=`✏️ 修改 ${new Date(ovr.modifiedAt||Date.now()).toLocaleDateString('zh-TW')}`;
+    cm.bindTooltip(ts,{permanent:false,direction:'top',className:'pin-label'});
+    const safeOrig=origAddr.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const disp=(ovr.name||origAddr).replace('臺南市佳里區','').replace('台南市佳里區','');
+    const telHtml=ovr.tel?`<div style="font-size:11px;color:#555;margin-top:2px">📞 ${ovr.tel}</div>`:'';
+    const grpHtml=(ovr.group&&FAC_GROUPS[ovr.group])?`<div style="font-size:11px;color:#888">${FAC_GROUPS[ovr.group].label}</div>`:'';
+    cm.bindPopup(()=>{
+      const editBtns=_ptEditMode?`<button onclick="window._ovrKey='${safeOrig}';openCptEditFromDoor(null)" style="flex:1;padding:5px;background:#1b4f72;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px">✏️ 編輯</button><button onclick="deleteCptConfirm('ovr:${safeOrig}')" style="padding:5px 9px;background:#fde8e8;border:none;color:#c0392b;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px">↩ 還原</button>`:'';
+      return `<div style="min-width:160px"><b style="font-size:13px">${disp}</b><div style="font-size:11px;color:#e67e22;font-weight:600;margin-top:1px">✏️ 已修改</div><div style="font-size:11px;color:#666;margin-top:1px">${ovr.addr||origAddr}</div>${telHtml}${grpHtml}<div style="font-size:10px;color:#aaa;margin-top:3px">${ts}</div>${editBtns?`<div style="display:flex;gap:5px;margin-top:8px">${editBtns}</div>`:''}</div>`;
+    },{maxWidth:260});
+    _ovrLayer.addLayer(cm);
+  }
+  _ovrLayer.addTo(map);
+}
+
+/* 開啟 DOOR_DB 門牌修改表單（r = DOOR_DB entry [lat,lng,addr] 或 null 時從 window._ovrKey 讀） */
+function openCptEditFromDoor(r){
+  let fullAddr,origLat,origLng;
+  if(r){
+    fullAddr=r[2]; origLat=r[0]; origLng=r[1];
+    window._ovrKey=fullAddr;
+  } else {
+    fullAddr=window._ovrKey||'';
+    const entry=typeof DOOR_DB!=='undefined'?DOOR_DB.find(d=>d[2]===fullAddr):null;
+    origLat=entry?entry[0]:0; origLng=entry?entry[1]:0;
+  }
+  map.closePopup();
+  const ovr=_cptOverrides[fullAddr]||{};
+  const isApt=(ovr.bldType)?ovr.bldType==='apt':fullAddr.includes('樓');
+  const disp=(ovr.name||fullAddr).replace('臺南市佳里區','').replace('台南市佳里區','');
+  _clearErrCpt();
+  document.getElementById('cpt-modal-title').textContent='✏️ 修改門牌資料';
+  document.getElementById('cpt-name').value=disp;
+  document.getElementById('cpt-addr').value=ovr.addr||fullAddr;
+  document.getElementById('cpt-lat').value=ovr.lat!==undefined?ovr.lat:origLat;
+  document.getElementById('cpt-lng').value=ovr.lng!==undefined?ovr.lng:origLng;
+  document.getElementById('cpt-tel').value=ovr.tel||'';
+  document.getElementById('cpt-group-sel').value=ovr.group||'';
+  document.getElementById('cpt-edit-id').value=`ovr:${fullAddr}`;
+  document.getElementById('cpt-del-btn').style.display=Object.keys(ovr).length?'block':'none';
+  document.getElementById('cpt-del-btn').textContent='↩ 還原';
+  _setBldType(isApt?'apt':'townhouse');
+  document.getElementById('cpt-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('cpt-name').focus(),80);
+}
+
+/* 編輯模式按鈕：依條件啟用/停用 */
+function _updatePtEditBtn(){
+  const btn=document.getElementById('pt-edit-btn');
+  if(!btn) return;
+  const canEdit=_doorLayerOn && !_radiusOn && !_vilBoundaryOn;
+  btn.disabled=!canEdit;
+  if(!canEdit && _ptEditMode) togglePtEditMode();
+}
+
 /* 自定義地點標記圖示（依類別 & 建物型態換 emoji / 顏色） */
 function _cptIcon(group, bldType){
   let e, bg;
@@ -7288,31 +7391,33 @@ function _cptIcon(group, bldType){
   });
 }
 
-/* 渲染所有自定義地點 */
+/* 生成自定義地點 popup HTML（依編輯模式動態顯示按鈕） */
+function _cptPopupHtml(p){
+  const bldHtml=p.bldType==='apt'?'🏢 大樓':'🏠 透天';
+  const telHtml=p.tel?`<div style="font-size:11px;color:#555;margin-top:2px">📞 ${p.tel}</div>`:'';
+  const grpHtml=(p.group&&FAC_GROUPS[p.group])?`<div style="font-size:11px;color:#888">${FAC_GROUPS[p.group].label}</div>`:'';
+  const ts=p.modifiedAt?`✏️ 修改 ${new Date(p.modifiedAt).toLocaleDateString('zh-TW')}`:p.createdAt?`📌 建立 ${new Date(p.createdAt).toLocaleDateString('zh-TW')}`:'';
+  const pid=p.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const pname=p.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const editBtns=_ptEditMode?`<button onclick="openCptEdit('${pid}')" style="flex:1;padding:5px;background:#1b4f72;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px">✏️ 編輯</button><button onclick="deleteCptConfirm('${pid}')" style="padding:5px 9px;background:#fde8e8;border:none;color:#c0392b;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px">🗑</button>`:'';
+  return `<div style="min-width:160px"><b style="font-size:13px">${p.name}</b><div style="font-size:11px;color:#666;margin-top:2px">${p.addr}</div><div style="font-size:11px;color:#777">${bldHtml}</div>${telHtml}${grpHtml}${ts?`<div style="font-size:10px;color:#aaa;margin-top:3px">${ts}</div>`:''}<div style="display:flex;gap:5px;margin-top:8px"><button class="nav-fac-btn" onclick="navFacTo(${p.lat},${p.lng},'${pname}');map.closePopup()" style="flex:1;padding:5px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px">🧭 導航</button>${editBtns}</div></div>`;
+}
+
+/* 渲染所有自定義地點（小藍/綠圓點，無圖示） */
 function _renderCpts(){
   if(_cptLayer){ map.removeLayer(_cptLayer); _cptLayer=null; }
   if(!_cpts.length) return;
   _cptLayer = L.layerGroup();
   _cpts.forEach(p=>{
-    const mk = L.marker([p.lat,p.lng],{icon:_cptIcon(p.group,p.bldType),zIndexOffset:850});
-    const bldHtml = p.bldType==='apt'?'🏢 大樓':'🏠 透天';
-    const telHtml = p.tel ? `<div style="font-size:11px;color:#555;margin-top:3px">📞 ${p.tel}</div>` : '';
-    const grpHtml = (p.group && FAC_GROUPS[p.group]) ? `<div style="font-size:11px;color:#888;margin-top:1px">${FAC_GROUPS[p.group].label}</div>` : '';
-    const pid = p.id.replace(/'/g,"\\'");
-    const pname = p.name.replace(/'/g,"\\'");
-    mk.bindPopup(`<div style="min-width:170px">
-      <b style="font-size:13px">${p.name}</b>
-      <div style="font-size:11px;color:#666;margin-top:2px">${p.addr}</div>
-      <div style="font-size:11px;color:#777;margin-top:2px">${bldHtml}</div>
-      ${telHtml}${grpHtml}
-      <div style="font-size:10px;color:#bbb;margin-top:4px">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</div>
-      <div style="display:flex;gap:5px;margin-top:8px">
-        <button class="nav-fac-btn" onclick="navFacTo(${p.lat},${p.lng},'${pname}');map.closePopup()" style="flex:1;padding:5px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px">🧭 導航</button>
-        <button onclick="openCptEdit('${pid}')" style="flex:1;padding:5px;background:#1b4f72;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px">✏️ 編輯</button>
-        <button onclick="deleteCptConfirm('${pid}')" style="padding:5px 9px;background:#fde8e8;border:none;color:#c0392b;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px">🗑</button>
-      </div>
-    </div>`);
-    _cptLayer.addLayer(mk);
+    const isApt=p.bldType==='apt';
+    const cm=L.circleMarker([p.lat,p.lng],{
+      radius:6, color:isApt?'#27ae60':'#1565c0',
+      fillColor:isApt?'#2ecc71':'#2196f3', fillOpacity:0.9, weight:1.8
+    });
+    const ts=p.modifiedAt?`✏️ 修改 ${new Date(p.modifiedAt).toLocaleDateString('zh-TW')}`:p.createdAt?`📌 建立 ${new Date(p.createdAt).toLocaleDateString('zh-TW')}`:'';
+    if(ts) cm.bindTooltip(ts,{permanent:false,direction:'top',className:'pin-label'});
+    cm.bindPopup(()=>_cptPopupHtml(p),{maxWidth:260});
+    _cptLayer.addLayer(cm);
   });
   _cptLayer.addTo(map);
 }
@@ -7328,14 +7433,17 @@ function _cptToast(msg){
 
 /* 切換編輯模式 */
 function togglePtEditMode(){
+  /* 條件檢查：門牌點開啟 + 單點模式 + 里別統計關閉 */
+  if(!_ptEditMode){
+    if(!_doorLayerOn||_radiusOn||_vilBoundaryOn) return;
+  }
   _ptEditMode = !_ptEditMode;
   document.body.classList.toggle('pt-edit-mode',_ptEditMode);
   const btn=document.getElementById('pt-edit-btn');
   const banner=document.getElementById('pt-edit-banner');
-  if(btn) btn.classList.toggle('active',_ptEditMode);
+  if(btn){ btn.classList.toggle('active',_ptEditMode); btn.textContent=_ptEditMode?'編輯 ON':'編輯 OFF'; }
   if(banner) _ptEditMode ? banner.classList.add('show') : banner.classList.remove('show');
   if(!_ptEditMode){
-    /* 關閉編輯模式：同時關閉取座標 Banner 與表單（不要重新開啟 modal） */
     _ptPickMode=false;
     document.getElementById('pt-pick-banner')?.classList.remove('show');
     closeCptModal();
@@ -7473,26 +7581,40 @@ function saveCptForm(){
   if(chk.block){ alert('⚠️ 無法儲存\n\n'+chk.msg); return; }
   if(chk.warn && !confirm('⚠️ 位置警告\n\n'+chk.msg)) return;
 
-  if(editId){
+  if(editId && editId.startsWith('ovr:')){
+    /* DOOR_DB 修改 Override */
+    const origAddr=editId.slice(4);
+    /* 座標必須在佳里區範圍內 */
+    if(!_isInJiali(lat,lng)){ alert('⚠️ 座標超出佳里區範圍，請重新取座標'); return; }
+    _cptOverrides[origAddr]={name,addr,lat,lng,bldType,tel,group,modifiedAt:Date.now()};
+    _saveOverrides(); _renderCptOverrides(); _refreshDoorLayer();
+    closeCptModal(); _cptToast('門牌資料已修改 ✓');
+  } else if(editId){
     const idx=_cpts.findIndex(c=>c.id===editId);
-    if(idx>=0) _cpts[idx]={..._cpts[idx],name,addr,lat,lng,bldType,tel,group};
-    _cptToast('地點已更新 ✓');
+    if(idx>=0) _cpts[idx]={..._cpts[idx],name,addr,lat,lng,bldType,tel,group,modifiedAt:Date.now()};
+    _saveCpts(); _renderCpts(); closeCptModal(); _cptToast('地點已更新 ✓');
   } else {
     _cpts.push({id:'cpt_'+Date.now(),name,addr,lat,lng,bldType,tel,group,createdAt:Date.now()});
-    _cptToast('地點已新增 ✓');
+    _saveCpts(); _renderCpts(); closeCptModal(); _cptToast('地點已新增 ✓');
   }
-  _saveCpts(); _renderCpts(); closeCptModal();
 }
 
-/* 刪除確認 */
+/* 刪除確認（ovr: 前綴 = 還原 DOOR_DB，無前綴 = 刪除自定義點） */
 function deleteCptConfirm(id){
   const delId=id||document.getElementById('cpt-edit-id').value;
   if(!delId) return;
-  if(!confirm('確定刪除此地點？')) return;
-  _cpts=_cpts.filter(c=>c.id!==delId);
-  _saveCpts(); _renderCpts();
-  map.closePopup(); closeCptModal();
-  _cptToast('地點已刪除');
+  if(delId.startsWith('ovr:')){
+    if(!confirm('確定還原此門牌為原始資料？')) return;
+    const origAddr=delId.slice(4);
+    delete _cptOverrides[origAddr];
+    _saveOverrides(); _renderCptOverrides(); _refreshDoorLayer();
+    map.closePopup(); closeCptModal(); _cptToast('已還原為原始資料');
+  } else {
+    if(!confirm('確定刪除此地點？')) return;
+    _cpts=_cpts.filter(c=>c.id!==delId);
+    _saveCpts(); _renderCpts();
+    map.closePopup(); closeCptModal(); _cptToast('地點已刪除');
+  }
 }
 
 /* 座標取點：點地圖選座標 */
@@ -7521,9 +7643,10 @@ function _applyCoordPick(lat, lng){
   document.getElementById('cpt-modal').classList.add('show');
 }
 
-/* 初始化：載入並渲染自定義地點 */
-_loadCpts();
-_renderCpts();
+/* 初始化：載入並渲染自定義地點與門牌修改覆寫 */
+_loadCpts(); _renderCpts();
+_loadOverrides(); _renderCptOverrides();
+setTimeout(_updatePtEditBtn, 1200);
 </script>
 </body>
 </html>

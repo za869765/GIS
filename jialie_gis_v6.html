@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.437</title>
+<title>佳里 GIS v6.438</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -146,6 +146,21 @@ input,select,textarea,button{font-family:inherit}
 }
 #fab:active{transform:scale(.92)}
 #fab.mode-on{background:var(--danger)}
+
+/* GPS 定位按鈕 */
+#gps-btn{
+  position:fixed;right:14px;
+  bottom:calc(var(--panel-h) + 74px + env(safe-area-inset-bottom,0px));
+  z-index:550;width:44px;height:44px;border-radius:50%;
+  background:rgba(255,255,255,.94);color:var(--blue);
+  border:1.5px solid var(--border2);font-size:18px;cursor:pointer;
+  box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;
+  transition:.2s;
+}
+#gps-btn:active{transform:scale(.92)}
+#gps-btn.locating{animation:gps-spin .8s linear infinite}
+#gps-btn.located{color:#1a7a44;border-color:#1a7a44;background:#f0fff4}
+@keyframes gps-spin{to{transform:rotate(360deg)}}
 
 /* Legend button */
 #leg-toggle{
@@ -637,7 +652,7 @@ input,select,textarea,button{font-family:inherit}
   body>*{display:none!important}
   #map{display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;right:0!important}
   .leaflet-control-attribution,.leaflet-control-zoom{display:none!important}
-  #left-tools,#ctrl-panel,#topbar,#sheet,#sheet-toggle-btn,#print-btn,#roadbar,#fab,#leg-drawer,#leg-backdrop,#legend-desktop{display:none!important}
+  #left-tools,#ctrl-panel,#topbar,#sheet,#sheet-toggle-btn,#print-btn,#roadbar,#fab,#gps-btn,#leg-drawer,#leg-backdrop,#legend-desktop{display:none!important}
   .leaflet-popup,.leaflet-tooltip{display:none!important}
 }
 
@@ -742,6 +757,15 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 
 <!-- ── FAB ── -->
 <button id="fab" onclick="startAddMode()">＋</button>
+
+<!-- ── GPS 定位 ── -->
+<button id="gps-btn" onclick="locateMe()" title="定位目前位置">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+    <circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="7"/>
+    <line x1="12" y1="17" x2="12" y2="22"/><line x1="2" y1="12" x2="7" y2="12"/>
+    <line x1="17" y1="12" x2="22" y2="12"/>
+  </svg>
+</button>
 
 <!-- ── 量測按鈕（獨立，由ctrl-panel接管） ── -->
 <div id="measure-bar">
@@ -5031,6 +5055,66 @@ map.on('zoomend moveend', ()=>{ if(_landLayerOn) _showLandLayer(); });
 ══════════════════════════════════════════════════════════ */
 L.control.scale({position:'bottomleft', imperial:false, maxWidth:120}).addTo(map);
 L.control.zoom({position:'bottomleft'}).addTo(map);
+
+/* ══════════════════════════════════════════════════════════
+   GPS 定位
+══════════════════════════════════════════════════════════ */
+let _gpsMarker = null;
+let _gpsCircle = null;
+
+function locateMe() {
+  if (!navigator.geolocation) {
+    alert('您的瀏覽器不支援定位功能');
+    return;
+  }
+  const btn = document.getElementById('gps-btn');
+  btn.classList.remove('located');
+  btn.classList.add('locating');
+  btn.title = '定位中…';
+
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const acc = Math.round(pos.coords.accuracy);
+
+      btn.classList.remove('locating');
+      btn.classList.add('located');
+      btn.title = `目前位置（精度 ±${acc}m）`;
+
+      /* 移除舊標記 */
+      if (_gpsMarker) { map.removeLayer(_gpsMarker); _gpsMarker = null; }
+      if (_gpsCircle) { map.removeLayer(_gpsCircle); _gpsCircle = null; }
+
+      /* 精度圓 */
+      _gpsCircle = L.circle([lat, lng], {
+        radius: pos.coords.accuracy,
+        color:'#1b6fd8', fillColor:'#1b6fd8',
+        fillOpacity:.12, weight:1.5, interactive:false
+      }).addTo(map);
+
+      /* 位置點 */
+      const icon = L.divIcon({
+        className:'',
+        html:'<div style="width:14px;height:14px;border-radius:50%;background:#1b6fd8;border:3px solid #fff;box-shadow:0 0 8px rgba(27,111,216,.8)"></div>',
+        iconSize:[14,14], iconAnchor:[7,7]
+      });
+      _gpsMarker = L.marker([lat, lng], {icon, zIndexOffset:500})
+        .bindPopup(`<b>📍 目前位置</b><br>精度：±${acc} m<br><small style="color:#888">${lat.toFixed(5)}, ${lng.toFixed(5)}</small>`)
+        .addTo(map)
+        .openPopup();
+
+      /* 置中地圖，zoom 至少 16 */
+      map.setView([lat, lng], Math.max(map.getZoom(), 16));
+    },
+    function(err) {
+      btn.classList.remove('locating');
+      const msgs = ['', '定位權限被拒絕，請在瀏覽器允許位置存取', '無法取得位置資訊', '定位逾時，請再試一次'];
+      alert(msgs[err.code] || '定位失敗');
+    },
+    { enableHighAccuracy:true, timeout:12000, maximumAge:30000 }
+  );
+}
 
 /* 選取模式：永遠開啟 */
 const _selectMode = true;

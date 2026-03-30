@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.484</title>
+<title>佳里 GIS v6.485</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -218,6 +218,9 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
 #cpt-coord-row .cpt-inp{flex:1;min-width:0}
 #cpt-pick-btn{padding:7px 10px;border:1.5px solid #1b4f72;border-radius:8px;background:none;color:#1b4f72;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:inherit}
 #cpt-pick-btn:hover{background:#eaf1fb}
+#cpt-bld-row{display:flex;gap:8px;margin-top:2px}
+.cpt-bld-btn{flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s}
+.cpt-bld-btn.active{background:#1b4f72;color:#fff;border-color:#1b4f72}
 #cpt-modal-actions{display:flex;gap:8px;margin-top:16px}
 #cpt-modal-actions button{flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit}
 #cpt-save-btn{background:#1b4f72;color:#fff}
@@ -718,6 +721,10 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
   }
   #radius-bar>div>span{display:none !important;}
   #radius-bar>div>button{padding:5px 14px !important;font-size:12px !important;}
+  /* 導航模式中隱藏地圖工具列，避免遮擋路線 */
+  body.nav-active #radius-bar,
+  body.nav-active #measure-bar,
+  body.nav-active #door-btn{display:none !important;}
 }
 #map-search-input{
   flex:1;border:none;outline:none;font-size:14px;
@@ -1039,6 +1046,11 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
       <input id="cpt-lat" class="cpt-inp" placeholder="緯度" type="number" step="any">
       <input id="cpt-lng" class="cpt-inp" placeholder="經度" type="number" step="any">
       <button id="cpt-pick-btn" onclick="startCoordPick()" title="點擊地圖取得座標">📍 取座標</button>
+    </div>
+    <div class="cpt-lbl">建物類型</div>
+    <div id="cpt-bld-row">
+      <button id="cpt-bld-house" class="cpt-bld-btn active" onclick="setCptBld('house')">🏠 透天</button>
+      <button id="cpt-bld-apt"   class="cpt-bld-btn"        onclick="setCptBld('apt')">🏢 大樓</button>
     </div>
     <input type="hidden" id="cpt-edit-id">
     <div id="cpt-modal-actions">
@@ -2401,23 +2413,24 @@ function _showScPanel(vilName, key, sort){
 
 function clickVil(name){
   if(addMode){document.getElementById('f-village').value=name;onVillageChange();return;}
-  // 里界模式：桌機點擊開啟篩檢排名圖表；行動裝置用 toast
-  if(!window.matchMedia('(pointer:coarse)').matches){
-    _showScPanel(name, _scPanelKey||'br');
-    return;
+  // 手機：顯示里長資訊 toast（4秒自動消失）+ 開啟排名底部抽屜
+  // 桌機：直接開啟排名面板
+  if(window.matchMedia('(pointer:coarse)').matches){
+    const _m=VIL_TO_MANAGER[name]||'', _ch=VIL_CHIEF[name];
+    const dist=VIL_TO_DIST[name]||'';
+    let msg=`<b style="font-size:14px">${name}</b>`;
+    if(dist) msg+=` <span style="font-size:11px;opacity:.75">${dist}</span>`;
+    if(_m) msg+=`<br><span style="font-size:12px">📋 ${_m}</span>`;
+    if(_ch){
+      msg+=`<br><span style="font-size:13px">🏠 ${_ch.n}</span>`;
+      const phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
+      if(phones) msg+=`<br><span style="font-size:12px;opacity:.85">☎ ${phones}</span>`;
+    }
+    msg+=_demogHtml(name,true);
+    _showVilToast(msg);
   }
-  const _m=VIL_TO_MANAGER[name]||'', _ch=VIL_CHIEF[name];
-  const dist=VIL_TO_DIST[name]||'';
-  let msg=`<b style="font-size:14px">${name}</b>`;
-  if(dist) msg+=` <span style="font-size:11px;opacity:.75">${dist}</span>`;
-  if(_m) msg+=`<br><span style="font-size:12px">📋 ${_m}</span>`;
-  if(_ch){
-    msg+=`<br><span style="font-size:13px">🏠 ${_ch.n}</span>`;
-    const phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
-    if(phones) msg+=`<br><span style="font-size:12px;opacity:.85">☎ ${phones}</span>`;
-  }
-  msg+=_demogHtml(name,true);
-  _showVilToast(msg);
+  // 手機 + 桌機 都開啟篩檢排名面板（手機為底部抽屜，桌機為側面浮層）
+  _showScPanel(name, _scPanelKey||'br');
 }
 
 function renderVilFilterRow(){
@@ -5373,13 +5386,13 @@ function _showVilToast(html){
   if(!el){
     el=document.createElement('div');
     el.id='vil-toast';
-    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--panel-h) + env(safe-area-inset-bottom,0px) + 10px);z-index:700;background:rgba(15,15,35,.9);color:#fff;border-radius:16px;padding:12px 20px;font-size:13px;line-height:1.65;text-align:center;max-width:85vw;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:opacity .3s;pointer-events:none';
+    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 56px);z-index:700;background:rgba(15,15,35,.9);color:#fff;border-radius:16px;padding:12px 20px;font-size:13px;line-height:1.65;text-align:center;max-width:85vw;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:opacity .3s;pointer-events:none';
     document.body.appendChild(el);
   }
   el.innerHTML=html;
   el.style.opacity='1';
   if(_vilToastTimer) clearTimeout(_vilToastTimer);
-  _vilToastTimer=setTimeout(()=>{el.style.opacity='0';},4000);
+  _vilToastTimer=setTimeout(()=>{el.style.opacity='0';},3000);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -5690,6 +5703,8 @@ function openNavPanel(expanded=false){
   document.getElementById('nav-panel')?.classList.add('open');
   /* 導航面板開啟時隱藏浮動快捷列，避免擋住關閉按鈕 */
   hideNavBar();
+  /* 手機：隱藏地圖工具按鈕，避免遮蓋路線 */
+  if(window.innerWidth<768) document.body.classList.add('nav-active');
   if(expanded){
     document.getElementById('nav-route-info')?.classList.remove('show');
     const lb=document.getElementById('nav-launch-btn'); if(lb) lb.style.display='none';
@@ -5700,6 +5715,7 @@ function openNavPanel(expanded=false){
 function closeNavPanel(){
   document.getElementById('nav-backdrop')?.classList.remove('show');
   document.getElementById('nav-panel')?.classList.remove('open');
+  document.body.classList.remove('nav-active');
 }
 /* 完整重置導航（僅由面板 ✕ 按鈕呼叫） */
 function resetNavPanel(){
@@ -6202,6 +6218,7 @@ let _doorLayerOn = false;
 
 // 切換按鈕
 const _doorBtn = document.createElement('div');
+_doorBtn.id = 'door-btn';
 _doorBtn.title = '顯示/隱藏門牌點';
 _doorBtn.innerHTML = '🔵 門牌點';
 _doorBtn.style.cssText = 'position:fixed;left:14px;bottom:360px;z-index:550;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);user-select:none';
@@ -7443,6 +7460,7 @@ function openCptEditFromDoor(r){
   document.getElementById('cpt-edit-id').value = 'ovr:' + origAddr;
   document.getElementById('cpt-del-btn').style.display = 'block';
   document.getElementById('cpt-del-btn').title = '還原為資料庫原始值';
+  setCptBld(existing ? (existing.bldType||'house') : (origAddr.includes('樓') ? 'apt' : 'house'));
   document.getElementById('cpt-modal').classList.add('show');
   setTimeout(function(){ document.getElementById('cpt-addr').focus(); }, 80);
 }
@@ -7572,6 +7590,15 @@ function _updatePtEditBtn(){
 }
 
 
+/* 切換建物類型按鈕 */
+function setCptBld(type){
+  document.getElementById('cpt-bld-house').classList.toggle('active', type==='house');
+  document.getElementById('cpt-bld-apt').classList.toggle('active', type==='apt');
+}
+function _getCptBld(){
+  return document.getElementById('cpt-bld-apt').classList.contains('active') ? 'apt' : 'house';
+}
+
 /* 開啟新增表單（自動帶入最近 DOOR_DB 地址建議） */
 function openCptCreate(lat, lng){
   _clearErrCpt();
@@ -7581,17 +7608,18 @@ function openCptCreate(lat, lng){
   document.getElementById('cpt-edit-id').value='';
   document.getElementById('cpt-del-btn').style.display='none';
   /* 自動帶入最近 DOOR_DB 地址（50m 內） */
-  let suggest='';
+  let suggest='', suggestApt=false;
   if(lat&&lng&&typeof DOOR_DB!=='undefined'){
     const cosLat=Math.cos(lat*Math.PI/180);
     let nearDist=99999;
     for(let i=0;i<DOOR_DB.length;i++){
       const r=DOOR_DB[i];
       const d=Math.sqrt(Math.pow(r[0]-lat,2)+Math.pow((r[1]-lng)*cosLat,2))*111000;
-      if(d<nearDist){nearDist=d;if(d<50)suggest=r[2].replace('臺南市佳里區','').replace('台南市佳里區','');}
+      if(d<nearDist){nearDist=d;if(d<50){suggest=r[2].replace('臺南市佳里區','').replace('台南市佳里區','');suggestApt=r[2].includes('樓');}}
     }
   }
   document.getElementById('cpt-addr').value=suggest;
+  setCptBld(suggestApt ? 'apt' : 'house');
   document.getElementById('cpt-modal').classList.add('show');
   setTimeout(()=>document.getElementById('cpt-addr').focus(),80);
 }
@@ -7613,6 +7641,7 @@ function openCptEdit(id){
   document.getElementById('cpt-lng').value=p.lng;
   document.getElementById('cpt-edit-id').value=p.id;
   document.getElementById('cpt-del-btn').style.display='block';
+  setCptBld(p.bldType||'house');
   document.getElementById('cpt-modal').classList.add('show');
   setTimeout(()=>document.getElementById('cpt-addr').focus(),80);
 }
@@ -7674,12 +7703,13 @@ function _cptProximityCheck(lat, lng, excludeId){
   return {ok:true};
 }
 
-/* 儲存表單（只存 addr + lat + lng） */
+/* 儲存表單 */
 function saveCptForm(){
   const addr=document.getElementById('cpt-addr').value.trim();
   const lat=parseFloat(document.getElementById('cpt-lat').value);
   const lng=parseFloat(document.getElementById('cpt-lng').value);
   const editId=document.getElementById('cpt-edit-id').value;
+  const bldType=_getCptBld();
 
   document.getElementById('cpt-addr').classList.toggle('err',!addr);
   document.getElementById('cpt-lat').classList.toggle('err',isNaN(lat));
@@ -7693,17 +7723,17 @@ function saveCptForm(){
 
   if(editId && editId.indexOf('ovr:') === 0){
     var origAddr = editId.slice(4);
-    _cptOverrides[origAddr] = {addr,lat,lng,modifiedAt:Date.now()};
+    _cptOverrides[origAddr] = {addr,lat,lng,bldType,modifiedAt:Date.now()};
     _saveOverrides(); _renderCptOverrides();
     _cptToast('門牌座標已更新 ✓');
     closeCptModal(); return;
   }
   if(editId){
     const idx=_cpts.findIndex(c=>c.id===editId);
-    if(idx>=0) _cpts[idx]={..._cpts[idx],addr,lat,lng,modifiedAt:Date.now()};
+    if(idx>=0) _cpts[idx]={..._cpts[idx],addr,lat,lng,bldType,modifiedAt:Date.now()};
     _cptToast('地點已更新 ✓');
   } else {
-    _cpts.push({id:'cpt_'+Date.now(),addr,lat,lng,createdAt:Date.now()});
+    _cpts.push({id:'cpt_'+Date.now(),addr,lat,lng,bldType,createdAt:Date.now()});
     _cptToast('地點已新增 ✓');
   }
   _saveCpts(); _renderCpts(); closeCptModal();

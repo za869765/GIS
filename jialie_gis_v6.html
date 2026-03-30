@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.470</title>
+<title>佳里 GIS v6.471</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5045,7 +5045,7 @@ function show50mList(lat, lng, label=''){
     for(var ci=0; ci<_cpts.length; ci++){
       var cp = _cpts[ci];
       var cd = Math.sqrt(Math.pow(cp.lat-lat,2)+Math.pow((cp.lng-lng)*cosLat2,2))*111000;
-      if(cd <= RADIUS_M) nearby.push({lat:cp.lat, lng:cp.lng, addr:'📌 '+(cp.name && cp.name!==cp.addr ? cp.name+' ' : '')+cp.addr, dist:Math.round(cd)});
+      if(cd <= RADIUS_M) nearby.push({lat:cp.lat, lng:cp.lng, addr:cp.addr, dist:Math.round(cd)});
     }
     nearby.sort(function(a,b){ return a.dist-b.dist; });
   }

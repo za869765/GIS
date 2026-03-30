@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.457</title>
+<title>佳里 GIS v6.458</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5171,9 +5171,8 @@ function toggleVilLayer(){
     if(pendingMarker){map.removeLayer(pendingMarker);pendingMarker=null;}
     // 停止量測
     if(typeof clearMeasure==='function') clearMeasure();
-    // 收起導航面板與導航列
-    closeNavPanel();
-    hideNavBar();
+    // 收起導航面板、清除路線與起迄標記
+    resetNavPanel();
     // 凍結工具按鈕
     _freezeCtrlPanel(true);
     // 隱藏門牌點

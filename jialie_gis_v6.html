@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.483</title>
+<title>佳里 GIS v6.484</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1010,13 +1010,9 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
     <span style="font-size:13px;font-weight:800;color:var(--text1);letter-spacing:.3px">📊 里別統計模式</span>
     <button id="vil-layer-btn" onclick="toggleVilLayer()" style="font-size:12px;padding:5px 14px;border-radius:8px;border:2px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-weight:700">統計 OFF</button>
   </div>
-  <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:flex;align-items:center;justify-content:space-between;padding:6px 4px 2px">
-    <span style="font-size:12px;font-weight:800;color:var(--text1);letter-spacing:.3px">📌 自定義地點</span>
-    <button id="cpt-add-desk-btn" onclick="startCptFabMode()" style="font-size:12px;padding:5px 14px;border-radius:8px;border:2px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-weight:700">＋ 新增</button>
-  </div>
-  <div id="pt-edit-btn-wrap" style="border-top:1px solid var(--border);margin-top:2px;padding-top:6px">
+  <div id="pt-edit-btn-wrap" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 4px">
-      <span style="font-size:12px;font-weight:800;color:var(--text1);letter-spacing:.3px">✏️ 座標校正模式</span>
+      <span style="font-size:12px;font-weight:800;color:var(--text1);letter-spacing:.3px">📌 編輯模式</span>
       <button id="pt-edit-btn" onclick="togglePtEditMode()">編輯 OFF</button>
     </div>
   </div>
@@ -5282,16 +5278,12 @@ function startCptFabMode(){
   _cptFabMode = true;
   const fab = document.getElementById('cpt-fab');
   if(fab){ fab.classList.add('mode-on'); fab.textContent='✕'; }
-  const deskBtn = document.getElementById('cpt-add-desk-btn');
-  if(deskBtn){ deskBtn.style.background='var(--danger)'; deskBtn.style.color='#fff'; deskBtn.style.borderColor='var(--danger)'; deskBtn.textContent='✕ 取消'; }
   _cptToast('點地圖放置新點位');
 }
 function cancelCptFabMode(){
   _cptFabMode = false;
   const fab = document.getElementById('cpt-fab');
   if(fab){ fab.classList.remove('mode-on'); fab.textContent='＋'; }
-  const deskBtn = document.getElementById('cpt-add-desk-btn');
-  if(deskBtn){ deskBtn.style.background=''; deskBtn.style.color=''; deskBtn.style.borderColor=''; deskBtn.textContent='＋ 新增'; }
 }
 
 /* ══════════════════════════════════════════════════════════

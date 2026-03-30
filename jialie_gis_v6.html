@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.440</title>
+<title>佳里 GIS v6.441</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -161,6 +161,59 @@ input,select,textarea,button{font-family:inherit}
 #gps-btn.locating{animation:gps-spin .8s linear infinite}
 #gps-btn.located{color:#1a7a44;border-color:#1a7a44;background:#f0fff4}
 @keyframes gps-spin{to{transform:rotate(360deg)}}
+
+/* ── 導航浮動列 ── */
+#nav-bar{
+  position:fixed;bottom:calc(var(--panel-h)+10px+env(safe-area-inset-bottom,0px));
+  left:50%;transform:translateX(-50%);z-index:630;
+  background:rgba(18,52,74,.96);color:#fff;border-radius:24px;
+  padding:9px 8px 9px 16px;display:flex;align-items:center;gap:8px;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);transition:opacity .25s,transform .25s;
+  max-width:88vw;
+}
+#nav-bar.gone{opacity:0;transform:translateX(-50%) translateY(14px);pointer-events:none}
+#nav-bar-dest{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+#nav-bar-go{background:#27ae60;border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;border-radius:16px;padding:7px 13px;flex-shrink:0;white-space:nowrap;transition:.15s}
+#nav-bar-go:active{background:#1e8449}
+#nav-bar-x{background:none;border:none;color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;padding:2px 5px;line-height:1;flex-shrink:0}
+/* ── 導航面板 ── */
+#nav-backdrop{position:fixed;inset:0;z-index:698;background:rgba(0,0,0,.35);display:none;backdrop-filter:blur(1px)}
+#nav-backdrop.show{display:block}
+#nav-panel{
+  position:fixed;left:50%;transform:translateX(-50%) translateY(100%);
+  bottom:0;width:min(420px,100vw);max-height:85vh;z-index:699;
+  background:var(--surface);border-radius:18px 18px 0 0;
+  box-shadow:0 -4px 30px rgba(0,0,0,.25);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:transform .35s cubic-bezier(.25,.8,.25,1);
+}
+#nav-panel.open{transform:translateX(-50%) translateY(0)}
+#nav-panel-hd{padding:14px 14px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--blue);color:#fff;flex-shrink:0}
+#nav-panel-body{flex:1;overflow-y:auto;padding:14px;overflow-x:hidden}
+.nav-field-lbl{font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;letter-spacing:.3px;text-transform:uppercase}
+.nav-input-row{display:flex;gap:6px;align-items:center}
+.nav-input{flex:1;border:1.5px solid var(--border2);border-radius:10px;padding:9px 12px;font-size:13px;background:var(--surface2);color:var(--text1);outline:none;font-family:inherit;transition:.15s;min-width:0}
+.nav-input:focus{border-color:var(--blue)}
+.nav-gps-btn{border:1.5px solid var(--border2);border-radius:10px;padding:8px 11px;background:var(--surface2);cursor:pointer;font-size:16px;flex-shrink:0;transition:.15s;line-height:1}
+.nav-gps-btn:active{background:#dce8ff}
+.nav-suggest{background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-top:3px;max-height:130px;overflow-y:auto;display:none}
+.nav-suggest.show{display:block}
+.nav-sug-item{padding:8px 12px;font-size:12px;cursor:pointer;color:var(--text1);border-bottom:1px solid var(--border);transition:.1s;line-height:1.4}
+.nav-sug-item:last-child{border-bottom:none}
+.nav-sug-item:hover,.nav-sug-item:active{background:#e8f0fe}
+#nav-route-info{background:var(--surface2);border-radius:10px;padding:12px 14px;margin-top:10px;display:none}
+#nav-route-info.show{display:block}
+.nav-info-row{display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0}
+.nav-info-icon{font-size:17px;width:24px;text-align:center;flex-shrink:0}
+#nav-launch-btn{display:none;width:100%;margin-top:10px;padding:12px;background:var(--green);border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+#nav-launch-btn:active{background:#145a32}
+#nav-calc-btn{width:100%;margin-top:10px;padding:11px;background:var(--blue);border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+#nav-calc-btn:active{background:var(--blue-dk)}
+#nav-calc-btn:disabled{opacity:.5;cursor:not-allowed}
+#nav-swap-btn{background:none;border:1.5px solid var(--border2);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:15px;color:var(--text2);transition:.12s}
+#nav-swap-btn:active{background:var(--surface3)}
+.btn-nav{background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);padding:13px 14px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;flex-shrink:0}
+.btn-nav:active{background:#145a32}
 
 /* Legend button */
 #leg-toggle{
@@ -441,6 +494,10 @@ input,select,textarea,button{font-family:inherit}
   #fab{display:none}
   #leg-toggle{display:none}
   #gps-btn{right:calc(340px + 14px);bottom:74px}
+  #nav-bar{left:calc(50% - 170px)}
+  #nav-bar.gone{transform:translateX(-50%) translateY(14px)}
+  #nav-panel{width:360px;left:auto;right:calc(340px + 14px);bottom:20px;border-radius:12px;transform:scale(.95) translateY(10px);transform-origin:bottom right}
+  #nav-panel.open{transform:scale(1) translateY(0)}
   #dist-strip{top:calc(env(safe-area-inset-top,0px) + 68px)}
   /* Search bar inside right panel on desktop */
   #map-search-bar{
@@ -653,7 +710,7 @@ input,select,textarea,button{font-family:inherit}
   body>*{display:none!important}
   #map{display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;right:0!important}
   .leaflet-control-attribution,.leaflet-control-zoom{display:none!important}
-  #left-tools,#ctrl-panel,#topbar,#sheet,#sheet-toggle-btn,#print-btn,#roadbar,#fab,#gps-btn,#leg-drawer,#leg-backdrop,#legend-desktop{display:none!important}
+  #left-tools,#ctrl-panel,#topbar,#sheet,#sheet-toggle-btn,#print-btn,#roadbar,#fab,#gps-btn,#nav-bar,#nav-panel,#nav-backdrop,#leg-drawer,#leg-backdrop,#legend-desktop{display:none!important}
   .leaflet-popup,.leaflet-tooltip{display:none!important}
 }
 
@@ -767,6 +824,51 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
     <line x1="17" y1="12" x2="22" y2="12"/>
   </svg>
 </button>
+
+<!-- ── 導航浮動列 ── -->
+<div id="nav-bar" class="gone">
+  <div id="nav-bar-dest">—</div>
+  <button id="nav-bar-go" onclick="openNavPanel()">🧭 導航</button>
+  <button id="nav-bar-x" onclick="hideNavBar()" title="關閉">✕</button>
+</div>
+
+<!-- ── 導航面板背景 ── -->
+<div id="nav-backdrop" onclick="closeNavPanel()"></div>
+
+<!-- ── 導航面板 ── -->
+<div id="nav-panel">
+  <div id="nav-panel-hd">
+    <span style="font-weight:700;font-size:14px">🧭 導航規劃</span>
+    <button onclick="closeNavPanel()" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:20px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
+  </div>
+  <div id="nav-panel-body">
+    <div style="margin-bottom:4px">
+      <div class="nav-field-lbl">🟢 起點</div>
+      <div class="nav-input-row">
+        <input id="nav-from-inp" class="nav-input" placeholder="搜尋起點地址…" oninput="navAutoComplete('from',this.value)" autocomplete="off" spellcheck="false">
+        <button class="nav-gps-btn" onclick="navUseGPS()" title="使用目前 GPS 位置">📍</button>
+      </div>
+      <div id="nav-from-sug" class="nav-suggest"></div>
+    </div>
+    <div style="text-align:center;margin:6px 0">
+      <button id="nav-swap-btn" onclick="navSwapPoints()" title="起訖點互換">⇅ 互換</button>
+    </div>
+    <div>
+      <div class="nav-field-lbl">🔴 迄點</div>
+      <div class="nav-input-row">
+        <input id="nav-to-inp" class="nav-input" placeholder="搜尋目的地地址…" oninput="navAutoComplete('to',this.value)" autocomplete="off" spellcheck="false">
+      </div>
+      <div id="nav-to-sug" class="nav-suggest"></div>
+    </div>
+    <button id="nav-calc-btn" onclick="calcNavRoute()">🔍 查詢路線</button>
+    <div id="nav-route-info">
+      <div class="nav-info-row"><span class="nav-info-icon">📏</span><span>距離：<b id="nav-dist-val">—</b></span></div>
+      <div class="nav-info-row"><span class="nav-info-icon">🏍</span><span>預估時間：<b id="nav-time-val">—</b> <small style="color:var(--text3)">(50 km/h)</small></span></div>
+      <div class="nav-info-row" id="nav-road-note" style="display:none"><span class="nav-info-icon">ℹ️</span><span id="nav-road-note-txt" style="font-size:11px;color:var(--text3)"></span></div>
+    </div>
+    <button id="nav-launch-btn" onclick="launchNavApp()">📱 開啟手機導航 App</button>
+  </div>
+</div>
 
 <!-- ── 量測按鈕（獨立，由ctrl-panel接管） ── -->
 <div id="measure-bar">
@@ -2679,6 +2781,7 @@ function selectCase(id){
     ${c.notes?`<div class="detail-notes">${c.notes}</div>`:''}
     <div class="detail-actions">
       <button class="btn-edit" onclick="editCase('${c.id}')">✏️ 編輯</button>
+      ${c.lat?`<button class="btn-nav" onclick="showNavBar(${c.lat},${c.lng},${JSON.stringify((addrStr(c)||c.name).replace('臺南市佳里區','').replace('台南市佳里區',''))});openNavPanel()">🧭 導航</button>`:''}
       <button class="btn-del" onclick="promptDelete('${c.id}')">刪除</button>
     </div>`;
   switchTab('detail');
@@ -2943,7 +3046,8 @@ async function clearVilCache(){
 ═══════════════════════════════════════════ */
 cases.forEach(c=>addMarker(c));
 updateStats();renderList();buildDistStrip();renderLegend();
-expandSheet('peek');
+/* 手機預設收合，桌機才開 peek */
+if(window.innerWidth>=768) expandSheet('peek');
 _initFacCollapsible();
 // 動態量測 topbar 高度並設置 CSS var
 (function(){
@@ -4604,6 +4708,8 @@ function _placePin(lat, lng, labelText, color){
     .bindTooltip(`${vt?vt.replace(/<[^>]+>/g,'')+'　':''}${shortLabel}`,
       {permanent:true, direction:'right', className:'pin-label'})
     .openTooltip();
+  /* 顯示導航浮動列 */
+  if(typeof showNavBar==='function') showNavBar(lat, lng, shortLabel||labelText);
   return _searchMarker;
 }
 
@@ -5093,6 +5199,7 @@ function locateMe() {
       btn.classList.remove('locating');
       btn.classList.add('located');
       btn.title = `目前位置（精度 ${accTxt}）`;
+      _gpsAccuracy = acc;
 
       /* 移除舊標記 */
       if (_gpsMarker) { map.removeLayer(_gpsMarker); _gpsMarker = null; }
@@ -5149,6 +5256,180 @@ function _stopGpsWatch() {
     navigator.geolocation.clearWatch(_gpsWatchId); _gpsWatchId = null;
   }
   if (_gpsStopTimer) { clearTimeout(_gpsStopTimer); _gpsStopTimer = null; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   導航功能
+══════════════════════════════════════════════════════════ */
+let _navBarLat=null, _navBarLng=null;
+let _navFromLat=null, _navFromLng=null, _navFromLabel='';
+let _navToLat=null,   _navToLng=null,   _navToLabel='';
+let _navRouteLayer=null, _navSugTimer=null;
+let _gpsAccuracy=9999; /* 由 locateMe 寫入 */
+
+/* 顯示浮動導航列（搜尋 pin 時自動呼叫） */
+function showNavBar(lat, lng, label){
+  _navBarLat=lat; _navBarLng=lng;
+  const bar=document.getElementById('nav-bar');
+  const nm=document.getElementById('nav-bar-dest');
+  if(!bar||!nm) return;
+  nm.textContent=label||`${parseFloat(lat).toFixed(5)}, ${parseFloat(lng).toFixed(5)}`;
+  bar.classList.remove('gone');
+  /* 同步更新迄點 */
+  _navToLat=lat; _navToLng=lng; _navToLabel=nm.textContent;
+  const ti=document.getElementById('nav-to-inp');
+  if(ti) ti.value=_navToLabel;
+}
+function hideNavBar(){
+  document.getElementById('nav-bar')?.classList.add('gone');
+}
+
+/* 開啟導航面板 */
+function openNavPanel(){
+  /* GPS 精度好（< 200m）→ 自動填起點 */
+  if(_gpsMarker && _gpsAccuracy < 200 && !_navFromLat){
+    const gll=_gpsMarker.getLatLng();
+    _navFromLat=gll.lat; _navFromLng=gll.lng; _navFromLabel='目前位置 📍';
+    const fi=document.getElementById('nav-from-inp');
+    if(fi) fi.value=_navFromLabel;
+  }
+  document.getElementById('nav-backdrop')?.classList.add('show');
+  document.getElementById('nav-panel')?.classList.add('open');
+  /* 重置結果顯示 */
+  document.getElementById('nav-route-info')?.classList.remove('show');
+  const lb=document.getElementById('nav-launch-btn'); if(lb) lb.style.display='none';
+}
+function closeNavPanel(){
+  document.getElementById('nav-backdrop')?.classList.remove('show');
+  document.getElementById('nav-panel')?.classList.remove('open');
+}
+
+/* 使用 GPS 目前位置 */
+function navUseGPS(){
+  if(_gpsMarker){
+    const ll=_gpsMarker.getLatLng();
+    _navFromLat=ll.lat; _navFromLng=ll.lng; _navFromLabel='目前位置 📍';
+    const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
+    return;
+  }
+  /* 尚未定位，先觸發 GPS 再等待 */
+  locateMe();
+  const t=setInterval(()=>{
+    if(_gpsMarker){
+      clearInterval(t);
+      const ll=_gpsMarker.getLatLng();
+      _navFromLat=ll.lat; _navFromLng=ll.lng; _navFromLabel='目前位置 📍';
+      const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
+    }
+  },600);
+  setTimeout(()=>clearInterval(t), 18000);
+}
+
+/* 起訖點互換 */
+function navSwapPoints(){
+  [_navFromLat,_navToLat]=[_navToLat,_navFromLat];
+  [_navFromLng,_navToLng]=[_navToLng,_navFromLng];
+  [_navFromLabel,_navToLabel]=[_navToLabel,_navFromLabel];
+  const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel||'';
+  const ti=document.getElementById('nav-to-inp');   if(ti) ti.value=_navToLabel||'';
+}
+
+/* 地址自動完成（使用 DOOR_DB normAddr） */
+function navAutoComplete(field, q){
+  clearTimeout(_navSugTimer);
+  const sugEl=document.getElementById(`nav-${field}-sug`);
+  if(!q||q.length<2){ sugEl.classList.remove('show'); sugEl.innerHTML=''; return; }
+  _navSugTimer=setTimeout(()=>{
+    const hits=_navDbSearch(q);
+    if(!hits.length){ sugEl.classList.remove('show'); return; }
+    sugEl.innerHTML=hits.map(h=>`<div class="nav-sug-item" onclick="navSelectPoint('${field}',${h.lat},${h.lng},${JSON.stringify(h.label)})">${h.label}</div>`).join('');
+    sugEl.classList.add('show');
+  }, 260);
+}
+function _navDbSearch(q){
+  if(typeof DOOR_DB==='undefined'||!DOOR_DB.length) return [];
+  const qn=normAddr(q); if(qn.length<2) return [];
+  const hits=[]; for(let i=0;i<DOOR_DB.length&&hits.length<10;i++){
+    const r=DOOR_DB[i];
+    if(normAddr(r[2]).includes(qn))
+      hits.push({lat:r[0],lng:r[1],label:r[2].replace('臺南市佳里區','').replace('台南市佳里區','')});
+  }
+  return hits;
+}
+function navSelectPoint(field, lat, lng, label){
+  if(field==='from'){_navFromLat=lat;_navFromLng=lng;_navFromLabel=label;
+    const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=label;
+  } else {_navToLat=lat;_navToLng=lng;_navToLabel=label;
+    const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=label;
+  }
+  const sug=document.getElementById(`nav-${field}-sug`);
+  if(sug){sug.classList.remove('show');sug.innerHTML='';}
+}
+
+/* Haversine 距離（km） */
+function _navHaversine(lat1,lng1,lat2,lng2){
+  const R=6371,toR=Math.PI/180;
+  const φ1=lat1*toR,φ2=lat2*toR,Δφ=(lat2-lat1)*toR,Δλ=(lng2-lng1)*toR;
+  const a=Math.sin(Δφ/2)**2+Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+/* 查詢路線 */
+async function calcNavRoute(){
+  const fi=document.getElementById('nav-from-inp')?.value.trim();
+  const ti=document.getElementById('nav-to-inp')?.value.trim();
+  /* 若輸入框有內容但座標未設定，嘗試從 DOOR_DB 查第一筆 */
+  if(!_navFromLat && fi){ const r=_navDbSearch(fi)[0]; if(r){_navFromLat=r.lat;_navFromLng=r.lng;_navFromLabel=r.label;} }
+  if(!_navToLat   && ti){ const r=_navDbSearch(ti)[0]; if(r){_navToLat=r.lat;_navToLng=r.lng;_navToLabel=r.label;} }
+  if(!_navFromLat||!_navToLat){alert('請填寫起訖點，或從下拉選單選擇地址');return;}
+
+  const btn=document.getElementById('nav-calc-btn');
+  btn.disabled=true; btn.textContent='查詢中…';
+  if(_navRouteLayer){map.removeLayer(_navRouteLayer);_navRouteLayer=null;}
+
+  let distKm, timeMin, note='';
+  try{
+    const url=`https://router.project-osrm.org/route/v1/driving/${_navFromLng},${_navFromLat};${_navToLng},${_navToLat}?overview=full&geometries=geojson`;
+    const resp=await fetch(url,{signal:AbortSignal.timeout(8000)});
+    const data=await resp.json();
+    if(data.code==='Ok'&&data.routes?.[0]){
+      const route=data.routes[0];
+      distKm=(route.distance/1000).toFixed(1);
+      timeMin=Math.round(route.distance/1000/50*60); /* 重算：50km/h */
+      _navRouteLayer=L.geoJSON(route.geometry,{style:{color:'#27ae60',weight:5,opacity:.85}}).addTo(map);
+      map.fitBounds(_navRouteLayer.getBounds(),{padding:[30,30],maxZoom:17});
+    } else { throw new Error('no route'); }
+  } catch(e){
+    const straight=_navHaversine(_navFromLat,_navFromLng,_navToLat,_navToLng);
+    distKm=(straight*1.4).toFixed(1); timeMin=Math.round(straight*1.4/50*60);
+    note='（無法連線路線伺服器，採直線×1.4 估算）';
+    _navRouteLayer=L.polyline([[_navFromLat,_navFromLng],[_navToLat,_navToLng]],
+      {color:'#e67e22',weight:4,opacity:.8,dashArray:'8,6'}).addTo(map);
+    map.fitBounds(_navRouteLayer.getBounds(),{padding:[30,30]});
+  }
+
+  const mins=timeMin<60?`${timeMin} 分鐘`:`${Math.floor(timeMin/60)} 小時 ${timeMin%60} 分`;
+  document.getElementById('nav-dist-val').textContent=`${distKm} km`;
+  document.getElementById('nav-time-val').textContent=mins;
+  const noteEl=document.getElementById('nav-road-note');
+  const noteTxt=document.getElementById('nav-road-note-txt');
+  if(noteEl&&noteTxt){noteEl.style.display=note?'':'none';noteTxt.textContent=note;}
+  document.getElementById('nav-route-info').classList.add('show');
+  document.getElementById('nav-launch-btn').style.display='block';
+  btn.disabled=false; btn.textContent='🔍 查詢路線';
+}
+
+/* 開啟手機導航 App */
+function launchNavApp(){
+  if(!_navToLat) return;
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+  if(isIOS){
+    const from=_navFromLat?`&saddr=${_navFromLat},${_navFromLng}`:'';
+    window.location.href=`maps://?daddr=${_navToLat},${_navToLng}${from}&dirflg=d`;
+  } else {
+    const origin=_navFromLat?`&origin=${_navFromLat},${_navFromLng}`:'';
+    window.open(`https://www.google.com/maps/dir/?api=1${origin}&destination=${_navToLat},${_navToLng}&travelmode=driving`,'_blank');
+  }
 }
 
 /* 選取模式：永遠開啟 */
@@ -5831,6 +6112,7 @@ function buildLocalLayer(cat,items,color,iconHtml,cb){
       if(item.a)pop+='<div style="font-size:11px;color:#555;margin-top:3px">'+item.a.replace(/^\u81f3?\u53f0\u5357\u5e02/,'')+'</div>';
       if(item.t)pop+='<div style="font-size:11px;color:#1b4f72;margin-top:2px">&#9990; '+item.t+'</div>';
       if(item.sc&&item.sc.length&&item.sc[0]!=='-')pop+='<div style="font-size:11px;color:#c0392b;margin-top:4px;padding:3px 6px;background:#fdebd0;border-radius:4px">\u7be9\u6aa2\uff1a'+item.sc.join(' \xb7 ')+'</div>';
+      pop+='<button onclick="showNavBar('+lat+','+lng+',\''+item.n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:6px">🧭 導航到此</button>';
       pop+='</div>';
       mk.bindPopup(pop,{maxWidth:230});
     }
@@ -6162,7 +6444,7 @@ function searchDoorNum(){
     var lat=r[0],lng=r[1],addr=r[2];
     bounds.push([lat,lng]);
     L.circleMarker([lat,lng],{radius:6,color:'#e67e22',fillColor:'#f39c12',fillOpacity:0.9,weight:2})
-     .bindPopup('<b>'+addr+'</b><br><small>'+lat.toFixed(5)+', '+lng.toFixed(5)+'</small>')
+     .bindPopup('<b>'+addr+'</b><br><small>'+lat.toFixed(5)+', '+lng.toFixed(5)+'</small><br><button onclick="showNavBar('+lat+','+lng+',\''+addr.replace('臺南市佳里區','').replace('台南市佳里區','').replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:6px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>')
      .addTo(doorLayer);
   });
   if(bounds.length===1){

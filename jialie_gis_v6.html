@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.476</title>
+<title>佳里 GIS v6.477</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -545,7 +545,7 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
   #bottom-nav{display:none}
   #fab{display:none}
   #leg-toggle{display:none}
-  #gps-btn{right:calc(340px + 14px);bottom:74px}
+  #gps-btn{right:calc(340px + 14px);bottom:270px}
   #nav-bar{left:calc(50% - 170px)}
   #nav-bar.gone{transform:translateX(-50%) translateY(14px)}
   #nav-panel{width:360px;left:auto;right:calc(340px + 14px);bottom:20px;border-radius:12px;transform:translateY(calc(100% + 40px));transform-origin:bottom right}
@@ -3180,7 +3180,7 @@ if(window.innerWidth>=768){
 }
 _initFacCollapsible();
 /* GPS 按鈕（整體可拖拽） / 里別統計 badge（避免拖拽到子按鈕） */
-makeDraggable(document.getElementById('gps-btn'));
+makeDraggable(document.getElementById('gps-btn'), {storageKey:'jialie-gps-btn-pos'});
 makeDraggable(document.getElementById('vil-mode-badge'), {noButtons: true});
 // 動態量測 topbar 高度並設置 CSS var
 (function(){
@@ -5709,6 +5709,20 @@ function makeDraggable(el, opts){
   opts = opts||{};
   let dragging=false, didMove=false, sx=0, sy=0, ox=0, oy=0;
 
+  /* 若有 storageKey，嘗試還原上次拖曳位置 */
+  if(opts.storageKey){
+    try{
+      var saved = JSON.parse(localStorage.getItem(opts.storageKey));
+      if(saved && saved.left != null && saved.top != null){
+        var maxL = window.innerWidth  - el.offsetWidth  || window.innerWidth  - 44;
+        var maxT = window.innerHeight - el.offsetHeight || window.innerHeight - 44;
+        el.style.left  = Math.max(0, Math.min(saved.left, maxL)) + 'px';
+        el.style.top   = Math.max(0, Math.min(saved.top,  maxT)) + 'px';
+        el.style.right = 'auto'; el.style.bottom = 'auto';
+      }
+    }catch(_){}
+  }
+
   el.addEventListener('pointerdown', function(e){
     if(e.pointerType==='mouse' && e.button!==0) return;
     /* noButtons 模式：點在子按鈕上時跳過，讓按鈕正常運作 */
@@ -5735,6 +5749,10 @@ function makeDraggable(el, opts){
     if(!dragging) return;
     dragging=false; el.style.cursor='grab';
     try{ el.releasePointerCapture(e.pointerId); }catch(_){}
+    /* 儲存拖曳後位置 */
+    if(didMove && opts.storageKey){
+      try{ localStorage.setItem(opts.storageKey, JSON.stringify({left:parseFloat(el.style.left), top:parseFloat(el.style.top)})); }catch(_){}
+    }
   });
 
   el.addEventListener('pointercancel', function(){

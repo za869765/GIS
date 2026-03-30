@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.489</title>
+<title>佳里 GIS v6.491</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5226,9 +5226,13 @@ function exportRadiusList(){
     const vil = (typeof getVillageAt==='function') ? (getVillageAt(p.lat,p.lng)||'') : '';
     rows.push([vil, ..._parseAddrParts(addr)]);
   });
-  const csv = '\uFEFF' + rows.map(r=>r.join(',')).join('\n');
+  const csvContent = rows.map(r=>r.join(',')).join('\n');
+  const bom = new Uint8Array([0xEF,0xBB,0xBF]);
+  const encoded = new TextEncoder().encode(csvContent);
+  const combined = new Uint8Array(bom.length + encoded.length);
+  combined.set(bom); combined.set(encoded, bom.length);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.href = URL.createObjectURL(new Blob([combined],{type:'text/csv;charset=utf-8;'}));
   const safeName = (_radiusLabel||'地點').replace(/[\\/:*?"<>|]/g,'');
   a.download = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
   a.click();
@@ -5688,38 +5692,22 @@ function _updateNavBarQuery(){
 }
 
 /* 導航列：設為起點 */
-async function navBarSetFrom(){
+function navBarSetFrom(){
   _navFromLat=_navBarLat; _navFromLng=_navBarLng;
   _navFromLabel=document.getElementById('nav-bar-dest')?.textContent||'';
   const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
   _placeNavFromMarker(_navFromLat, _navFromLng, _navFromLabel);
-  /* 迄點未設 → 自動帶入進學路159號 */
-  if(!_navToLat){
-    const r=await _getDefaultNavStart();
-    _navToLat=r.lat; _navToLng=r.lng; _navToLabel=r.label;
-    const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=r.label;
-    _placeNavToMarker(r.lat, r.lng, r.label);
-  }
   _updateNavBarQuery();
   openNavPanel(true);
-  calcNavRoute();
 }
 /* 導航列：設為迄點 */
-async function navBarSetTo(){
+function navBarSetTo(){
   _navToLat=_navBarLat; _navToLng=_navBarLng;
   _navToLabel=document.getElementById('nav-bar-dest')?.textContent||'';
   const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=_navToLabel;
   _placeNavToMarker(_navToLat, _navToLng, _navToLabel);
-  /* 起點未設 → 自動帶入進學路159號 */
-  if(!_navFromLat){
-    const r=await _getDefaultNavStart();
-    _navFromLat=r.lat; _navFromLng=r.lng; _navFromLabel=r.label;
-    const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=r.label;
-    _placeNavFromMarker(r.lat, r.lng, r.label);
-  }
   _updateNavBarQuery();
   openNavPanel(true);
-  calcNavRoute();
 }
 
 /* 「導航到此」：從設施／門牌 popup 直接設定迄點並展開導航規劃 */
@@ -5890,21 +5878,28 @@ async function _getDefaultNavStart(){
 
 /* 使用 GPS 目前位置 */
 function navUseGPS(){
-  const _applyGPSStart=(ll)=>{
+  const _applyGPSStart=async (ll)=>{
     if(_isInJiali(ll.lat, ll.lng)){
       _navFromLat=ll.lat; _navFromLng=ll.lng; _navFromLabel='目前位置 📍';
       const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
       _placeNavFromMarker(ll.lat, ll.lng, '目前位置 📍');
       map.setView([ll.lat, ll.lng], 17);
     } else {
-      _getDefaultNavStart().then(r=>{
-        _navFromLat=r.lat; _navFromLng=r.lng; _navFromLabel=r.label;
-        const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=r.label;
-        _placeNavFromMarker(r.lat, r.lng, r.label);
-        /* GPS 不在佳里區 → 畫面移到進學路159號（預設起點） */
-        map.setView([r.lat, r.lng], 17);
-      });
+      const r=await _getDefaultNavStart();
+      _navFromLat=r.lat; _navFromLng=r.lng; _navFromLabel=r.label;
+      const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=r.label;
+      _placeNavFromMarker(r.lat, r.lng, r.label);
+      map.setView([r.lat, r.lng], 17);
     }
+    /* 迄點未設 → 自動帶入進學路159號 */
+    if(!_navToLat){
+      const r=await _getDefaultNavStart();
+      _navToLat=r.lat; _navToLng=r.lng; _navToLabel=r.label;
+      const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=r.label;
+      _placeNavToMarker(r.lat, r.lng, r.label);
+    }
+    openNavPanel(true);
+    calcNavRoute();
   };
   if(_gpsMarker){ _applyGPSStart(_gpsMarker.getLatLng()); return; }
   /* 尚未定位，先觸發 GPS 再等待 */

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.452</title>
+<title>佳里 GIS v6.453</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -881,7 +881,7 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
     <button id="nav-calc-btn" onclick="calcNavRoute()">🔍 查詢路線</button>
     <div id="nav-route-info">
       <div class="nav-info-row"><span class="nav-info-icon">📏</span><span>距離：<b id="nav-dist-val">—</b></span></div>
-      <div class="nav-info-row"><span class="nav-info-icon">🏍</span><span>預估時間：<b id="nav-time-val">—</b> <small style="color:var(--text3)">(50 km/h)</small></span></div>
+      <div class="nav-info-row"><span class="nav-info-icon">🏍</span><span>預估時間：<b id="nav-time-val">—</b> <small style="color:var(--text3)">(15 km/h)</small></span></div>
       <div class="nav-info-row" id="nav-road-note" style="display:none"><span class="nav-info-icon">ℹ️</span><span id="nav-road-note-txt" style="font-size:11px;color:var(--text3)"></span></div>
     </div>
     <button id="nav-launch-btn" onclick="launchNavApp()">📱 開啟手機導航 App</button>
@@ -5711,7 +5711,7 @@ async function calcNavRoute(){
     if(data.code==='Ok'&&data.routes?.[0]){
       const route=data.routes[0];
       distKm=(route.distance/1000).toFixed(1);
-      timeMin=Math.round(route.distance/1000/50*60); /* 重算：50km/h */
+      timeMin=Math.round(route.distance/1000/15*60); /* 重算：15km/h（機車市區速度） */
       _navRouteLayer=L.geoJSON(route.geometry,{style:{color:'#e74c3c',weight:6,opacity:.9}}).addTo(map);
       map.fitBounds(_navRouteLayer.getBounds(),{padding:[30,30],maxZoom:17});
       /* 解析轉彎指示 */

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.499</title>
+<title>佳里 GIS v6.500</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1990,9 +1990,9 @@ function renderVilLayers(){
           lyr.setStyle({fillOpacity:Math.min(opacity+.2,.75)});
           const _m=VIL_TO_MANAGER[name]||'',_ch=VIL_CHIEF[name];
           let _tt=`<b style="font-size:13px">${name}</b><small style="color:#888;margin-left:5px">${dist||''}</small>`;
-          if(_m) _tt+=`<br><small style="color:#555">地段：${_m}</small>`;
+          if(_m) _tt+=`<br><small style="color:#555">地段：${_m}護理師</small>`;
           if(_ch){
-            _tt+=`<br><small style="color:#555">🏠 里長：${_ch.n}</small>`;
+            _tt+=`<br><small style="color:#555">🏠 里長：${_ch.n}里長</small>`;
             const _phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
             if(_phones) _tt+=`<br><small style="color:#888">${_phones}</small>`;
           }
@@ -2432,9 +2432,9 @@ function clickVil(name){
     const dist=VIL_TO_DIST[name]||'';
     let msg=`<b style="font-size:14px">${name}</b>`;
     if(dist) msg+=` <span style="font-size:11px;opacity:.75">${dist}</span>`;
-    if(_m) msg+=`<br><span style="font-size:12px">📋 ${_m}</span>`;
+    if(_m) msg+=`<br><span style="font-size:12px">📋 ${_m}護理師</span>`;
     if(_ch){
-      msg+=`<br><span style="font-size:13px">🏠 ${_ch.n}</span>`;
+      msg+=`<br><span style="font-size:13px">🏠 ${_ch.n}里長</span>`;
       const phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
       if(phones) msg+=`<br><span style="font-size:12px;opacity:.85">☎ ${phones}</span>`;
     }

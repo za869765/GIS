@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.459</title>
+<title>佳里 GIS v6.460</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5675,7 +5675,21 @@ function navSwapPoints(){
 function navAutoComplete(field, q){
   clearTimeout(_navSugTimer);
   const sugEl=document.getElementById(`nav-${field}-sug`);
-  if(!q||q.length<2){ sugEl.classList.remove('show'); sugEl.innerHTML=''; return; }
+  if(!q||q.length<2){
+    sugEl.classList.remove('show'); sugEl.innerHTML='';
+    /* 輸入框完全清空 → 同步清除座標、地圖標記、更新導航列按鈕 */
+    if(!q){
+      if(field==='from'){
+        _navFromLat=null; _navFromLng=null; _navFromLabel='';
+        if(_navFromMarker){ map.removeLayer(_navFromMarker); _navFromMarker=null; }
+      } else {
+        _navToLat=null; _navToLng=null; _navToLabel='';
+        if(_navToMarker){ map.removeLayer(_navToMarker); _navToMarker=null; }
+      }
+      _updateNavBarQuery();
+    }
+    return;
+  }
   _navSugTimer=setTimeout(()=>{
     const hits=_navDbSearch(q);
     if(!hits.length){ sugEl.classList.remove('show'); return; }

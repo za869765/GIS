@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.496</title>
+<title>佳里 GIS v6.497</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5226,16 +5226,13 @@ function exportRadiusList(){
     const vil = (typeof getVillageAt==='function') ? (getVillageAt(p.lat,p.lng)||'') : '';
     rows.push([vil, ..._parseAddrParts(addr)]);
   });
-  const csvContent = rows.map(r=>r.join(',')).join('\r\n');
-  /* UTF-16 LE（含 BOM FF FE）：WPS/Excel Android 可正確識別中文 */
-  const buf = new ArrayBuffer(2 + csvContent.length * 2);
-  const view = new DataView(buf);
-  view.setUint16(0, 0xFEFF, true); // BOM
-  for(let i=0;i<csvContent.length;i++) view.setUint16(2+i*2, csvContent.charCodeAt(i), true);
+  /* HTML 表格格式（.xls）：Android WPS/Excel 最相容，無亂碼問題 */
+  const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body><table>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table></body></html>`;
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([buf],{type:'text/csv;charset=utf-16le;'}));
+  a.href = URL.createObjectURL(new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'}));
   const safeName = (_radiusLabel||'地點').replace(/[\\/:*?"<>|]/g,'');
-  a.download = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
+  a.download = `${safeName}半徑${RADIUS_M}公尺清單.xls`;
   a.click();
 }
 

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.498</title>
+<title>佳里 GIS v6.499</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -730,8 +730,9 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
   /* FAB 新增模式中凍結 radius/measure */
   body.cpt-fab-mode #radius-bar,
   body.cpt-fab-mode #measure-bar{pointer-events:none !important;opacity:0.35 !important;}
-  /* 手機：機構圖層按鈕移至 leg-drawer，left-tools 只保留里別開關 */
-  #left-tools #fac-group-btns{display:none !important;}
+  /* 手機：機構圖層預設收合，透過 ＋圖層 展開 */
+  #left-tools #fac-group-btns{display:none;}
+  #fac-grp-toggle{display:block !important;}
 }
 #map-search-input{
   flex:1;border:none;outline:none;font-size:14px;
@@ -976,6 +977,7 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 <!-- ── 機關圖層卡（可拖曳，點空白處移動） ── -->
 <div id="left-tools">
   <button id="vil-mode-toggle-btn" onclick="toggleVilLayer()" style="background:var(--surface2);border:2px solid var(--border2);border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;color:var(--text2);white-space:nowrap;font-family:inherit">📊 里別 OFF</button>
+  <button id="fac-grp-toggle" onclick="_toggleFacGrpPanel()" style="display:none;background:var(--surface2);border:1.5px solid var(--border2);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;color:var(--text2);width:100%;font-family:inherit">＋ 圖層</button>
   <div id="fac-group-btns" style="display:flex;flex-direction:column;gap:4px">
     <button class="fac-grp-btn" id="fac-grp-gov"       onclick="toggleFacGroup('gov')"      >🏛 機關</button>
     <button class="fac-grp-btn" id="fac-grp-school"    onclick="toggleFacGroup('school')"   >🏫 學校</button>
@@ -4313,6 +4315,14 @@ const FAC_GROUPS = {
 const _facGroups = {};
 const _facGroupBuilding = {};
 
+function _toggleFacGrpPanel(){
+  const panel = document.getElementById('fac-group-btns');
+  const btn = document.getElementById('fac-grp-toggle');
+  if(!panel||!btn) return;
+  const open = panel.style.display !== 'none' && panel.style.display !== '';
+  panel.style.display = open ? 'none' : 'flex';
+  btn.textContent = open ? '＋ 圖層' : '－ 圖層';
+}
 async function toggleFacGroup(gid){
   const cfg = FAC_GROUPS[gid];
   if(!cfg) return;
@@ -5228,12 +5238,46 @@ function exportRadiusList(){
     const vil = (typeof getVillageAt==='function') ? (getVillageAt(p.lat,p.lng)||'') : '';
     rows.push([vil, ..._parseAddrParts(addr)]);
   });
-  const csv = '\uFEFF' + rows.map(r=>r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   const safeName = (_radiusLabel||'地點').replace(/[\\/:*?"<>|]/g,'');
-  a.download = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
-  a.click();
+  /* 桌機：直接下載 CSV（UTF-8 BOM，Excel 正常）*/
+  if(window.innerWidth >= 768){
+    const csv = '\uFEFF' + rows.map(r=>r.join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
+    a.click();
+    return;
+  }
+  /* 手機：WPS Android 忽略 BOM 造成亂碼，改顯示 HTML 表格 Modal */
+  _showExportModal(rows, safeName);
+}
+function _showExportModal(rows, safeName){
+  const existing = document.getElementById('export-modal');
+  if(existing) existing.remove();
+  const hdrs = rows[0], data = rows.slice(1);
+  const trs = data.map(r=>`<tr>${r.map(c=>`<td style="padding:4px 8px;border:1px solid #ddd;white-space:nowrap">${c||''}</td>`).join('')}</tr>`).join('');
+  const csvText = rows.map(r=>r.join(',')).join('\n');
+  const mo = document.createElement('div');
+  mo.id = 'export-modal';
+  mo.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:flex-end';
+  mo.innerHTML = `
+    <div style="width:100%;max-height:82vh;background:#fff;border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid #eee;flex-shrink:0">
+        <span style="font-weight:800;font-size:15px">${safeName} 方圓${RADIUS_M}m — ${data.length} 筆</span>
+        <button onclick="document.getElementById('export-modal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888">✕</button>
+      </div>
+      <div style="overflow:auto;flex:1;padding:8px">
+        <table style="border-collapse:collapse;font-size:13px;min-width:100%">
+          <thead><tr>${hdrs.map(h=>`<th style="padding:4px 8px;border:1px solid #ccc;background:#f5f5f5;white-space:nowrap">${h}</th>`).join('')}</tr></thead>
+          <tbody>${trs}</tbody>
+        </table>
+      </div>
+      <div style="padding:10px 16px 16px;display:flex;gap:8px;flex-shrink:0;border-top:1px solid #eee">
+        <button onclick="navigator.clipboard.writeText(${JSON.stringify(csvText)}).then(()=>this.textContent='✅ 已複製').catch(()=>this.textContent='❌ 複製失敗')" style="flex:1;padding:11px;border-radius:10px;border:none;background:#1b4f72;color:#fff;font-weight:700;font-size:14px;cursor:pointer">📋 複製 CSV 文字</button>
+      </div>
+    </div>`;
+  document.body.appendChild(mo);
+  mo.addEventListener('click', e=>{ if(e.target===mo) mo.remove(); });
 }
 
 function useSearchAsCase(lat,lng){

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.446</title>
+<title>佳里 GIS v6.447</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4222,7 +4222,7 @@ async function toggleFacGroup(gid){
     if(!coord) continue;
     const dispName = names[0]||addr;
     const navLabel = dispName.replace(/'/g,"\\'");
-    const navBtn = `<button onclick="showNavBar(${coord[0]},${coord[1]},'${navLabel}');openNavPanel(false)" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>`;
+    const navBtn = `<button onclick="navFacTo(${coord[0]},${coord[1]},'${navLabel}')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>`;
     const label = names.map((n,i)=>
       `<b>${n}</b>${phones[i]?`<br><span style="font-size:11px;color:#555">☎ ${phones[i]}</span>`:''}`
     ).join('<br>') + `<br><span style="font-size:11px;color:#888">${addr}</span>${navBtn}`;
@@ -5165,6 +5165,8 @@ function toggleVilLayer(){
     if(pendingMarker){map.removeLayer(pendingMarker);pendingMarker=null;}
     // 停止量測
     if(typeof clearMeasure==='function') clearMeasure();
+    // 收起導航面板
+    closeNavPanel();
     // 凍結工具按鈕
     _freezeCtrlPanel(true);
     // 隱藏門牌點
@@ -5416,6 +5418,24 @@ function navBarSetTo(){
 }
 /* 導航列：直接查詢（起訖點皆已設定時才出現） */
 function navBarQuery(){
+  openNavPanel(true);
+  calcNavRoute();
+}
+
+/* 「導航到此」：從設施／門牌 popup 直接設定迄點並展開導航規劃 */
+async function navFacTo(lat, lng, label){
+  if(_vilBoundaryOn){ alert('請先關閉「里別統計」模式，再使用導航功能。'); return; }
+  /* 設定迄點 */
+  _navToLat=lat; _navToLng=lng; _navToLabel=label;
+  const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=label;
+  /* 若起點未設定，自動填入預設起點（進學路159號） */
+  if(!_navFromLat){
+    const r=await _getDefaultNavStart();
+    _navFromLat=r.lat; _navFromLng=r.lng; _navFromLabel=r.label;
+    const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=r.label;
+  }
+  _updateNavBarQuery();
+  /* 展開導航面板並自動計算路線 */
   openNavPanel(true);
   calcNavRoute();
 }
@@ -6333,7 +6353,7 @@ function buildLocalLayer(cat,items,color,iconHtml,cb){
       if(item.a)pop+='<div style="font-size:11px;color:#555;margin-top:3px">'+item.a.replace(/^\u81f3?\u53f0\u5357\u5e02/,'')+'</div>';
       if(item.t)pop+='<div style="font-size:11px;color:#1b4f72;margin-top:2px">&#9990; '+item.t+'</div>';
       if(item.sc&&item.sc.length&&item.sc[0]!=='-')pop+='<div style="font-size:11px;color:#c0392b;margin-top:4px;padding:3px 6px;background:#fdebd0;border-radius:4px">\u7be9\u6aa2\uff1a'+item.sc.join(' \xb7 ')+'</div>';
-      pop+='<button onclick="showNavBar('+lat+','+lng+',\''+item.n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:6px">🧭 導航到此</button>';
+      pop+='<button onclick="navFacTo('+lat+','+lng+',\''+item.n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:6px">🧭 導航到此</button>';
       pop+='</div>';
       mk.bindPopup(pop,{maxWidth:230});
     }
@@ -6665,7 +6685,7 @@ function searchDoorNum(){
     var lat=r[0],lng=r[1],addr=r[2];
     bounds.push([lat,lng]);
     L.circleMarker([lat,lng],{radius:6,color:'#e67e22',fillColor:'#f39c12',fillOpacity:0.9,weight:2})
-     .bindPopup('<b>'+addr+'</b><br><small>'+lat.toFixed(5)+', '+lng.toFixed(5)+'</small><br><button onclick="showNavBar('+lat+','+lng+',\''+addr.replace('臺南市佳里區','').replace('台南市佳里區','').replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:6px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>')
+     .bindPopup('<b>'+addr+'</b><br><small>'+lat.toFixed(5)+', '+lng.toFixed(5)+'</small><br><button onclick="navFacTo('+lat+','+lng+',\''+addr.replace('臺南市佳里區','').replace('台南市佳里區','').replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:6px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>')
      .addTo(doorLayer);
   });
   if(bounds.length===1){

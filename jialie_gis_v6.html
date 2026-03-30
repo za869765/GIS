@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.477</title>
+<title>佳里 GIS v6.478</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4987,6 +4987,8 @@ document.body.appendChild(_radiusBar);
 function setRadius(m){
   _radiusOn = m > 0;
   RADIUS_M = m || 50;
+  /* 切換至範圍模式時隱藏導航快捷列 */
+  if(_radiusOn) hideNavBar();
   ['off','50','100'].forEach(k=>{
     const btn = document.getElementById('r-'+k);
     if(!btn) return;

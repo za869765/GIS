@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.512</title>
+<title>佳里 GIS v6.513</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5239,15 +5239,16 @@ function exportRadiusList(){
     rows.push([vil, ..._parseAddrParts(addr)]);
   });
   const safeName = (_radiusLabel||'地點').replace(/[\\/:*?"<>|]/g,'');
-  if(window.innerWidth < 768){
-    /* 手機：瀏覽器內 Modal 顯示，避免外部 APP 編碼問題 */
-    _showExportModal(rows, safeName);
-    return;
-  }
   const csv = '\uFEFF' + rows.map(r=>r.join(',')).join('\r\n');
+  const fname = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-  a.download = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
+  if(window.innerWidth < 768){
+    /* 手機：data URI + encodeURIComponent，大部分地址正常；少數亂碼傳至電腦可正確開啟 */
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  } else {
+    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  }
+  a.download = fname;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 function _showExportModal(rows, safeName){

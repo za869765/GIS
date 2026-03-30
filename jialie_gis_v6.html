@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.458</title>
+<title>佳里 GIS v6.459</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -188,6 +188,8 @@ input,select,textarea,button{font-family:inherit}
 .nav-step:last-child{border-bottom:none}
 .nav-step-icon{font-size:15px;flex-shrink:0;min-width:20px;text-align:center;margin-top:1px}
 .nav-step-dist{font-size:11px;color:var(--text3);margin-top:2px}
+/* 里別統計模式中，導航到此按鈕反灰禁用 */
+body.vil-mode .nav-fac-btn{background:rgba(150,150,150,.45)!important;color:rgba(255,255,255,.55)!important;cursor:not-allowed!important;pointer-events:none}
 /* ── 導航面板 ── */
 #nav-backdrop{position:fixed;inset:0;z-index:698;background:transparent;display:none;}
 #nav-backdrop.show{display:block}
@@ -4228,7 +4230,7 @@ async function toggleFacGroup(gid){
     if(!coord) continue;
     const dispName = names[0]||addr;
     const navLabel = dispName.replace(/'/g,"\\'");
-    const navBtn = `<button onclick="navFacTo(${coord[0]},${coord[1]},'${navLabel}')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>`;
+    const navBtn = `<button class="nav-fac-btn" onclick="navFacTo(${coord[0]},${coord[1]},'${navLabel}')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>`;
     const label = names.map((n,i)=>
       `<b>${n}</b>${phones[i]?`<br><span style="font-size:11px;color:#555">☎ ${phones[i]}</span>`:''}`
     ).join('<br>') + `<br><span style="font-size:11px;color:#888">${addr}</span>${navBtn}`;
@@ -5144,6 +5146,7 @@ let _vilBoundaryOn = false;
 let _vilHidDoor=false, _vilHidLand=false, _vilCollapsedSheet=false;
 function toggleVilLayer(){
   _vilBoundaryOn = !_vilBoundaryOn;
+  document.body.classList.toggle('vil-mode', _vilBoundaryOn);
   ['vil-layer-btn','vil-layer-btn-mobile'].forEach(id=>{
     const btn=document.getElementById(id);
     if(!btn) return;
@@ -6492,7 +6495,7 @@ function buildLocalLayer(cat,items,color,iconHtml,cb){
       if(item.a)pop+='<div style="font-size:11px;color:#555;margin-top:3px">'+item.a.replace(/^\u81f3?\u53f0\u5357\u5e02/,'')+'</div>';
       if(item.t)pop+='<div style="font-size:11px;color:#1b4f72;margin-top:2px">&#9990; '+item.t+'</div>';
       if(item.sc&&item.sc.length&&item.sc[0]!=='-')pop+='<div style="font-size:11px;color:#c0392b;margin-top:4px;padding:3px 6px;background:#fdebd0;border-radius:4px">\u7be9\u6aa2\uff1a'+item.sc.join(' \xb7 ')+'</div>';
-      pop+='<button onclick="navFacTo('+lat+','+lng+',\''+item.n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:6px">🧭 導航到此</button>';
+      pop+='<button class="nav-fac-btn" onclick="navFacTo('+lat+','+lng+',\''+item.n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:6px">🧭 導航到此</button>';
       pop+='</div>';
       mk.bindPopup(pop,{maxWidth:230});
     }
@@ -6824,7 +6827,7 @@ function searchDoorNum(){
     var lat=r[0],lng=r[1],addr=r[2];
     bounds.push([lat,lng]);
     L.circleMarker([lat,lng],{radius:6,color:'#e67e22',fillColor:'#f39c12',fillOpacity:0.9,weight:2})
-     .bindPopup('<b>'+addr+'</b><br><small>'+lat.toFixed(5)+', '+lng.toFixed(5)+'</small><br><button onclick="navFacTo('+lat+','+lng+',\''+addr.replace('臺南市佳里區','').replace('台南市佳里區','').replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:6px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>')
+     .bindPopup('<b>'+addr+'</b><br><small>'+lat.toFixed(5)+', '+lng.toFixed(5)+'</small><br><button class="nav-fac-btn" onclick="navFacTo('+lat+','+lng+',\''+addr.replace('臺南市佳里區','').replace('台南市佳里區','').replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:6px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>')
      .addTo(doorLayer);
   });
   if(bounds.length===1){

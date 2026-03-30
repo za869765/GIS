@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.460</title>
+<title>佳里 GIS v6.461</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -226,6 +226,8 @@ body.vil-mode .nav-fac-btn{background:rgba(150,150,150,.45)!important;color:rgba
 #nav-calc-btn:disabled{opacity:.5;cursor:not-allowed}
 #nav-swap-btn{background:none;border:1.5px solid var(--border2);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:15px;color:var(--text2);transition:.12s}
 #nav-swap-btn:active{background:var(--surface3)}
+#nav-clear-btn{background:none;border:1.5px solid rgba(192,57,43,.35);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:13px;color:#c0392b;transition:.12s;font-weight:600}
+#nav-clear-btn:active{background:#fdeaea}
 .btn-nav{background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);padding:13px 14px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;flex-shrink:0}
 .btn-nav:active{background:#145a32}
 
@@ -871,8 +873,9 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
       </div>
       <div id="nav-from-sug" class="nav-suggest"></div>
     </div>
-    <div style="text-align:center;margin:6px 0">
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin:6px 0">
       <button id="nav-swap-btn" onclick="navSwapPoints()" title="起訖點互換">⇅ 互換</button>
+      <button id="nav-clear-btn" onclick="navClearPoints()" title="清除起訖點">✕ 清除</button>
     </div>
     <div>
       <div class="nav-field-lbl">🔴 迄點</div>
@@ -5669,6 +5672,21 @@ function navSwapPoints(){
   else if(_navFromMarker){ map.removeLayer(_navFromMarker); _navFromMarker=null; }
   if(_navToLat) _placeNavToMarker(_navToLat, _navToLng, _navToLabel);
   else if(_navToMarker){ map.removeLayer(_navToMarker); _navToMarker=null; }
+}
+
+/* 清除起訖點 */
+function navClearPoints(){
+  if(_navFromMarker){ map.removeLayer(_navFromMarker); _navFromMarker=null; }
+  if(_navToMarker){   map.removeLayer(_navToMarker);   _navToMarker=null; }
+  if(_navRouteLayer){ map.removeLayer(_navRouteLayer); _navRouteLayer=null; }
+  _navFromLat=null; _navFromLng=null; _navFromLabel='';
+  _navToLat=null;   _navToLng=null;   _navToLabel='';
+  const fi=document.getElementById('nav-from-inp'); if(fi) fi.value='';
+  const ti=document.getElementById('nav-to-inp');   if(ti) ti.value='';
+  document.getElementById('nav-route-info')?.classList.remove('show');
+  const lb=document.getElementById('nav-launch-btn'); if(lb) lb.style.display='none';
+  const sw=document.getElementById('nav-steps-wrap'); if(sw) sw.style.display='none';
+  _updateNavBarQuery();
 }
 
 /* 地址自動完成（使用 DOOR_DB normAddr） */

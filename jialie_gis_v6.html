@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.494</title>
+<title>佳里 GIS v6.495</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -920,7 +920,7 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 </div>
 
 <!-- ── 導航面板背景 ── -->
-<div id="nav-backdrop" onclick="closeNavPanel()"></div>
+<div id="nav-backdrop" onclick="resetNavPanel()"></div>
 
 <!-- ── 導航面板 ── -->
 <div id="nav-panel">
@@ -5004,8 +5004,8 @@ document.body.appendChild(_radiusBar);
 function setRadius(m){
   _radiusOn = m > 0;
   RADIUS_M = m || 50;
-  /* 切換至範圍模式時隱藏導航快捷列 */
-  if(_radiusOn) hideNavBar();
+  /* 切換至範圍模式時清除導航（路線/標記/面板） */
+  if(_radiusOn) resetNavPanel();
   ['off','50','100'].forEach(k=>{
     const btn = document.getElementById('r-'+k);
     if(!btn) return;
@@ -5226,13 +5226,14 @@ function exportRadiusList(){
     const vil = (typeof getVillageAt==='function') ? (getVillageAt(p.lat,p.lng)||'') : '';
     rows.push([vil, ..._parseAddrParts(addr)]);
   });
-  const csvContent = rows.map(r=>r.join(',')).join('\n');
-  const bom = new Uint8Array([0xEF,0xBB,0xBF]);
-  const encoded = new TextEncoder().encode(csvContent);
-  const combined = new Uint8Array(bom.length + encoded.length);
-  combined.set(bom); combined.set(encoded, bom.length);
+  const csvContent = rows.map(r=>r.join(',')).join('\r\n');
+  /* UTF-16 LE（含 BOM FF FE）：WPS/Excel Android 可正確識別中文 */
+  const buf = new ArrayBuffer(2 + csvContent.length * 2);
+  const view = new DataView(buf);
+  view.setUint16(0, 0xFEFF, true); // BOM
+  for(let i=0;i<csvContent.length;i++) view.setUint16(2+i*2, csvContent.charCodeAt(i), true);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([combined],{type:'text/csv;charset=utf-8;'}));
+  a.href = URL.createObjectURL(new Blob([buf],{type:'text/csv;charset=utf-16le;'}));
   const safeName = (_radiusLabel||'地點').replace(/[\\/:*?"<>|]/g,'');
   a.download = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
   a.click();
@@ -5697,7 +5698,9 @@ function navBarSetFrom(){
   _navFromLabel=document.getElementById('nav-bar-dest')?.textContent||'';
   const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
   _placeNavFromMarker(_navFromLat, _navFromLng, _navFromLabel);
-  _updateNavBarQuery();
+  /* 移除搜尋 pin（避免與導航標記重疊顯示雙標籤） */
+  if(typeof _searchMarker!=='undefined'&&_searchMarker){map.removeLayer(_searchMarker);_searchMarker=null;}
+  hideNavBar();
   openNavPanel(true);
   if(_navToLat) calcNavRoute();
 }
@@ -5707,7 +5710,9 @@ function navBarSetTo(){
   _navToLabel=document.getElementById('nav-bar-dest')?.textContent||'';
   const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=_navToLabel;
   _placeNavToMarker(_navToLat, _navToLng, _navToLabel);
-  _updateNavBarQuery();
+  /* 移除搜尋 pin（避免與導航標記重疊顯示雙標籤） */
+  if(typeof _searchMarker!=='undefined'&&_searchMarker){map.removeLayer(_searchMarker);_searchMarker=null;}
+  hideNavBar();
   openNavPanel(true);
   if(_navFromLat) calcNavRoute();
 }

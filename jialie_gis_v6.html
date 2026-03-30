@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.507</title>
+<title>佳里 GIS v6.508</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5242,8 +5242,14 @@ function exportRadiusList(){
   const csv = '\uFEFF' + rows.map(r=>r.join(',')).join('\r\n');
   const a = document.createElement('a');
   if(window.innerWidth < 768){
-    /* 手機：用 data URI 繞過 Blob 編碼問題 */
-    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    /* 手機：TextEncoder → base64 data URI，完全避免編碼歧義 */
+    const enc = new TextEncoder();
+    const bom = new Uint8Array([0xEF,0xBB,0xBF]);
+    const body = enc.encode(csv.slice(1)); /* 跳過 \uFEFF，用手動 BOM */
+    const buf = new Uint8Array(bom.length+body.length);
+    buf.set(bom); buf.set(body,bom.length);
+    let bin=''; for(let i=0;i<buf.length;i++) bin+=String.fromCharCode(buf[i]);
+    a.href = 'data:text/csv;base64,' + btoa(bin);
   } else {
     a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   }

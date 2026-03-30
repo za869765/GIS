@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.478</title>
+<title>佳里 GIS v6.479</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -696,6 +696,10 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
   padding:9px 14px;
   box-shadow:0 2px 20px rgba(0,0,0,.18),0 0 0 1.5px rgba(27,79,114,.12);
   border:1.5px solid rgba(27,79,114,.15);
+}
+/* 手機版隱藏搜尋輸入框（保留結果面板供 50m 清單使用） */
+@media(max-width:767px){
+  #map-search-inner{display:none !important;}
 }
 #map-search-input{
   flex:1;border:none;outline:none;font-size:14px;

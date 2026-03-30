@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.473</title>
+<title>佳里 GIS v6.474</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -7443,35 +7443,47 @@ function _renderCpts(){
     }
     cm._cptId = p.id;       // 供取座標時隱藏用
     cm._cptIsPin = usePinIcon; // 區分圖釘 vs 圓點（hide/show 方式不同）
-    cm.bindPopup(function(){
-      var div = document.createElement('div');
-      div.style.minWidth = '160px';
-      var bld = p.bldType === 'apt' ? '🏢 大樓' : '🏠 透天';
-      div.innerHTML = '<b style="font-size:13px">' + p.name + '</b>' +
-        '<div style="font-size:11px;color:#666;margin-top:2px">' + p.addr + '</div>' +
-        '<div style="font-size:11px;color:#777">' + bld + (p.tel ? ' ・ 📞 ' + p.tel : '') + '</div>';
-      var row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:5px;margin-top:8px';
-      var navBtn = document.createElement('button');
-      navBtn.style.cssText = 'flex:1;padding:5px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px';
-      navBtn.textContent = '🧭 導航';
-      navBtn.onclick = function(){ navFacTo(p.lat, p.lng, p.name); map.closePopup(); };
-      row.appendChild(navBtn);
-      if(_ptEditMode){
-        var editBtn = document.createElement('button');
-        editBtn.style.cssText = 'flex:1;padding:5px;background:#1b4f72;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px';
-        editBtn.textContent = '✏️ 編輯';
-        editBtn.onclick = function(){ openCptEdit(p.id); };
-        row.appendChild(editBtn);
-        var delBtn = document.createElement('button');
-        delBtn.style.cssText = 'padding:5px 9px;background:#fde8e8;border:none;color:#c0392b;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px';
-        delBtn.textContent = '🗑';
-        delBtn.onclick = function(){ deleteCptConfirm(p.id); };
-        row.appendChild(delBtn);
-      }
-      div.appendChild(row);
-      return div;
-    }, {maxWidth:260});
+    if(usePinIcon){
+      /* ── 有類別 POI：popup 含導航 + 編輯模式下顯示編輯/刪除 ── */
+      cm.bindPopup(function(){
+        var div = document.createElement('div');
+        div.style.minWidth = '160px';
+        var bld = p.bldType === 'apt' ? '🏢 大樓' : '🏠 透天';
+        div.innerHTML = '<b style="font-size:13px">' + p.name + '</b>' +
+          '<div style="font-size:11px;color:#666;margin-top:2px">' + p.addr + '</div>' +
+          '<div style="font-size:11px;color:#777">' + bld + (p.tel ? ' ・ 📞 ' + p.tel : '') + '</div>';
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:5px;margin-top:8px';
+        var navBtn = document.createElement('button');
+        navBtn.style.cssText = 'flex:1;padding:5px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px';
+        navBtn.textContent = '🧭 導航';
+        navBtn.onclick = function(){ navFacTo(p.lat, p.lng, p.name); map.closePopup(); };
+        row.appendChild(navBtn);
+        if(_ptEditMode){
+          var editBtn = document.createElement('button');
+          editBtn.style.cssText = 'flex:1;padding:5px;background:#1b4f72;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px';
+          editBtn.textContent = '✏️ 編輯';
+          editBtn.onclick = function(){ openCptEdit(p.id); };
+          row.appendChild(editBtn);
+          var delBtn = document.createElement('button');
+          delBtn.style.cssText = 'padding:5px 9px;background:#fde8e8;border:none;color:#c0392b;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px';
+          delBtn.textContent = '🗑';
+          delBtn.onclick = function(){ deleteCptConfirm(p.id); };
+          row.appendChild(delBtn);
+        }
+        div.appendChild(row);
+        return div;
+      }, {maxWidth:260});
+    } else {
+      /* ── 無類別（純門牌補充）：比照一般門牌，click 走 placePin/show50mList
+            編輯模式下直接開 openCptEdit ── */
+      cm.on('click', function(ev){
+        L.DomEvent.stop(ev);
+        if(_ptEditMode){ openCptEdit(p.id); return; }
+        _placePin(p.lat, p.lng, p.addr);
+        show50mList(p.lat, p.lng, p.addr);
+      });
+    }
     _cptLayer.addLayer(cm);
   });
   _cptLayer.addTo(map);

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.445</title>
+<title>佳里 GIS v6.446</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5404,7 +5404,7 @@ function navBarSetFrom(){
   _navFromLabel=document.getElementById('nav-bar-dest')?.textContent||'';
   const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
   _updateNavBarQuery();
-  openNavPanel(false);
+  openNavPanel(true);
 }
 /* 導航列：設為迄點 */
 function navBarSetTo(){
@@ -5412,7 +5412,7 @@ function navBarSetTo(){
   _navToLabel=document.getElementById('nav-bar-dest')?.textContent||'';
   const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=_navToLabel;
   _updateNavBarQuery();
-  openNavPanel(false);
+  openNavPanel(true);
 }
 /* 導航列：直接查詢（起訖點皆已設定時才出現） */
 function navBarQuery(){
@@ -5486,10 +5486,13 @@ function navUseGPS(){
     if(_isInJiali(ll.lat, ll.lng)){
       _navFromLat=ll.lat; _navFromLng=ll.lng; _navFromLabel='目前位置 📍';
       const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
+      map.setView([ll.lat, ll.lng], 17);
     } else {
       _getDefaultNavStart().then(r=>{
         _navFromLat=r.lat; _navFromLng=r.lng; _navFromLabel=r.label;
         const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=r.label;
+        /* GPS 不在佳里區 → 畫面移到進學路159號（預設起點） */
+        map.setView([r.lat, r.lng], 17);
       });
     }
   };

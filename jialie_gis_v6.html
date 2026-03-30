@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.480</title>
+<title>佳里 GIS v6.481</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -700,6 +700,8 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
   #map-search-inner{display:none !important;}
   /* 不需要在手機顯示的管理功能（匯出/列印/更新里界路名） */
   #print-btn-wrap{display:none !important;}
+  /* 手機觸控縮放，不需要 +/- 按鈕 */
+  .leaflet-control-zoom{display:none !important;}
   /* leg-drawer 裡的管理按鈕在手機隱藏 */
   .leg-mgmt-btn{display:none !important;}
   /* radius-bar：手機版移到底部橫排，避免遮住搜尋結果 */

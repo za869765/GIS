@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.451</title>
+<title>佳里 GIS v6.452</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5170,8 +5170,9 @@ function toggleVilLayer(){
     if(pendingMarker){map.removeLayer(pendingMarker);pendingMarker=null;}
     // 停止量測
     if(typeof clearMeasure==='function') clearMeasure();
-    // 收起導航面板
+    // 收起導航面板與導航列
     closeNavPanel();
+    hideNavBar();
     // 凍結工具按鈕
     _freezeCtrlPanel(true);
     // 隱藏門牌點
@@ -5346,16 +5347,16 @@ function locateMe() {
         .bindPopup(`<b>📍 目前位置</b><br>精度：${accTxt}${warnHtml}<br><small style="color:#888">${lat.toFixed(5)}, ${lng.toFixed(5)}</small>`)
         .addTo(map);
 
-      /* 若 GPS 不在佳里區（含精度過差的跳點）→ 直接移到進學路159號 */
+      /* 若 GPS 不在佳里區（含精度過差的跳點）→ 固定移到進學路159號，不隨 GPS 移動 */
       if (!_isInJiali(lat, lng)) {
         if (!_gpsCentered) {
           _gpsCentered = true;
           const def = MANUAL_COORDS['進學路159號'] || [23.163877779179685, 120.17772634728972];
           map.setView(def, 17);
-          _gpsMarker.openPopup();
+          /* 不呼叫 openPopup，避免 Leaflet 把地圖拉回 GPS 錯誤位置 */
         }
       } else {
-        /* 第一次取得位置就置中（不管精度），之後只在精度 < 200m 時再置中 */
+        /* GPS 在佳里區 → 正常置中（第一次或精度 < 200m） */
         if (!_gpsCentered || acc < 200) {
           _gpsCentered = true;
           map.setView([lat, lng], Math.max(map.getZoom(), acc < 500 ? 17 : 14));
@@ -5417,6 +5418,8 @@ function _placeNavToMarker(lat, lng, label){
 
 /* 顯示浮動導航列（搜尋 pin 時自動呼叫） */
 function showNavBar(lat, lng, label){
+  /* 里別統計模式中不顯示導航列 */
+  if(_vilBoundaryOn) return;
   _navBarLat=lat; _navBarLng=lng;
   const bar=document.getElementById('nav-bar');
   const nm=document.getElementById('nav-bar-dest');
@@ -5536,49 +5539,50 @@ function resetNavPanel(){
   _updateNavBarQuery();
 }
 
-/* ═══ 通用拖拽函式（GPS 按鈕 / 里別統計 badge）═══
-   opts.noButtons = true → 不從子 <button> 上起始拖拽（badge 用）
+/* ═══ 通用拖拽函式（Pointer Events API，滑鼠/觸控均適用）═══
+   opts.noButtons = true → 不從子 <button> 起始拖拽（badge 用）
    不傳 opts → 整個元素均可拖拽（GPS 按鈕本身就是 button）
-═══════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════ */
 function makeDraggable(el, opts){
   opts = opts||{};
   let dragging=false, didMove=false, sx=0, sy=0, ox=0, oy=0;
-  const startDrag=(cx,cy)=>{
+
+  el.addEventListener('pointerdown', function(e){
+    if(e.pointerType==='mouse' && e.button!==0) return;
+    /* noButtons 模式：點在子按鈕上時跳過，讓按鈕正常運作 */
+    if(opts.noButtons && e.target.closest && e.target.closest('button')) return;
+    /* 取得目前螢幕位置（已含 transform 計算），轉為 left/top 絕對定位 */
     const r=el.getBoundingClientRect();
     el.style.left=r.left+'px'; el.style.top=r.top+'px';
     el.style.right='auto'; el.style.bottom='auto'; el.style.transform='none';
-    sx=cx; sy=cy; ox=r.left; oy=r.top;
+    sx=e.clientX; sy=e.clientY; ox=r.left; oy=r.top;
     dragging=true; didMove=false; el.style.cursor='grabbing';
-  };
-  const moveDrag=(cx,cy)=>{
+    /* setPointerCapture：後續 pointermove/pointerup 都鎖定到此元素 */
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+  });
+
+  el.addEventListener('pointermove', function(e){
     if(!dragging) return;
-    const dx=cx-sx, dy=cy-sy;
+    const dx=e.clientX-sx, dy=e.clientY-sy;
     if(Math.abs(dx)>4||Math.abs(dy)>4) didMove=true;
     el.style.left=Math.max(0,Math.min(ox+dx,window.innerWidth -el.offsetWidth))+'px';
     el.style.top =Math.max(0,Math.min(oy+dy,window.innerHeight-el.offsetHeight))+'px';
-  };
-  const endDrag=()=>{ dragging=false; el.style.cursor='grab'; };
-  /* 滑鼠 */
-  el.addEventListener('mousedown',e=>{
-    if(e.button!==0) return;
-    if(opts.noButtons && e.target.closest('button')) return;
-    startDrag(e.clientX,e.clientY);
-    const mm=e2=>moveDrag(e2.clientX,e2.clientY);
-    const mu=()=>{ endDrag(); window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); };
-    window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
   });
-  /* 觸控 */
-  el.addEventListener('touchstart',e=>{
-    if(opts.noButtons && e.target.closest('button')) return;
-    const t=e.touches[0]; startDrag(t.clientX,t.clientY);
-  },{passive:true});
-  el.addEventListener('touchmove',e=>{
-    const t=e.touches[0]; moveDrag(t.clientX,t.clientY);
-    if(didMove) e.preventDefault();
-  },{passive:false});
-  el.addEventListener('touchend',endDrag,{passive:true});
-  /* 拖拽後阻擋 click 以免觸發按鈕動作 */
-  el.addEventListener('click',e=>{ if(didMove){ e.stopImmediatePropagation(); didMove=false; }},true);
+
+  el.addEventListener('pointerup', function(e){
+    if(!dragging) return;
+    dragging=false; el.style.cursor='grab';
+    try{ el.releasePointerCapture(e.pointerId); }catch(_){}
+  });
+
+  el.addEventListener('pointercancel', function(){
+    dragging=false; el.style.cursor='grab';
+  });
+
+  /* 有移動時阻擋 click，避免誤觸按鈕 */
+  el.addEventListener('click',function(e){
+    if(didMove){ e.stopImmediatePropagation(); didMove=false; }
+  },true);
 }
 
 /* 佳里區範圍判斷 */

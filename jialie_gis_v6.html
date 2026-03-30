@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.493</title>
+<title>佳里 GIS v6.494</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5878,11 +5878,30 @@ async function _getDefaultNavStart(){
   return {lat:23.163877779179685,lng:120.17772634728972,label:'進學路159號（預設起點）'};
 }
 
-/* 使用 GPS 目前位置 */
+/* 使用 GPS 目前位置
+   手機：GPS 準 → 起點填目前位置（不在佳里區則填進學路159號）；迄點有值才自動查詢
+   桌機：GPS 不準 → 只把「第一個空值」填入進學路159號；兩端都有值才自動查詢 */
 function navUseGPS(){
-  const _applyGPSStart=async (ll)=>{
-    const inJiali=_isInJiali(ll.lat, ll.lng);
-    if(inJiali){
+  if(window.innerWidth>=768){
+    /* 桌機：不用真實 GPS，直接填空值 */
+    _getDefaultNavStart().then(r=>{
+      if(!_navFromLat){
+        _navFromLat=r.lat; _navFromLng=r.lng; _navFromLabel=r.label;
+        const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=r.label;
+        _placeNavFromMarker(r.lat, r.lng, r.label);
+      } else if(!_navToLat){
+        _navToLat=r.lat; _navToLng=r.lng; _navToLabel=r.label;
+        const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=r.label;
+        _placeNavToMarker(r.lat, r.lng, r.label);
+      }
+      openNavPanel(true);
+      if(_navFromLat && _navToLat) calcNavRoute();
+    });
+    return;
+  }
+  /* 手機：用真實 GPS 設起點 */
+  const _applyMobileGPS=async (ll)=>{
+    if(_isInJiali(ll.lat, ll.lng)){
       _navFromLat=ll.lat; _navFromLng=ll.lng; _navFromLabel='目前位置 📍';
       const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
       _placeNavFromMarker(ll.lat, ll.lng, '目前位置 📍');
@@ -5894,21 +5913,13 @@ function navUseGPS(){
       _placeNavFromMarker(r.lat, r.lng, r.label);
       map.setView([r.lat, r.lng], 17);
     }
-    /* GPS 在佳里區且迄點未設 → 自動帶入進學路159號；GPS 不在佳里區時不帶入（避免起迄同為預設值） */
-    if(inJiali && !_navToLat){
-      const r=await _getDefaultNavStart();
-      _navToLat=r.lat; _navToLng=r.lng; _navToLabel=r.label;
-      const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=r.label;
-      _placeNavToMarker(r.lat, r.lng, r.label);
-    }
     openNavPanel(true);
-    calcNavRoute();
+    if(_navToLat) calcNavRoute();
   };
-  if(_gpsMarker){ _applyGPSStart(_gpsMarker.getLatLng()); return; }
-  /* 尚未定位，先觸發 GPS 再等待 */
+  if(_gpsMarker){ _applyMobileGPS(_gpsMarker.getLatLng()); return; }
   locateMe();
   const t=setInterval(()=>{
-    if(_gpsMarker){ clearInterval(t); _applyGPSStart(_gpsMarker.getLatLng()); }
+    if(_gpsMarker){ clearInterval(t); _applyMobileGPS(_gpsMarker.getLatLng()); }
   },600);
   setTimeout(()=>clearInterval(t), 18000);
 }

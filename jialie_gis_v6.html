@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.492</title>
+<title>佳里 GIS v6.493</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5881,7 +5881,8 @@ async function _getDefaultNavStart(){
 /* 使用 GPS 目前位置 */
 function navUseGPS(){
   const _applyGPSStart=async (ll)=>{
-    if(_isInJiali(ll.lat, ll.lng)){
+    const inJiali=_isInJiali(ll.lat, ll.lng);
+    if(inJiali){
       _navFromLat=ll.lat; _navFromLng=ll.lng; _navFromLabel='目前位置 📍';
       const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
       _placeNavFromMarker(ll.lat, ll.lng, '目前位置 📍');
@@ -5893,8 +5894,8 @@ function navUseGPS(){
       _placeNavFromMarker(r.lat, r.lng, r.label);
       map.setView([r.lat, r.lng], 17);
     }
-    /* 迄點未設 → 自動帶入進學路159號 */
-    if(!_navToLat){
+    /* GPS 在佳里區且迄點未設 → 自動帶入進學路159號；GPS 不在佳里區時不帶入（避免起迄同為預設值） */
+    if(inJiali && !_navToLat){
       const r=await _getDefaultNavStart();
       _navToLat=r.lat; _navToLng=r.lng; _navToLabel=r.label;
       const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=r.label;

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.450</title>
+<title>佳里 GIS v6.451</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -856,7 +856,7 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
     <span style="font-weight:700;font-size:14px">🧭 導航規劃</span>
     <div style="display:flex;gap:6px;align-items:center">
       <button id="nav-min-btn" onclick="toggleNavPanelMin()" title="展開/最小化">+</button>
-      <button onclick="closeNavPanel()" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:20px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
+      <button onclick="resetNavPanel()" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:20px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
     </div>
   </div>
   <div id="nav-panel-body" style="display:none">
@@ -3084,9 +3084,9 @@ if(window.innerWidth>=768){
   }
 }
 _initFacCollapsible();
-/* GPS 按鈕與里別統計 badge 支援拖拽 */
+/* GPS 按鈕（整體可拖拽） / 里別統計 badge（避免拖拽到子按鈕） */
 makeDraggable(document.getElementById('gps-btn'));
-makeDraggable(document.getElementById('vil-mode-badge'));
+makeDraggable(document.getElementById('vil-mode-badge'), {noButtons: true});
 // 動態量測 topbar 高度並設置 CSS var
 (function(){
   function measureTopbar(){
@@ -5346,11 +5346,21 @@ function locateMe() {
         .bindPopup(`<b>📍 目前位置</b><br>精度：${accTxt}${warnHtml}<br><small style="color:#888">${lat.toFixed(5)}, ${lng.toFixed(5)}</small>`)
         .addTo(map);
 
-      /* 第一次取得位置就置中（不管精度），之後只在精度 < 200m 時再置中 */
-      if (!_gpsCentered || acc < 200) {
-        _gpsCentered = true;
-        map.setView([lat, lng], Math.max(map.getZoom(), acc < 500 ? 17 : 14));
-        _gpsMarker.openPopup();
+      /* 若 GPS 不在佳里區（含精度過差的跳點）→ 直接移到進學路159號 */
+      if (!_isInJiali(lat, lng)) {
+        if (!_gpsCentered) {
+          _gpsCentered = true;
+          const def = MANUAL_COORDS['進學路159號'] || [23.163877779179685, 120.17772634728972];
+          map.setView(def, 17);
+          _gpsMarker.openPopup();
+        }
+      } else {
+        /* 第一次取得位置就置中（不管精度），之後只在精度 < 200m 時再置中 */
+        if (!_gpsCentered || acc < 200) {
+          _gpsCentered = true;
+          map.setView([lat, lng], Math.max(map.getZoom(), acc < 500 ? 17 : 14));
+          _gpsMarker.openPopup();
+        }
       }
 
       /* 精度已夠好，停止監看 */
@@ -5504,21 +5514,34 @@ function openNavPanel(expanded=false){
     const sw=document.getElementById('nav-steps-wrap'); if(sw) sw.style.display='none';
   }
 }
+/* 僅隱藏導航面板視覺，不清資料（backdrop 點擊、統計模式切換時使用） */
 function closeNavPanel(){
   document.getElementById('nav-backdrop')?.classList.remove('show');
   document.getElementById('nav-panel')?.classList.remove('open');
+}
+/* 完整重置導航（僅由面板 ✕ 按鈕呼叫） */
+function resetNavPanel(){
+  closeNavPanel();
   hideNavBar();
   if(_navFromMarker){ map.removeLayer(_navFromMarker); _navFromMarker=null; }
   if(_navToMarker){   map.removeLayer(_navToMarker);   _navToMarker=null; }
+  if(_navRouteLayer){ map.removeLayer(_navRouteLayer); _navRouteLayer=null; }
   _navFromLat=null; _navFromLng=null; _navFromLabel='';
   _navToLat=null;   _navToLng=null;   _navToLabel='';
   const fi=document.getElementById('nav-from-inp'); if(fi) fi.value='';
   const ti=document.getElementById('nav-to-inp');   if(ti) ti.value='';
+  document.getElementById('nav-route-info')?.classList.remove('show');
+  const lb=document.getElementById('nav-launch-btn'); if(lb) lb.style.display='none';
+  const sw=document.getElementById('nav-steps-wrap'); if(sw) sw.style.display='none';
   _updateNavBarQuery();
 }
 
-/* ═══ 通用拖拽函式（GPS 按鈕 / 里別統計 badge）═══ */
-function makeDraggable(el){
+/* ═══ 通用拖拽函式（GPS 按鈕 / 里別統計 badge）═══
+   opts.noButtons = true → 不從子 <button> 上起始拖拽（badge 用）
+   不傳 opts → 整個元素均可拖拽（GPS 按鈕本身就是 button）
+═══════════════════════════════════════════════════ */
+function makeDraggable(el, opts){
+  opts = opts||{};
   let dragging=false, didMove=false, sx=0, sy=0, ox=0, oy=0;
   const startDrag=(cx,cy)=>{
     const r=el.getBoundingClientRect();
@@ -5530,14 +5553,15 @@ function makeDraggable(el){
   const moveDrag=(cx,cy)=>{
     if(!dragging) return;
     const dx=cx-sx, dy=cy-sy;
-    if(Math.abs(dx)>3||Math.abs(dy)>3) didMove=true;
+    if(Math.abs(dx)>4||Math.abs(dy)>4) didMove=true;
     el.style.left=Math.max(0,Math.min(ox+dx,window.innerWidth -el.offsetWidth))+'px';
     el.style.top =Math.max(0,Math.min(oy+dy,window.innerHeight-el.offsetHeight))+'px';
   };
   const endDrag=()=>{ dragging=false; el.style.cursor='grab'; };
   /* 滑鼠 */
   el.addEventListener('mousedown',e=>{
-    if(e.button!==0||e.target.tagName==='BUTTON') return;
+    if(e.button!==0) return;
+    if(opts.noButtons && e.target.closest('button')) return;
     startDrag(e.clientX,e.clientY);
     const mm=e2=>moveDrag(e2.clientX,e2.clientY);
     const mu=()=>{ endDrag(); window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); };
@@ -5545,7 +5569,7 @@ function makeDraggable(el){
   });
   /* 觸控 */
   el.addEventListener('touchstart',e=>{
-    if(e.target.tagName==='BUTTON') return;
+    if(opts.noButtons && e.target.closest('button')) return;
     const t=e.touches[0]; startDrag(t.clientX,t.clientY);
   },{passive:true});
   el.addEventListener('touchmove',e=>{
@@ -5553,7 +5577,7 @@ function makeDraggable(el){
     if(didMove) e.preventDefault();
   },{passive:false});
   el.addEventListener('touchend',endDrag,{passive:true});
-  /* 避免拖拽後觸發 click（按鈕例外） */
+  /* 拖拽後阻擋 click 以免觸發按鈕動作 */
   el.addEventListener('click',e=>{ if(didMove){ e.stopImmediatePropagation(); didMove=false; }},true);
 }
 

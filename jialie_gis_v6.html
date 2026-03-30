@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.442</title>
+<title>佳里 GIS v6.443</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -185,7 +185,7 @@ input,select,textarea,button{font-family:inherit}
 .nav-step-icon{font-size:15px;flex-shrink:0;min-width:20px;text-align:center;margin-top:1px}
 .nav-step-dist{font-size:11px;color:var(--text3);margin-top:2px}
 /* ── 導航面板 ── */
-#nav-backdrop{position:fixed;inset:0;z-index:698;background:rgba(0,0,0,.35);display:none;backdrop-filter:blur(1px)}
+#nav-backdrop{position:fixed;inset:0;z-index:698;background:transparent;display:none;}
 #nav-backdrop.show{display:block}
 #nav-panel{
   position:fixed;left:50%;transform:translateX(-50%) translateY(100%);
@@ -903,6 +903,8 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
     <button class="fac-grp-btn" id="fac-grp-other"     onclick="toggleFacGroup('other')"    >🔖 其他</button>
     <button class="fac-grp-btn" id="fac-grp-medical"  onclick="toggleFacGroup('medical')"  >🏥 醫療</button>
     <button class="fac-grp-btn" id="fac-grp-dental"   onclick="toggleFacGroup('dental')"   >🦷 牙醫</button>
+    <button class="fac-grp-btn" id="fac-grp-nursery"  onclick="toggleFacGroup('nursery')"  >🍼 托嬰中心</button>
+    <button class="fac-grp-btn" id="fac-grp-kinder"   onclick="toggleFacGroup('kinder')"   >🧒 幼兒園</button>
   </div>
 </div>
 
@@ -3776,6 +3778,31 @@ const MANUAL_COORDS = {
   '博愛街165號':      [23.157577239586228, 120.17670153771807],
   '光復路236號':      [23.161857520554157, 120.17489765618019],
   '中山路233號':      [23.160062576796584, 120.17687650765332],
+  // 托嬰中心
+  '同心街128號':      [23.16111587617277,  120.16805646454287],
+  '中山路430號':      [23.163981593449726, 120.17725671528318],
+  '佳安東路10號':     [23.161321860884403, 120.15827748844580],
+  // 幼兒園
+  '安西121-2號':      [23.16034547016439,  120.16848520547605],
+  '塭子內40號':       [23.12570371187940,  120.16497989823917],
+  '中和街92號':       [23.16116093064865,  120.17595576627225],
+  '公園路12號':       [23.154210225137984, 120.17466775631186],
+  '麻興路二段636號':  [23.189721373420728, 120.19196645757123],
+  '佳西路392號':      [23.16636406352500,  120.16816582118709],
+  '祥和五街71號':     [23.15310724250908,  120.17652841224312],
+  '麻佳路三段370巷88號':[23.174075310758617,120.20256095947852],
+  '佳北路395巷22號':  [23.169392519325406, 120.17293078810062],
+  '頂廍136號':        [23.178775276382733, 120.15261860769847],
+  '公園路509號':      [23.16641914281124,  120.17372222386449],
+  '新生路906號':      [23.156891877408746, 120.16353114902151],
+  '信義一街336號':    [23.15978726990011,  120.18212074042974],
+  '光華街130巷47弄50號':[23.167375459844163,120.16952168903934],
+  '和平街155號':      [23.162160208647656, 120.17558545050362],
+  '公園路445號':      [23.164333538924414, 120.17280123485388],
+  '安西76-2號':       [23.16749069960207,  120.17047476007946],
+  '仁愛路307號':      [23.153543171636915, 120.17922039138580],
+  '埔頂5-1號':        [23.143998034839456, 120.15801955945722],
+  '安南路546號':      [23.157570948273456, 120.17173526804937],
 };
 
 async function gotoAddr(addr){
@@ -4011,6 +4038,31 @@ const FACILITY_DB = [
   {n:'新安牙醫診所',  a:'博愛街165號',  t:'dental', p:'7215266'},
   {n:'遠東牙醫診所',  a:'光復路236號',  t:'dental', p:'7238333'},
   {n:'御品牙醫診所',  a:'中山路233號',  t:'dental', p:'7212780'},
+  // 托嬰中心
+  {n:'勁寶兒唯馨托嬰中心', a:'同心街128號1-2樓',     t:'nursery', p:'7227375'},
+  {n:'凱恩國際托嬰中心',   a:'中山路430號(2-3樓)',   t:'nursery', p:'7217755'},
+  {n:'多摩公共托育家園',   a:'佳安東路10號',          t:'nursery', p:'7235979'},
+  // 幼兒園
+  {n:'佳佳幼兒園',         a:'安西121-2號',           t:'kinder', p:'7221989'},
+  {n:'塭內國小附幼',       a:'塭子內40號',            t:'kinder', p:'7891054'},
+  {n:'善行幼兒園',         a:'中和街92號',            t:'kinder', p:'7221081'},
+  {n:'劍橋幼兒園',         a:'公園路12號',            t:'kinder', p:'7214147'},
+  {n:'佳興國小附幼',       a:'麻興路二段636號',       t:'kinder', p:'7260311'},
+  {n:'崧安幼兒園',         a:'佳西路392號',           t:'kinder', p:'7235691'},
+  {n:'維多利亞幼兒園',     a:'祥和五街71號',          t:'kinder', p:'7222126'},
+  {n:'子龍國小附幼',       a:'麻佳路三段370巷88號',   t:'kinder', p:'7262913'},
+  {n:'威爾森幼兒園',       a:'佳北路395巷22號',       t:'kinder', p:'7215811'},
+  {n:'延平國小附幼',       a:'頂廍136號',             t:'kinder', p:'7222331'},
+  {n:'佳祥幼兒園',         a:'公園路509號',           t:'kinder', p:'7226883'},
+  {n:'泑潛幼兒園',         a:'新生路906號',           t:'kinder', p:'7222343'},
+  {n:'信義國小附幼',       a:'信義一街336號',         t:'kinder', p:'7211918'},
+  {n:'勁寶兒幼兒園',       a:'光華街130巷47弄50號',   t:'kinder', p:'7223189'},
+  {n:'聖三幼兒園',         a:'和平街155號',           t:'kinder', p:'7211964'},
+  {n:'佳里國小附幼',       a:'公園路445號',           t:'kinder', p:'7222031'},
+  {n:'立人幼兒園',         a:'安西76-2號',            t:'kinder', p:'7230575'},
+  {n:'仁愛國小附幼',       a:'仁愛路307號',           t:'kinder', p:'7222227'},
+  {n:'通興國小附幼',       a:'埔頂5-1號',             t:'kinder', p:'7873531'},
+  {n:'伯利恆幼兒園',       a:'安南路546號',           t:'kinder', p:'7215005'},
 ];
 
 function _facIcon(type){
@@ -4026,6 +4078,8 @@ function _facIcon(type){
     council:    {c:'#4a235a', e:'🗳'},
     medical:    {c:'#2874a6', e:'🏥'},
     dental:     {c:'#8e44ad', e:'🦷'},
+    nursery:    {c:'#e91e8c', e:'🍼'},
+    kinder:     {c:'#f39c12', e:'🧒'},
   };
   const {c, e} = cfg[type] || {c:'#555', e:'📍'};
   return L.divIcon({
@@ -4103,6 +4157,8 @@ const FAC_GROUPS = {
   other:     {label:'🔖 其他',     types:['attraction','care','chief','council']},
   medical:   {label:'🏥 醫療',     types:['medical']},
   dental:    {label:'🦷 牙醫',     types:['dental']},
+  nursery:   {label:'🍼 托嬰中心', types:['nursery']},
+  kinder:    {label:'🧒 幼兒園',   types:['kinder']},
 };
 const _facGroups = {};
 const _facGroupBuilding = {};
@@ -5082,8 +5138,8 @@ function toggleVilLayer(){
     // 隱藏地段點
     _vilHidLand=_landLayerOn;
     if(_landLayerOn){_hideLandLayer();_landLayerOn=false;const lb=document.getElementById('land-layer-btn');if(lb){lb.textContent='地號點 OFF';lb.style.background='var(--surface2)';lb.style.color='var(--text2)';lb.style.borderColor='var(--border2)';}}
-    // 摺疊右側欄（桌機 ≥1024）
-    if(window.innerWidth>=1024){
+    // 摺疊右側欄（桌機 ≥768）
+    if(window.innerWidth>=768){
       const sheet=document.getElementById('sheet');
       _vilCollapsedSheet=sheet&&!sheet.classList.contains('panel-collapsed');
       if(_vilCollapsedSheet) toggleSheetPanel();
@@ -5328,8 +5384,13 @@ function openNavPanel(){
       if(fi) fi.value=_navFromLabel;
     }
   }
-  /* 手機：收起底部 sheet 避免重疊 */
-  if(window.innerWidth<768) expandSheet('collapsed');
+  /* 收起側欄，避免與導航面板重疊（手機收底部 sheet、桌機收右側欄） */
+  if(window.innerWidth<768){
+    expandSheet('collapsed');
+  } else {
+    const _s=document.getElementById('sheet');
+    if(_s&&!_s.classList.contains('panel-collapsed')) toggleSheetPanel();
+  }
   /* 確保面板未最小化 */
   const nb=document.getElementById('nav-panel-body');
   const mb=document.getElementById('nav-min-btn');
@@ -6626,6 +6687,9 @@ function setMeasureMode(mode){
   if(_measMode!==mode){
     // 切換到新模式：先清除舊的，啟動新模式
     clearMeasure();
+    // 收起側欄，保留地圖空間
+    if(window.innerWidth<768){ expandSheet('collapsed'); }
+    else { const _s=document.getElementById('sheet'); if(_s&&!_s.classList.contains('panel-collapsed')) toggleSheetPanel(); }
     // 清除單點門牌/地段殘留
     if(pendingMarker){map.removeLayer(pendingMarker);pendingMarker=null;}
     if(_searchMarker){map.removeLayer(_searchMarker);_searchMarker=null;}

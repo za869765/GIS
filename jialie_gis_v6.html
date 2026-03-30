@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.500</title>
+<title>佳里 GIS v6.501</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1990,9 +1990,9 @@ function renderVilLayers(){
           lyr.setStyle({fillOpacity:Math.min(opacity+.2,.75)});
           const _m=VIL_TO_MANAGER[name]||'',_ch=VIL_CHIEF[name];
           let _tt=`<b style="font-size:13px">${name}</b><small style="color:#888;margin-left:5px">${dist||''}</small>`;
-          if(_m) _tt+=`<br><small style="color:#555">地段：${_m}護理師</small>`;
+          if(_m) _tt+=`<br><small style="color:#555">地段：${_m}　護理師</small>`;
           if(_ch){
-            _tt+=`<br><small style="color:#555">🏠 里長：${_ch.n}里長</small>`;
+            _tt+=`<br><small style="color:#555">🏠 里長：${_ch.n}　里長</small>`;
             const _phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
             if(_phones) _tt+=`<br><small style="color:#888">${_phones}</small>`;
           }
@@ -2432,9 +2432,9 @@ function clickVil(name){
     const dist=VIL_TO_DIST[name]||'';
     let msg=`<b style="font-size:14px">${name}</b>`;
     if(dist) msg+=` <span style="font-size:11px;opacity:.75">${dist}</span>`;
-    if(_m) msg+=`<br><span style="font-size:12px">📋 ${_m}護理師</span>`;
+    if(_m) msg+=`<br><span style="font-size:12px">📋 ${_m}　護理師</span>`;
     if(_ch){
-      msg+=`<br><span style="font-size:13px">🏠 ${_ch.n}里長</span>`;
+      msg+=`<br><span style="font-size:13px">🏠 ${_ch.n}　里長</span>`;
       const phones=[_ch.tel,_ch.mob].filter(Boolean).join('　');
       if(phones) msg+=`<br><span style="font-size:12px;opacity:.85">☎ ${phones}</span>`;
     }
@@ -5264,7 +5264,7 @@ function _showExportModal(rows, safeName){
     <div style="width:100%;max-height:82vh;background:#fff;border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid #eee;flex-shrink:0">
         <span style="font-weight:800;font-size:15px">${safeName} 方圓${RADIUS_M}m — ${data.length} 筆</span>
-        <button onclick="document.getElementById('export-modal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888">✕</button>
+        <button id="export-modal-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888">✕</button>
       </div>
       <div style="overflow:auto;flex:1;padding:8px">
         <table style="border-collapse:collapse;font-size:13px;min-width:100%">
@@ -5273,10 +5273,17 @@ function _showExportModal(rows, safeName){
         </table>
       </div>
       <div style="padding:10px 16px 16px;display:flex;gap:8px;flex-shrink:0;border-top:1px solid #eee">
-        <button onclick="navigator.clipboard.writeText(${JSON.stringify(csvText)}).then(()=>this.textContent='✅ 已複製').catch(()=>this.textContent='❌ 複製失敗')" style="flex:1;padding:11px;border-radius:10px;border:none;background:#1b4f72;color:#fff;font-weight:700;font-size:14px;cursor:pointer">📋 複製 CSV 文字</button>
+        <button id="export-copy-btn" style="flex:1;padding:11px;border-radius:10px;border:none;background:#1b4f72;color:#fff;font-weight:700;font-size:14px;cursor:pointer">📋 複製 CSV 文字</button>
       </div>
     </div>`;
   document.body.appendChild(mo);
+  /* 用 addEventListener 避免 onclick 屬性嵌入資料造成 HTML 解析錯誤 */
+  mo.querySelector('#export-modal-close').addEventListener('click', ()=>mo.remove());
+  mo.querySelector('#export-copy-btn').addEventListener('click', function(){
+    navigator.clipboard.writeText(csvText)
+      .then(()=>{ this.textContent='✅ 已複製'; })
+      .catch(()=>{ this.textContent='❌ 請手動長按複製'; });
+  });
   mo.addEventListener('click', e=>{ if(e.target===mo) mo.remove(); });
 }
 

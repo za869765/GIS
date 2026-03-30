@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.438</title>
+<title>佳里 GIS v6.439</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -440,6 +440,7 @@ input,select,textarea,button{font-family:inherit}
   #bottom-nav{display:none}
   #fab{display:none}
   #leg-toggle{display:none}
+  #gps-btn{right:calc(340px + 14px);bottom:74px}
   #dist-strip{top:calc(env(safe-area-inset-top,0px) + 68px)}
   /* Search bar inside right panel on desktop */
   #map-search-bar{
@@ -1541,7 +1542,7 @@ function showNetworkToast(msg, bg){
 /* ═══════════════════════════════════════════
    MAP SETUP
 ═══════════════════════════════════════════ */
-const map=L.map('map',{center:[23.184,120.183],zoom:15,zoomControl:false,maxZoom:21,zoomSnap:0.5,zoomDelta:0.5});
+const map=L.map('map',{center:[23.184,120.183],zoom:17,zoomControl:false,maxZoom:21,zoomSnap:0.5,zoomDelta:0.5});
 
 // 離線時顯示灰色底圖
 // CartoDB Voyager — 免 Referer，支援繁中路名，適合 GAS/file 環境
@@ -4880,6 +4881,8 @@ function toggleSheetPanel(){
   btn.classList.toggle('panel-collapsed', collapsed);
   btn.textContent = collapsed ? '◀' : '▶';
   if(leg) leg.style.right = collapsed ? '14px' : '354px';
+  const gpsBtnEl = document.getElementById('gps-btn');
+  if(gpsBtnEl) gpsBtnEl.style.right = collapsed ? '14px' : 'calc(340px + 14px)';
   const pb = document.getElementById('print-btn');
   if(pb && pb.style.display!=='none') pb.style.right = collapsed ? '14px' : '360px';
   setTimeout(()=>map.invalidateSize(), 260);
@@ -5059,28 +5062,37 @@ L.control.zoom({position:'bottomleft'}).addTo(map);
 /* ══════════════════════════════════════════════════════════
    GPS 定位
 ══════════════════════════════════════════════════════════ */
-let _gpsMarker = null;
-let _gpsCircle = null;
+let _gpsMarker  = null;
+let _gpsCircle  = null;
+let _gpsWatchId = null;
+let _gpsCentered= false;
+let _gpsStopTimer = null;
 
 function locateMe() {
-  if (!navigator.geolocation) {
-    alert('您的瀏覽器不支援定位功能');
-    return;
+  if (!navigator.geolocation) { alert('您的瀏覽器不支援定位功能'); return; }
+
+  /* 若已在監看中，先清除再重新定位 */
+  if (_gpsWatchId !== null) {
+    navigator.geolocation.clearWatch(_gpsWatchId); _gpsWatchId = null;
   }
+  if (_gpsStopTimer) { clearTimeout(_gpsStopTimer); _gpsStopTimer = null; }
+
   const btn = document.getElementById('gps-btn');
   btn.classList.remove('located');
   btn.classList.add('locating');
   btn.title = '定位中…';
+  _gpsCentered = false;
 
-  navigator.geolocation.getCurrentPosition(
+  _gpsWatchId = navigator.geolocation.watchPosition(
     function(pos) {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       const acc = Math.round(pos.coords.accuracy);
+      const accTxt = acc < 1000 ? `±${acc} m` : `±${(acc/1000).toFixed(1)} km`;
 
       btn.classList.remove('locating');
       btn.classList.add('located');
-      btn.title = `目前位置（精度 ±${acc}m）`;
+      btn.title = `目前位置（精度 ${accTxt}）`;
 
       /* 移除舊標記 */
       if (_gpsMarker) { map.removeLayer(_gpsMarker); _gpsMarker = null; }
@@ -5090,30 +5102,51 @@ function locateMe() {
       _gpsCircle = L.circle([lat, lng], {
         radius: pos.coords.accuracy,
         color:'#1b6fd8', fillColor:'#1b6fd8',
-        fillOpacity:.12, weight:1.5, interactive:false
+        fillOpacity:.13, weight:1.5, interactive:false
       }).addTo(map);
 
       /* 位置點 */
+      const dotColor = acc > 500 ? '#e67e22' : '#1b6fd8';
       const icon = L.divIcon({
         className:'',
-        html:'<div style="width:14px;height:14px;border-radius:50%;background:#1b6fd8;border:3px solid #fff;box-shadow:0 0 8px rgba(27,111,216,.8)"></div>',
+        html:`<div style="width:14px;height:14px;border-radius:50%;background:${dotColor};border:3px solid #fff;box-shadow:0 0 8px ${dotColor}aa"></div>`,
         iconSize:[14,14], iconAnchor:[7,7]
       });
+      const warnHtml = acc > 500
+        ? `<br><small style="color:#e67e22">⚠ 精度不足，建議使用<b>手機</b>定位</small>`
+        : '';
       _gpsMarker = L.marker([lat, lng], {icon, zIndexOffset:500})
-        .bindPopup(`<b>📍 目前位置</b><br>精度：±${acc} m<br><small style="color:#888">${lat.toFixed(5)}, ${lng.toFixed(5)}</small>`)
-        .addTo(map)
-        .openPopup();
+        .bindPopup(`<b>📍 目前位置</b><br>精度：${accTxt}${warnHtml}<br><small style="color:#888">${lat.toFixed(5)}, ${lng.toFixed(5)}</small>`)
+        .addTo(map);
 
-      /* 置中地圖，zoom 至少 16 */
-      map.setView([lat, lng], Math.max(map.getZoom(), 16));
+      /* 第一次取得位置就置中（不管精度），之後只在精度 < 200m 時再置中 */
+      if (!_gpsCentered || acc < 200) {
+        _gpsCentered = true;
+        map.setView([lat, lng], Math.max(map.getZoom(), acc < 500 ? 17 : 14));
+        _gpsMarker.openPopup();
+      }
+
+      /* 精度已夠好，停止監看 */
+      if (acc <= 30) { _stopGpsWatch(); }
     },
     function(err) {
       btn.classList.remove('locating');
+      _stopGpsWatch();
       const msgs = ['', '定位權限被拒絕，請在瀏覽器允許位置存取', '無法取得位置資訊', '定位逾時，請再試一次'];
       alert(msgs[err.code] || '定位失敗');
     },
-    { enableHighAccuracy:true, timeout:12000, maximumAge:30000 }
+    { enableHighAccuracy:true, timeout:15000, maximumAge:0 }
   );
+
+  /* 30 秒後自動停止（節省電量） */
+  _gpsStopTimer = setTimeout(_stopGpsWatch, 30000);
+}
+
+function _stopGpsWatch() {
+  if (_gpsWatchId !== null) {
+    navigator.geolocation.clearWatch(_gpsWatchId); _gpsWatchId = null;
+  }
+  if (_gpsStopTimer) { clearTimeout(_gpsStopTimer); _gpsStopTimer = null; }
 }
 
 /* 選取模式：永遠開啟 */

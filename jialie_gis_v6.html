@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.449</title>
+<title>佳里 GIS v6.450</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -158,6 +158,7 @@ input,select,textarea,button{font-family:inherit}
   transition:.2s;
 }
 #gps-btn:active{transform:scale(.92)}
+#gps-btn{cursor:grab}
 #gps-btn.locating{animation:gps-spin .8s linear infinite}
 #gps-btn.located{color:#1a7a44;border-color:#1a7a44;background:#f0fff4}
 @keyframes gps-spin{to{transform:rotate(360deg)}}
@@ -720,7 +721,7 @@ input,select,textarea,button{font-family:inherit}
   body>*{display:none!important}
   #map{display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;right:0!important}
   .leaflet-control-attribution,.leaflet-control-zoom{display:none!important}
-  #left-tools,#ctrl-panel,#topbar,#sheet,#sheet-toggle-btn,#print-btn,#roadbar,#fab,#gps-btn,#nav-bar,#nav-panel,#nav-backdrop,#leg-drawer,#leg-backdrop,#legend-desktop{display:none!important}
+  #left-tools,#ctrl-panel,#topbar,#sheet,#sheet-toggle-btn,#print-btn-wrap,#roadbar,#fab,#gps-btn,#nav-bar,#nav-panel,#nav-backdrop,#leg-drawer,#leg-backdrop,#legend-desktop{display:none!important}
   .leaflet-popup,.leaflet-tooltip{display:none!important}
 }
 
@@ -818,8 +819,11 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 </div>
 <!-- ── 右側欄收起按鈕 ── -->
 <div id="sheet-toggle-btn" onclick="toggleSheetPanel()" title="收起/展開側欄">▶</div>
-<!-- ── 列印按鈕 ── -->
-<button id="print-btn" onclick="printRadiusArea()" title="列印範圍地圖" style="display:none;position:fixed;top:14px;right:360px;z-index:600;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);color:var(--text1);transition:right .25s ease">🖨 列印</button>
+<!-- ── 列印／匯出按鈕組 ── -->
+<div id="print-btn-wrap" style="display:none;position:fixed;top:14px;right:360px;z-index:600;display:none;gap:6px;transition:right .25s ease;align-items:center">
+  <button id="export-btn" onclick="exportRadiusList()" title="匯出範圍門牌清單" style="background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);color:var(--text1)">⬇ 匯出</button>
+  <button id="print-btn" onclick="printRadiusArea()" title="列印範圍地圖" style="background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);color:var(--text1)">🖨 列印</button>
+</div>
 
 <!-- search bar moved into #sheet below -->
 
@@ -841,7 +845,6 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
   <button id="nav-bar-from"  onclick="navBarSetFrom()">設起點</button>
   <button id="nav-bar-to"    onclick="navBarSetTo()">設迄點</button>
   <button id="nav-bar-query" onclick="navBarQuery()">🔍 查詢</button>
-  <button id="nav-bar-x"     onclick="hideNavBar()" title="關閉">✕</button>
 </div>
 
 <!-- ── 導航面板背景 ── -->
@@ -3081,6 +3084,9 @@ if(window.innerWidth>=768){
   }
 }
 _initFacCollapsible();
+/* GPS 按鈕與里別統計 badge 支援拖拽 */
+makeDraggable(document.getElementById('gps-btn'));
+makeDraggable(document.getElementById('vil-mode-badge'));
 // 動態量測 topbar 高度並設置 CSS var
 (function(){
   function measureTopbar(){
@@ -4966,13 +4972,13 @@ function showRadiusPanel(lat,lng,pts,label=''){
 }
 
 function _updatePrintBtn(){
-  const btn = document.getElementById('print-btn');
-  if(!btn) return;
+  const wrap = document.getElementById('print-btn-wrap');
+  if(!wrap) return;
   const show = _radiusOn && _radiusCircle !== null;
-  btn.style.display = show ? 'block' : 'none';
+  wrap.style.display = show ? 'flex' : 'none';
   // 側欄收起時跟著移位
-  const collapsed = document.getElementById('sheet') && document.getElementById('sheet').classList.contains('panel-collapsed');
-  btn.style.right = collapsed ? '14px' : '360px';
+  const collapsed = document.getElementById('sheet')?.classList.contains('panel-collapsed');
+  wrap.style.right = collapsed ? '14px' : '360px';
 }
 
 function printRadiusArea(){
@@ -5099,7 +5105,7 @@ function toggleSheetPanel(){
   if(gpsBtnEl) gpsBtnEl.style.right = collapsed ? '14px' : 'calc(340px + 14px)';
   const npEl = document.getElementById('nav-panel');
   if(npEl && window.innerWidth>=768) npEl.style.right = collapsed ? '14px' : 'calc(340px + 14px)';
-  const pb = document.getElementById('print-btn');
+  const pb = document.getElementById('print-btn-wrap');
   if(pb && pb.style.display!=='none') pb.style.right = collapsed ? '14px' : '360px';
   setTimeout(()=>map.invalidateSize(), 260);
 }
@@ -5378,6 +5384,26 @@ let _navFromLat=null, _navFromLng=null, _navFromLabel='';
 let _navToLat=null,   _navToLng=null,   _navToLabel='';
 let _navRouteLayer=null, _navSugTimer=null;
 let _gpsAccuracy=9999; /* 由 locateMe 寫入 */
+let _navFromMarker=null, _navToMarker=null;
+
+/* 起點標記（綠色🟢） */
+function _placeNavFromMarker(lat, lng, label){
+  if(_navFromMarker){ map.removeLayer(_navFromMarker); _navFromMarker=null; }
+  _navFromMarker=L.marker([lat,lng],{icon:L.divIcon({
+    className:'',
+    html:`<div style="background:#27ae60;color:#fff;border-radius:50% 50% 50% 0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:rotate(-45deg)"><span style="transform:rotate(45deg)">起</span></div>`,
+    iconSize:[28,28],iconAnchor:[14,28]
+  }),zIndexOffset:900,title:'起點：'+label}).addTo(map);
+}
+/* 迄點標記（紅色🔴） */
+function _placeNavToMarker(lat, lng, label){
+  if(_navToMarker){ map.removeLayer(_navToMarker); _navToMarker=null; }
+  _navToMarker=L.marker([lat,lng],{icon:L.divIcon({
+    className:'',
+    html:`<div style="background:#e74c3c;color:#fff;border-radius:50% 50% 50% 0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:rotate(-45deg)"><span style="transform:rotate(45deg)">迄</span></div>`,
+    iconSize:[28,28],iconAnchor:[14,28]
+  }),zIndexOffset:900,title:'迄點：'+label}).addTo(map);
+}
 
 /* 顯示浮動導航列（搜尋 pin 時自動呼叫） */
 function showNavBar(lat, lng, label){
@@ -5404,6 +5430,7 @@ function navBarSetFrom(){
   _navFromLat=_navBarLat; _navFromLng=_navBarLng;
   _navFromLabel=document.getElementById('nav-bar-dest')?.textContent||'';
   const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
+  _placeNavFromMarker(_navFromLat, _navFromLng, _navFromLabel);
   _updateNavBarQuery();
   openNavPanel(true);
 }
@@ -5412,6 +5439,7 @@ function navBarSetTo(){
   _navToLat=_navBarLat; _navToLng=_navBarLng;
   _navToLabel=document.getElementById('nav-bar-dest')?.textContent||'';
   const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=_navToLabel;
+  _placeNavToMarker(_navToLat, _navToLng, _navToLabel);
   _updateNavBarQuery();
   openNavPanel(true);
 }
@@ -5427,11 +5455,13 @@ async function navFacTo(lat, lng, label){
   /* 設定迄點 */
   _navToLat=lat; _navToLng=lng; _navToLabel=label;
   const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=label;
+  _placeNavToMarker(lat, lng, label);
   /* 若起點未設定，自動填入預設起點（進學路159號） */
   if(!_navFromLat){
     const r=await _getDefaultNavStart();
     _navFromLat=r.lat; _navFromLng=r.lng; _navFromLabel=r.label;
     const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=r.label;
+    _placeNavFromMarker(r.lat, r.lng, r.label);
   }
   _updateNavBarQuery();
   /* 展開導航面板並自動計算路線 */
@@ -5477,6 +5507,54 @@ function openNavPanel(expanded=false){
 function closeNavPanel(){
   document.getElementById('nav-backdrop')?.classList.remove('show');
   document.getElementById('nav-panel')?.classList.remove('open');
+  hideNavBar();
+  if(_navFromMarker){ map.removeLayer(_navFromMarker); _navFromMarker=null; }
+  if(_navToMarker){   map.removeLayer(_navToMarker);   _navToMarker=null; }
+  _navFromLat=null; _navFromLng=null; _navFromLabel='';
+  _navToLat=null;   _navToLng=null;   _navToLabel='';
+  const fi=document.getElementById('nav-from-inp'); if(fi) fi.value='';
+  const ti=document.getElementById('nav-to-inp');   if(ti) ti.value='';
+  _updateNavBarQuery();
+}
+
+/* ═══ 通用拖拽函式（GPS 按鈕 / 里別統計 badge）═══ */
+function makeDraggable(el){
+  let dragging=false, didMove=false, sx=0, sy=0, ox=0, oy=0;
+  const startDrag=(cx,cy)=>{
+    const r=el.getBoundingClientRect();
+    el.style.left=r.left+'px'; el.style.top=r.top+'px';
+    el.style.right='auto'; el.style.bottom='auto'; el.style.transform='none';
+    sx=cx; sy=cy; ox=r.left; oy=r.top;
+    dragging=true; didMove=false; el.style.cursor='grabbing';
+  };
+  const moveDrag=(cx,cy)=>{
+    if(!dragging) return;
+    const dx=cx-sx, dy=cy-sy;
+    if(Math.abs(dx)>3||Math.abs(dy)>3) didMove=true;
+    el.style.left=Math.max(0,Math.min(ox+dx,window.innerWidth -el.offsetWidth))+'px';
+    el.style.top =Math.max(0,Math.min(oy+dy,window.innerHeight-el.offsetHeight))+'px';
+  };
+  const endDrag=()=>{ dragging=false; el.style.cursor='grab'; };
+  /* 滑鼠 */
+  el.addEventListener('mousedown',e=>{
+    if(e.button!==0||e.target.tagName==='BUTTON') return;
+    startDrag(e.clientX,e.clientY);
+    const mm=e2=>moveDrag(e2.clientX,e2.clientY);
+    const mu=()=>{ endDrag(); window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); };
+    window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
+  });
+  /* 觸控 */
+  el.addEventListener('touchstart',e=>{
+    if(e.target.tagName==='BUTTON') return;
+    const t=e.touches[0]; startDrag(t.clientX,t.clientY);
+  },{passive:true});
+  el.addEventListener('touchmove',e=>{
+    const t=e.touches[0]; moveDrag(t.clientX,t.clientY);
+    if(didMove) e.preventDefault();
+  },{passive:false});
+  el.addEventListener('touchend',endDrag,{passive:true});
+  /* 避免拖拽後觸發 click（按鈕例外） */
+  el.addEventListener('click',e=>{ if(didMove){ e.stopImmediatePropagation(); didMove=false; }},true);
 }
 
 /* 佳里區範圍判斷 */
@@ -5505,11 +5583,13 @@ function navUseGPS(){
     if(_isInJiali(ll.lat, ll.lng)){
       _navFromLat=ll.lat; _navFromLng=ll.lng; _navFromLabel='目前位置 📍';
       const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel;
+      _placeNavFromMarker(ll.lat, ll.lng, '目前位置 📍');
       map.setView([ll.lat, ll.lng], 17);
     } else {
       _getDefaultNavStart().then(r=>{
         _navFromLat=r.lat; _navFromLng=r.lng; _navFromLabel=r.label;
         const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=r.label;
+        _placeNavFromMarker(r.lat, r.lng, r.label);
         /* GPS 不在佳里區 → 畫面移到進學路159號（預設起點） */
         map.setView([r.lat, r.lng], 17);
       });
@@ -5531,6 +5611,10 @@ function navSwapPoints(){
   [_navFromLabel,_navToLabel]=[_navToLabel,_navFromLabel];
   const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=_navFromLabel||'';
   const ti=document.getElementById('nav-to-inp');   if(ti) ti.value=_navToLabel||'';
+  if(_navFromLat) _placeNavFromMarker(_navFromLat, _navFromLng, _navFromLabel);
+  else if(_navFromMarker){ map.removeLayer(_navFromMarker); _navFromMarker=null; }
+  if(_navToLat) _placeNavToMarker(_navToLat, _navToLng, _navToLabel);
+  else if(_navToMarker){ map.removeLayer(_navToMarker); _navToMarker=null; }
 }
 
 /* 地址自動完成（使用 DOOR_DB normAddr） */
@@ -5556,13 +5640,18 @@ function _navDbSearch(q){
   return hits;
 }
 function navSelectPoint(field, lat, lng, label){
-  if(field==='from'){_navFromLat=lat;_navFromLng=lng;_navFromLabel=label;
+  if(field==='from'){
+    _navFromLat=lat;_navFromLng=lng;_navFromLabel=label;
     const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=label;
-  } else {_navToLat=lat;_navToLng=lng;_navToLabel=label;
+    _placeNavFromMarker(lat, lng, label);
+  } else {
+    _navToLat=lat;_navToLng=lng;_navToLabel=label;
     const ti=document.getElementById('nav-to-inp'); if(ti) ti.value=label;
+    _placeNavToMarker(lat, lng, label);
   }
   const sug=document.getElementById(`nav-${field}-sug`);
   if(sug){sug.classList.remove('show');sug.innerHTML='';}
+  _updateNavBarQuery();
 }
 
 /* Haversine 距離（km） */

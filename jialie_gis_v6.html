@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.467</title>
+<title>佳里 GIS v6.468</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5085,6 +5085,7 @@ function showRadiusPanel(lat,lng,pts,label=''){
 function _updatePrintBtn(){
   var wrap = document.getElementById('print-btn-wrap');
   if(!wrap) return;
+  if(typeof _radiusOn === 'undefined' || typeof _radiusCircle === 'undefined') return;
   var show = _radiusOn && _radiusCircle !== null;
   wrap.style.display = show ? 'flex' : 'none';
   // 側欄收起時跟著移位
@@ -7489,6 +7490,7 @@ function togglePtEditMode(){
 function _updatePtEditBtn(){
   var btn = document.getElementById('pt-edit-btn');
   if(!btn) return;
+  if(typeof _doorLayerOn === 'undefined') return;
   var can = _doorLayerOn && !_radiusOn && !_vilBoundaryOn;
   btn.disabled = !can;
   if(!can && _ptEditMode) togglePtEditMode();

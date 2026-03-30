@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.472</title>
+<title>佳里 GIS v6.473</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -194,6 +194,7 @@ body.vil-mode .nav-fac-btn{background:rgba(150,150,150,.45)!important;color:rgba
 /* ── 自定義地點編輯模式 ── */
 body.pt-edit-mode #map{cursor:crosshair !important}
 body.vil-mode #pt-edit-btn-wrap{display:none!important}
+body.pt-edit-mode #vil-stat-row{display:none!important}
 @media(max-width:1023px){#pt-edit-btn-wrap{display:none!important}}
 @media print{#pt-edit-btn-wrap,#cpt-modal,#pt-edit-banner,#pt-pick-banner{display:none!important}}
 #pt-edit-btn{padding:4px 12px;border-radius:8px;border:2px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
@@ -983,7 +984,7 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 
 <!-- ── DESKTOP LEGEND ── -->
 <div id="legend-desktop" style="display:none;flex-direction:column;gap:4px">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px 2px">
+  <div id="vil-stat-row" style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px 2px">
     <span style="font-size:13px;font-weight:800;color:var(--text1);letter-spacing:.3px">📊 里別統計模式</span>
     <button id="vil-layer-btn" onclick="toggleVilLayer()" style="font-size:12px;padding:5px 14px;border-radius:8px;border:2px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-weight:700">統計 OFF</button>
   </div>

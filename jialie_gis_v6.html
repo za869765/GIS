@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.463</title>
+<title>佳里 GIS v6.464</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -7334,7 +7334,12 @@ function togglePtEditMode(){
   const banner=document.getElementById('pt-edit-banner');
   if(btn) btn.classList.toggle('active',_ptEditMode);
   if(banner) _ptEditMode ? banner.classList.add('show') : banner.classList.remove('show');
-  if(!_ptEditMode){ cancelCoordPick(); }
+  if(!_ptEditMode){
+    /* 關閉編輯模式：同時關閉取座標 Banner 與表單（不要重新開啟 modal） */
+    _ptPickMode=false;
+    document.getElementById('pt-pick-banner')?.classList.remove('show');
+    closeCptModal();
+  }
 }
 
 /* 設定建物型態 radio + 高亮 */
@@ -7500,7 +7505,10 @@ function cancelCoordPick(){
   if(!_ptPickMode) return;
   _ptPickMode=false;
   document.getElementById('pt-pick-banner').classList.remove('show');
-  document.getElementById('cpt-modal').classList.add('show');
+  /* 只要表單有資料（新增或編輯中），取消取座標後重新顯示表單 */
+  const hasForm = document.getElementById('cpt-name')?.value ||
+                  document.getElementById('cpt-edit-id')?.value;
+  if(hasForm) document.getElementById('cpt-modal').classList.add('show');
 }
 function _applyCoordPick(lat, lng){
   _ptPickMode=false;

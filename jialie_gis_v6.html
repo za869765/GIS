@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.501</title>
+<title>佳里 GIS v6.502</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5239,17 +5239,11 @@ function exportRadiusList(){
     rows.push([vil, ..._parseAddrParts(addr)]);
   });
   const safeName = (_radiusLabel||'地點').replace(/[\\/:*?"<>|]/g,'');
-  /* 桌機：直接下載 CSV（UTF-8 BOM，Excel 正常）*/
-  if(window.innerWidth >= 768){
-    const csv = '\uFEFF' + rows.map(r=>r.join(',')).join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-    a.download = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
-    a.click();
-    return;
-  }
-  /* 手機：WPS Android 忽略 BOM 造成亂碼，改顯示 HTML 表格 Modal */
-  _showExportModal(rows, safeName);
+  const csv = '\uFEFF' + rows.map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
+  a.click();
 }
 function _showExportModal(rows, safeName){
   const existing = document.getElementById('export-modal');

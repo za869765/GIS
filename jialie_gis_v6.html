@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.475</title>
+<title>佳里 GIS v6.476</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1767,7 +1767,7 @@ function showNetworkToast(msg, bg){
 /* ═══════════════════════════════════════════
    MAP SETUP
 ═══════════════════════════════════════════ */
-const map=L.map('map',{center:[23.184,120.183],zoom:17,zoomControl:false,maxZoom:21,zoomSnap:0.5,zoomDelta:0.5});
+const map=L.map('map',{center:[23.163877779179685,120.17772634728972],zoom:17,zoomControl:false,maxZoom:21,zoomSnap:0.5,zoomDelta:0.5});
 
 // 離線時顯示灰色底圖
 // CartoDB Voyager — 免 Referer，支援繁中路名，適合 GAS/file 環境
@@ -4302,6 +4302,8 @@ async function toggleFacGroup(gid){
     map.removeLayer(_facGroups[gid]);
     _facGroups[gid] = null;
     if(btn){ btn.classList.remove('fon'); btn.innerHTML=cfg.label; }
+    /* 自定義點重新渲染（回歸 _cptLayer 顯示） */
+    if(typeof _renderCpts === 'function') _renderCpts();
     return;
   }
   if(_facGroupBuilding[gid]) return;
@@ -4330,10 +4332,24 @@ async function toggleFacGroup(gid){
       .bindPopup(label, {maxWidth:220})
       .addTo(lg);
   }
+  /* 加入同類別的自定義地點 */
+  if(typeof _cpts !== 'undefined'){
+    _cpts.filter(function(cp){ return cp.group === gid && cp.lat && cp.lng; }).forEach(function(cp){
+      var cname = cp.name || cp.addr;
+      var navLabel3 = cname.replace(/'/g,"\\'");
+      var navBtn3 = '<button class="nav-fac-btn" onclick="navFacTo('+cp.lat+','+cp.lng+',\''+navLabel3+'\');map.closePopup()" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>';
+      var label3 = '<b>'+cname+'</b>'+(cp.tel?'<br><span style="font-size:11px;color:#555">☎ '+cp.tel+'</span>':'')+'<br><span style="font-size:11px;color:#888">'+cp.addr+'</span><br><span style="font-size:10px;color:#e67e22">📌 自定義</span>'+navBtn3;
+      L.marker([cp.lat, cp.lng], {icon: _cptIcon(cp.group, cp.bldType)})
+        .bindPopup(label3, {maxWidth:220})
+        .addTo(lg);
+    });
+  }
   _facGroups[gid] = lg;
   lg.addTo(map);
   _facGroupBuilding[gid] = false;
   if(btn) btn.innerHTML = cfg.label;
+  /* 重渲自定義點，隱藏已由 fac layer 顯示的同類別點（避免重複） */
+  if(typeof _renderCpts === 'function') _renderCpts();
 }
 
 function applyGeoResult(lat,lng,source,method){
@@ -7429,6 +7445,8 @@ function _renderCpts(){
   if(!_cpts.length) return;
   _cptLayer = L.layerGroup();
   _cpts.forEach(function(p){
+    /* 若該類別的 fac group 圖層已開啟，由該圖層負責顯示，跳過避免重複 */
+    if(p.group && typeof _facGroups !== 'undefined' && _facGroups[p.group]) return;
     var usePinIcon = !!(p.group && p.name);
     var cm;
     if(usePinIcon){

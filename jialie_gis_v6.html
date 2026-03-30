@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.454</title>
+<title>佳里 GIS v6.455</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5432,10 +5432,33 @@ function hideNavBar(){
   document.getElementById('nav-bar')?.classList.add('gone');
 }
 
-/* 查詢按鈕顯示邏輯：起訖點皆有資料才顯示 */
+/* 查詢按鈕 + 起訖點狀態指示器 */
 function _updateNavBarQuery(){
-  const btn=document.getElementById('nav-bar-query');
-  if(btn) btn.style.display=(_navFromLat&&_navToLat)?'inline-block':'none';
+  /* 查詢按鈕：兩者皆設才顯示 */
+  const qb=document.getElementById('nav-bar-query');
+  if(qb) qb.style.display=(_navFromLat&&_navToLat)?'inline-block':'none';
+  /* 起點按鈕：有值→實心綠色；空→半透明空心 */
+  const fb=document.getElementById('nav-bar-from');
+  if(fb){
+    if(_navFromLat){
+      fb.innerHTML='<span style="font-size:9px;vertical-align:middle;margin-right:3px">🟢</span>起點';
+      fb.style.background='#1a8a4a'; fb.style.border='1px solid transparent';
+    } else {
+      fb.innerHTML='<span style="font-size:8px;vertical-align:middle;margin-right:3px;opacity:.7">⬜</span>設起點';
+      fb.style.background='rgba(255,255,255,.22)'; fb.style.border='1px solid rgba(255,255,255,.45)';
+    }
+  }
+  /* 迄點按鈕：有值→實心紅色；空→原綠色空 */
+  const tb=document.getElementById('nav-bar-to');
+  if(tb){
+    if(_navToLat){
+      tb.innerHTML='<span style="font-size:9px;vertical-align:middle;margin-right:3px">🔴</span>迄點';
+      tb.style.background='#c0392b'; tb.style.border='1px solid transparent';
+    } else {
+      tb.innerHTML='<span style="font-size:8px;vertical-align:middle;margin-right:3px;opacity:.7">⬜</span>設迄點';
+      tb.style.background='#27ae60'; tb.style.border='none';
+    }
+  }
 }
 
 /* 導航列：設為起點 */

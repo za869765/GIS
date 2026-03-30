@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.471</title>
+<title>佳里 GIS v6.472</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -7456,16 +7456,18 @@ function _renderCpts(){
       navBtn.textContent = '🧭 導航';
       navBtn.onclick = function(){ navFacTo(p.lat, p.lng, p.name); map.closePopup(); };
       row.appendChild(navBtn);
-      var editBtn = document.createElement('button');
-      editBtn.style.cssText = 'flex:1;padding:5px;background:#1b4f72;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px';
-      editBtn.textContent = '✏️ 編輯';
-      editBtn.onclick = function(){ openCptEdit(p.id); };
-      row.appendChild(editBtn);
-      var delBtn = document.createElement('button');
-      delBtn.style.cssText = 'padding:5px 9px;background:#fde8e8;border:none;color:#c0392b;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px';
-      delBtn.textContent = '🗑';
-      delBtn.onclick = function(){ deleteCptConfirm(p.id); };
-      row.appendChild(delBtn);
+      if(_ptEditMode){
+        var editBtn = document.createElement('button');
+        editBtn.style.cssText = 'flex:1;padding:5px;background:#1b4f72;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px';
+        editBtn.textContent = '✏️ 編輯';
+        editBtn.onclick = function(){ openCptEdit(p.id); };
+        row.appendChild(editBtn);
+        var delBtn = document.createElement('button');
+        delBtn.style.cssText = 'padding:5px 9px;background:#fde8e8;border:none;color:#c0392b;font-size:11px;font-weight:700;cursor:pointer;border-radius:8px';
+        delBtn.textContent = '🗑';
+        delBtn.onclick = function(){ deleteCptConfirm(p.id); };
+        row.appendChild(delBtn);
+      }
       div.appendChild(row);
       return div;
     }, {maxWidth:260});

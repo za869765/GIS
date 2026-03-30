@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.439</title>
+<title>佳里 GIS v6.440</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -151,7 +151,7 @@ input,select,textarea,button{font-family:inherit}
 #gps-btn{
   position:fixed;right:14px;
   bottom:calc(var(--panel-h) + 74px + env(safe-area-inset-bottom,0px));
-  z-index:550;width:44px;height:44px;border-radius:50%;
+  z-index:625;width:44px;height:44px;border-radius:50%;
   background:rgba(255,255,255,.94);color:var(--blue);
   border:1.5px solid var(--border2);font-size:18px;cursor:pointer;
   box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;
@@ -5098,12 +5098,14 @@ function locateMe() {
       if (_gpsMarker) { map.removeLayer(_gpsMarker); _gpsMarker = null; }
       if (_gpsCircle) { map.removeLayer(_gpsCircle); _gpsCircle = null; }
 
-      /* 精度圓 */
-      _gpsCircle = L.circle([lat, lng], {
-        radius: pos.coords.accuracy,
-        color:'#1b6fd8', fillColor:'#1b6fd8',
-        fillOpacity:.13, weight:1.5, interactive:false
-      }).addTo(map);
+      /* 精度圓：僅在精度 < 2000m 時才顯示，避免巨圓蓋住地圖 */
+      if (acc < 2000) {
+        _gpsCircle = L.circle([lat, lng], {
+          radius: pos.coords.accuracy,
+          color:'#1b6fd8', fillColor:'#1b6fd8',
+          fillOpacity:.13, weight:1.5, interactive:false
+        }).addTo(map);
+      }
 
       /* 位置點 */
       const dotColor = acc > 500 ? '#e67e22' : '#1b6fd8';

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.461</title>
+<title>佳里 GIS v6.462</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -816,10 +816,6 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
     <span style="font-size:13px;font-weight:700;letter-spacing:.3px;pointer-events:none">📊 里別統計模式</span>
     <button onclick="toggleVilLayer()" style="font-size:11px;font-weight:700;padding:3px 11px;border-radius:10px;border:1.5px solid rgba(255,255,255,.5);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;letter-spacing:.2px;flex-shrink:0" title="關閉里別統計模式">關閉</button>
-  </div>
-  <div style="display:flex;gap:2px;margin-top:6px;background:rgba(0,0,0,.18);border-radius:9px;padding:2px">
-    <button id="vil-bs-abs" onclick="event.stopPropagation();_setScSort('abs')" style="flex:1;padding:4px 0;border-radius:7px;border:none;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;background:#fff;color:var(--blue);box-shadow:0 1px 3px rgba(0,0,0,.18)">人口數量</button>
-    <button id="vil-bs-rate" onclick="event.stopPropagation();_setScSort('rate')" style="flex:1;padding:4px 0;border-radius:7px;border:none;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;background:transparent;color:rgba(255,255,255,.7);box-shadow:none">人口比率</button>
   </div>
 </div>
 <!-- ── 右側欄收起按鈕 ── -->
@@ -1923,14 +1919,12 @@ function _setScSort(sort){
 }
 function _updateScSortUI(){
   var byRate=(_scPanelSort==='rate');
-  var pairs=[['sc-sd-abs','sc-sd-rate'],['sc-sm-abs','sc-sm-rate'],['vil-bs-abs','vil-bs-rate']];
+  var pairs=[['sc-sd-abs','sc-sd-rate'],['sc-sm-abs','sc-sm-rate']];
   for(var i=0;i<pairs.length;i++){
     var ab=document.getElementById(pairs[i][0]);
     var rb=document.getElementById(pairs[i][1]);
-    // badge buttons have different inactive color (white+blue vs grey)
-    var isBadge=(pairs[i][0]==='vil-bs-abs');
-    if(ab){ab.style.background=byRate?'transparent':'#fff';ab.style.color=byRate?(isBadge?'rgba(255,255,255,.7)':'#999'):'var(--blue)';ab.style.boxShadow=byRate?'none':'0 1px 3px rgba(0,0,0,.18)';}
-    if(rb){rb.style.background=byRate?'#fff':'transparent';rb.style.color=byRate?'var(--blue)':(isBadge?'rgba(255,255,255,.7)':'#999');rb.style.boxShadow=byRate?'0 1px 3px rgba(0,0,0,.18)':'none';}
+    if(ab){ab.style.background=byRate?'transparent':'#fff';ab.style.color=byRate?'#999':'var(--blue)';ab.style.boxShadow=byRate?'none':'0 1px 3px rgba(0,0,0,.18)';}
+    if(rb){rb.style.background=byRate?'#fff':'transparent';rb.style.color=byRate?'var(--blue)':'#999';rb.style.boxShadow=byRate?'0 1px 3px rgba(0,0,0,.18)':'none';}
   }
 }
 function _showScSortRow(show){
@@ -7162,26 +7156,7 @@ map.on('dblclick',function(e){
   panel.addEventListener('touchend',de);
 })();
 
-/* ── 里別統計模式徽章拖曳（點空白處移動） ── */
-(function(){
-  const badge=document.getElementById('vil-mode-badge');
-  if(!badge) return;
-  // 還原上次位置
-  try{
-    const s=JSON.parse(localStorage.getItem('vilBadgePos')||'null');
-    if(s){ badge.style.left=s.left; badge.style.top=s.top; badge.style.transform='none'; }
-  }catch{}
-  let sx,sy,sl,st,dragging=false;
-  function ds(cx,cy){ const r=badge.getBoundingClientRect(); sx=cx;sy=cy;sl=r.left;st=r.top;dragging=false; badge.style.transform='none';badge.style.top=st+'px';badge.style.left=sl+'px'; }
-  function dm(cx,cy){ const dx=cx-sx,dy=cy-sy; if(!dragging&&Math.abs(dx)<4&&Math.abs(dy)<4)return; dragging=true; badge.style.cursor='grabbing'; badge.style.left=Math.max(4,Math.min(window.innerWidth-badge.offsetWidth-4,sl+dx))+'px'; badge.style.top=Math.max(4,Math.min(window.innerHeight-badge.offsetHeight-4,st+dy))+'px'; }
-  function de(){ if(dragging){try{localStorage.setItem('vilBadgePos',JSON.stringify({left:badge.style.left,top:badge.style.top}));}catch{}} dragging=false; badge.style.cursor='grab'; }
-  badge.addEventListener('mousedown',e=>{ if(e.target.closest('button')) return; e.preventDefault(); ds(e.clientX,e.clientY); badge._d=true; });
-  document.addEventListener('mousemove',e=>{ if(badge._d) dm(e.clientX,e.clientY); });
-  document.addEventListener('mouseup',()=>{ badge._d=false; de(); });
-  badge.addEventListener('touchstart',e=>{ if(e.target.closest('button')) return; const t=e.touches[0]; ds(t.clientX,t.clientY); },{passive:true});
-  badge.addEventListener('touchmove',e=>{ if(!dragging&&Math.abs(e.touches[0].clientX-sx)<4&&Math.abs(e.touches[0].clientY-sy)<4)return; e.preventDefault(); const t=e.touches[0]; dm(t.clientX,t.clientY); },{passive:false});
-  badge.addEventListener('touchend',de);
-})();
+/* vil-mode-badge 拖曳由 makeDraggable() 統一處理（見初始化區） */
 </script>
 </body>
 </html>

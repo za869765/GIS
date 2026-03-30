@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.486</title>
+<title>佳里 GIS v6.487</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5660,9 +5660,12 @@ function hideNavBar(){
 
 /* 查詢按鈕 + 起訖點狀態指示器 */
 function _updateNavBarQuery(){
-  /* 查詢按鈕：預設灰底，兩者皆設才變橘色可按 */
+  /* 查詢按鈕：兩者皆設時隱藏（自動查詢）；只有一個時顯示 */
   const qb=document.getElementById('nav-bar-query');
-  if(qb) (_navFromLat&&_navToLat) ? qb.classList.add('active') : qb.classList.remove('active');
+  if(qb){
+    if(_navFromLat&&_navToLat){ qb.style.display='none'; }
+    else { qb.style.display=''; (_navFromLat||_navToLat)?qb.classList.add('active'):qb.classList.remove('active'); }
+  }
   /* 起點按鈕：有值→實心綠色；空→半透明空心 */
   const fb=document.getElementById('nav-bar-from');
   if(fb){
@@ -5695,6 +5698,8 @@ function navBarSetFrom(){
   _placeNavFromMarker(_navFromLat, _navFromLng, _navFromLabel);
   _updateNavBarQuery();
   openNavPanel(true);
+  /* 起訖皆備 → 自動查詢 */
+  if(_navFromLat&&_navToLat) calcNavRoute();
 }
 /* 導航列：設為迄點 */
 function navBarSetTo(){
@@ -5704,11 +5709,8 @@ function navBarSetTo(){
   _placeNavToMarker(_navToLat, _navToLng, _navToLabel);
   _updateNavBarQuery();
   openNavPanel(true);
-}
-/* 導航列：直接查詢（起訖點皆已設定時才出現） */
-function navBarQuery(){
-  openNavPanel(true);
-  calcNavRoute();
+  /* 起訖皆備 → 自動查詢 */
+  if(_navFromLat&&_navToLat) calcNavRoute();
 }
 
 /* 「導航到此」：從設施／門牌 popup 直接設定迄點並展開導航規劃 */

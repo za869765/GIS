@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.514</title>
+<title>佳里 GIS v6.513</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -2558,7 +2558,11 @@ async function dbPointsForRoadLane(road,lane){
 let dbRoadNames=[];
 async function ensureDbRoadNames(){if(!dbRoadNames.length)dbRoadNames=await dbRoads();}
 
-/* getRoads 已移至行 3156，此處冗餘版本已刪除（v6.514 hoisting fix） */
+function getRoads(){
+  const built=ROAD_DB.map(r=>({name:r.r,dist:r.d,note:r.note,_src:'builtin'}));
+  const extra=osm_roads.filter(o=>!built.find(b=>b.name===o.name));
+  return[...built,...extra].sort((a,b)=>a.name.localeCompare(b.name,'zh-TW'));
+}
 async function onRoadInput(){
   buildFullAddr();
   const val=document.getElementById('f-road').value.trim();
@@ -4397,7 +4401,7 @@ function applyGeoResult(lat,lng,source,method){
 
 /* ── showCacheStatus 補充：顯示 addr db 狀態 ── */
 const _origShowCache = showCacheStatus;
-showCacheStatus = async function(){
+async function showCacheStatus(){
   try{ await _origShowCache(); }catch{}
   try{
     const {addrN,roadN}=await addrDbCount();
@@ -4455,27 +4459,27 @@ async function onRoadSelChange(){
 
 /* Override buildFullAddr to also read f-road-sel */
 const _origBuildFullAddr = buildFullAddr;
-buildFullAddr = function(){
+function buildFullAddr(){
   // Sync select → hidden input
   const sel = document.getElementById('f-road-sel');
   if(sel?.value) document.getElementById('f-road').value = sel.value;
   _origBuildFullAddr();
-};
+}
 
 /* Override clearForm to reset select */
 const _origClearForm = clearForm;
-clearForm = function(){
+function clearForm(){
   _origClearForm();
   resetCascade();
   // Re-activate step 1
   const s1=document.getElementById('step1-wrap');
   if(s1){ s1.style.display='block'; s1.classList.add('active'); s1.classList.remove('done'); }
   setGeoMsg('','ok');
-};
+}
 
 /* Override editCase to restore select value */
 const _origEditCase = editCase;
-editCase = function(id){
+function editCase(id){
   _origEditCase(id);
   setTimeout(()=>{
     const road = document.getElementById('f-road').value;
@@ -6804,15 +6808,15 @@ function setTypeFilter(el,type){
 
 /* ── Override selectCase to open sub-detail ── */
 var _origSel=selectCase;
-selectCase = function(id){
+function selectCase(id){
   _origSel(id);
   if(_curMap==='cases') caseSubTab('detail');
-};
+}
 var _origStart=startAddMode;
-startAddMode = function(){
+function startAddMode(){
   _origStart();
   if(_curMap==='cases') caseSubTab('add');
-};
+}
 
 /* ── 公共設施：本機資料定位 ── */
 function geocodeLocal(addr,cb){

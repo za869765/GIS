@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.514</title>
+<title>佳里 GIS v6.515</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5172,10 +5172,9 @@ function printRadiusArea(){
     sheet.classList.add('panel-collapsed');
     mapEl && mapEl.classList.add('panel-collapsed');
   }
-  // 2. 等 transition，再 invalidateSize + fitBounds（padding 小 = 放大至圓圈填滿）
+  // 2. 等 transition，再 invalidateSize（不做 fitBounds，讓使用者自行調整視角）
   setTimeout(()=>{
     map.invalidateSize({animate:false});
-    map.fitBounds(bounds, {animate:false, padding:[20,20]});
     // 3. 等圖磚完全載入後列印
     setTimeout(()=>{ window.print(); }, 600);
   }, 300);

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.517</title>
+<title>佳里 GIS v6.518</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5342,7 +5342,7 @@ function printDengueForm(){
   let pagesHtml = '';
   pages.forEach((pts, pi) => {
     const isLast = pi === pages.length - 1;
-    const infoBar = INFO_BAR.replace(/PG/g, pi).replace('PG_NO', pi+1);
+    const infoBar = INFO_BAR.replace('PG_NO', pi+1).replace(/PG/g, pi);
     pagesHtml += `<div class="page${isLast?'':' page-break'}">
 <h2>臺 南 市 政 府 衛 生 局 登 革 熱 病 媒 蚊 密 度 調 查 紀 錄 表</h2>
 ${infoBar}

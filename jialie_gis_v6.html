@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.544</title>
+<title>佳里 GIS v6.545</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5331,9 +5331,14 @@ function printDengueForm(){
   const S12 = Array(12).fill(0).map(()=>'<th>戶內</th><th>戶外</th>').join('');
   const S24E = Array(24).fill('<td></td>').join('');
   const summaryHtml = `<div class="page page-break" style="break-after:page;page-break-after:always;">
-<div class="sum-title">
-  <span class="fil-y"></span>年&ensp;臺南市政府衛生局登革熱病媒蚊密度調查結果總表
-  <span class="sum-officer">調查者：<span class="uline fil-surveyor" style="min-width:60px;"></span></span>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin:0 0 4px;">
+  <div style="width:12em;flex-shrink:0;"></div>
+  <div class="sum-title" style="flex:1;position:static;">
+    <span class="fil-y"></span>年&ensp;臺南市政府衛生局登革熱病媒蚊密度調查結果總表
+  </div>
+  <div style="width:12em;flex-shrink:0;text-align:right;font-size:12pt;white-space:nowrap;">
+    調查者：<span class="uline fil-surveyor" style="min-width:60px;"></span>
+  </div>
 </div>
 <div class="sum-cats">
   調查類別：<span class="cat-btn" id="cat-1" data-label="常規調查" onclick="toggleCat(this)">□常規調查</span>&emsp;<span class="cat-btn" id="cat-2" data-label="陳情案" onclick="toggleCat(this)">□陳情案</span>&emsp;<span class="cat-btn" id="cat-3" data-label="疑案週邊" onclick="toggleCat(this)">□疑案週邊</span>&emsp;<span class="cat-btn" id="cat-4" data-label="確案週邊" onclick="toggleCat(this)">□確案週邊</span>

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.520</title>
+<title>佳里 GIS v6.521</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5411,7 +5411,13 @@ td{ height:22px; font-size:8pt; }
     <button class="ampm-ctrl active" id="c-am" onclick="setAmpm('am')">上午</button>
     <button class="ampm-ctrl" id="c-pm" onclick="setAmpm('pm')">下午</button>
   </span>
-  <span><label>調查者：</label><input id="c-surveyor" placeholder="姓名" size="8" oninput="syncPages()"></span>
+  <span style="display:flex;align-items:center;gap:4px;">
+    <label>調查者：</label>
+    <span id="surveyor-wrap" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+      <input class="c-surveyor" placeholder="姓名" size="6" oninput="syncPages()">
+    </span>
+    <button onclick="addSurveyor()" title="新增調查者" style="padding:2px 8px;border-radius:4px;border:1px solid #aaa;background:#fff;cursor:pointer;font-size:13pt;line-height:1;">＋</button>
+  </span>
   <span style="color:#777;font-size:8.5pt;">${safeName} 方圓${RADIUS_M}m｜共${_radiusPts.length}筆｜每頁${PAGE_ROWS}筆共${pages.length}頁</span>
 </div>
 
@@ -5419,6 +5425,16 @@ ${pagesHtml}
 
 <script>
 var _ampm = 'am';
+function addSurveyor(){
+  var inp = document.createElement('input');
+  inp.className = 'c-surveyor';
+  inp.placeholder = '姓名';
+  inp.size = 6;
+  inp.style.cssText = 'border:1px solid #aaa;border-radius:4px;padding:3px 6px;font-size:9.5pt;font-family:inherit;';
+  inp.addEventListener('input', syncPages);
+  document.getElementById('surveyor-wrap').appendChild(inp);
+  inp.focus();
+}
 function setAmpm(v){
   _ampm = v;
   document.getElementById('c-am').className = 'ampm-ctrl' + (v==='am'?' active':'');
@@ -5430,7 +5446,7 @@ function syncPages(){
   var y     = document.getElementById('c-y').value;
   var m     = document.getElementById('c-m').value;
   var d     = document.getElementById('c-d').value;
-  var name  = document.getElementById('c-surveyor').value;
+  var name  = Array.from(document.querySelectorAll('.c-surveyor')).map(function(e){return e.value.trim();}).filter(Boolean).join('、');
   document.querySelectorAll('.fil-vil').forEach(function(e){ e.textContent = vil; });
   document.querySelectorAll('.fil-y').forEach(function(e){ e.textContent = y; });
   document.querySelectorAll('.fil-m').forEach(function(e){ e.textContent = m; });

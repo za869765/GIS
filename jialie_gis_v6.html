@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.545</title>
+<title>佳里 GIS v6.546</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5466,6 +5466,9 @@ function printDengueForm(){
   <tr><td style="border:1px solid #000;white-space:nowrap;">不在戶</td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;" colspan="2">拒絕</td><td style="border:1px solid #000;white-space:nowrap;">空戶</td><td style="border:1px solid #000;white-space:nowrap;">空地</td></tr>
   <tr><td style="border:1px solid #000;">戶數</td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td></tr>
   </tbody></table>
+<div class="fn" style="margin-top:5px;">
+  註一：調查地區分類：1.住宅 2.機關 3.學校 4.空地 5.空屋 6.公園 7.好望角 8.花卉店 9.寺廟 10.教堂 11.市場 12.停車場 13.旅賓館 14.醫療院所 15.菜園及山區。<br>
+  註二：積水容器分類：1.花瓶；2.各式底盤；3.水溝；4.水塔、冷卻水塔；5.帆布、塑膠布；6.桶、缸、甕、盆；7.保利龍箱盤、塑膠籃；8.馬桶、水箱；9.杯、瓶、碗、罐、盒；10.地下室、防空洞；11.輪胎；12.其他。
 </div>
 </div>`;
 
@@ -5491,10 +5494,6 @@ function printDengueForm(){
 <h2>臺 南 市 政 府 衛 生 局 登 革 熱 病 媒 蚊 密 度 調 查 紀 錄 表</h2>
 ${infoBar}
 <table>${COLGROUP}${THEAD}<tbody>${makeBody(pts, pi*PAGE_ROWS)}</tbody></table>
-<div class="fn">
-  註一：調查地區分類：1.住宅 2.機關 3.學校 4.空地 5.空屋 6.公園 7.好望角 8.花卉店 9.寺廟 10.教堂 11.市場 12.停車場 13.旅賓館 14.醫療院所 15.菜園及山區。<br>
-  註二：積水容器分類：1.花瓶；2.各式底盤；3.水溝；4.水塔、冷卻水塔；5.帆布、塑膠布；6.桶、缸、甕、盆；7.保利龍箱盤、塑膠籃；8.馬桶、水箱；9.杯、瓶、碗、罐、盒；10.地下室、防空洞；11.輪胎；12.其他。
-</div>
 </div>`;
   });
 

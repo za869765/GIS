@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.521</title>
+<title>佳里 GIS v6.522</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5335,6 +5335,7 @@ function printDengueForm(){
     <span>調查者：<span class="uline fil-surveyor" style="min-width:80px;"></span></span>
     <span>區 <span class="uline">佳里</span></span>
     <span>里 <span class="uline"><span class="fil-vil"></span></span></span>
+    <span>法傳編號：<span class="uline fil-caseno" style="min-width:100px;letter-spacing:1px;"></span></span>
   </div>
   <div class="page-num">第 PG_NO 頁　共 ${totalPages} 頁</div>
 </div>`;
@@ -5418,6 +5419,9 @@ td{ height:22px; font-size:8pt; }
     </span>
     <button onclick="addSurveyor()" title="新增調查者" style="padding:2px 8px;border-radius:4px;border:1px solid #aaa;background:#fff;cursor:pointer;font-size:13pt;line-height:1;">＋</button>
   </span>
+  <span><label>法傳編號：</label><input id="c-caseno" placeholder="13碼數字" maxlength="13"
+    oninput="this.value=this.value.replace(/[^0-9]/g,'');syncPages()"
+    style="border:1px solid #aaa;border-radius:4px;padding:3px 6px;font-size:9.5pt;font-family:monospace;letter-spacing:1px;width:110px;"></span>
   <span style="color:#777;font-size:8.5pt;">${safeName} 方圓${RADIUS_M}m｜共${_radiusPts.length}筆｜每頁${PAGE_ROWS}筆共${pages.length}頁</span>
 </div>
 
@@ -5452,6 +5456,8 @@ function syncPages(){
   document.querySelectorAll('.fil-m').forEach(function(e){ e.textContent = m; });
   document.querySelectorAll('.fil-d').forEach(function(e){ e.textContent = d; });
   document.querySelectorAll('.fil-surveyor').forEach(function(e){ e.textContent = name; });
+  var caseno = document.getElementById('c-caseno').value;
+  document.querySelectorAll('.fil-caseno').forEach(function(e){ e.textContent = caseno; });
   /* 上/下午圈選同步至每頁 */
   document.querySelectorAll('.ampm').forEach(function(e){
     var isAm = e.id && e.id.indexOf('lbl-am') === 0;

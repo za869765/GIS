@@ -897,6 +897,7 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 <div id="print-btn-wrap" style="display:none;position:fixed;top:14px;right:360px;z-index:600;gap:6px;transition:right .25s ease;align-items:center">
   <div id="radius-info-float" style="display:none;background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap"></div>
   <button id="export-btn" onclick="exportRadiusList()" title="匯出範圍門牌清單" style="background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);color:var(--text1)">⬇ 匯出</button>
+  <button id="dengue-btn" onclick="printDengueForm()" title="產生登革熱調查紀錄表（A4橫式）" style="background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);color:#c0392b">🦟 調查表</button>
   <button id="print-btn" onclick="printRadiusArea()" title="列印範圍地圖" style="background:rgba(255,255,255,.94);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);color:var(--text1)">🖨 列印</button>
 </div>
 
@@ -5246,6 +5247,119 @@ function exportRadiusList(){
   a.download = fname;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
+/* ══════════════════════════════════════════════════════
+   登革熱病媒蚊密度調查紀錄表（A4 橫式列印）
+   ══════════════════════════════════════════════════════ */
+function printDengueForm(){
+  if(!_radiusPts || !_radiusPts.length){ alert('請先選取地點並設定半徑範圍'); return; }
+
+  /* 取得里名（去掉「佳里區」前綴） */
+  const vil = (_lastSelLat !== null && typeof getVillageAt === 'function')
+    ? (getVillageAt(_lastSelLat, _lastSelLng) || '') : '';
+  const vilName = vil.replace(/.*?佳里區/,'').replace(/里$/,'');
+
+  /* 地址列（最少 20 筆空白列供手填） */
+  const MIN_ROWS = 20;
+  let bodyHtml = '';
+  _radiusPts.forEach((p, i) => {
+    const addr = p.addr || '';
+    bodyHtml += `<tr>
+      <td>${i+1}</td><td></td><td></td>
+      <td class="ac">${addr}</td>
+      <td></td><td></td><td></td><td></td><td></td>
+      <td></td><td></td>
+      <td></td><td></td><td></td><td></td>
+      <td></td></tr>`;
+  });
+  for(let i = _radiusPts.length; i < MIN_ROWS; i++){
+    bodyHtml += `<tr><td>${i+1}</td><td></td><td></td><td></td>
+      <td></td><td></td><td></td><td></td><td></td>
+      <td></td><td></td><td></td><td></td><td></td><td></td>
+      <td></td></tr>`;
+  }
+
+  const safeName = (_radiusLabel||'地點').replace(/[\\/:*?"<>|]/g,'');
+
+  /* 今日日期（民國年） */
+  const _today = new Date();
+  const _rocY = _today.getFullYear() - 1911;
+  const _m    = _today.getMonth() + 1;
+  const _d    = _today.getDate();
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>登革熱調查表－${safeName}半徑${RADIUS_M}m</title>
+<style>
+@page{ size:A4 landscape; margin:7mm; }
+*{ box-sizing:border-box; }
+body{ font-family:'新細明體','微軟正黑體',serif; font-size:8.5pt; margin:0; padding:0; }
+h2{ text-align:center; font-size:12.5pt; font-weight:bold; margin:0 0 3px; letter-spacing:3px; }
+.info{ display:flex; flex-wrap:wrap; gap:0 24px; margin-bottom:3px; font-size:8.5pt; align-items:baseline; }
+.info span{ white-space:nowrap; }
+.uline{ display:inline-block; border-bottom:1px solid #000; min-width:36px; }
+table{ width:100%; border-collapse:collapse; font-size:7.2pt; table-layout:fixed; }
+th,td{ border:1px solid #000; padding:1px 1px; text-align:center; vertical-align:middle; word-break:break-all; }
+th{ background:#fff; font-weight:bold; line-height:1.3; }
+td{ height:15px; }
+.ac{ text-align:left; padding-left:3px; font-size:7pt; }
+.fn{ font-size:6.8pt; margin-top:3px; line-height:1.6; }
+@media print{ .no-print{ display:none!important; } }
+</style></head><body>
+<div class="no-print" style="margin-bottom:6px;">
+  <button onclick="window.print()" style="padding:5px 20px;font-size:11pt;cursor:pointer;">🖨 列印</button>
+  <span style="margin-left:12px;color:#555;font-size:10pt;">${safeName} 方圓 ${RADIUS_M}m — 共 ${_radiusPts.length} 筆地址</span>
+</div>
+<h2>臺 南 市 政 府 衛 生 局 登 革 熱 病 媒 蚊 密 度 調 查 紀 錄 表</h2>
+<div class="info">
+  <span>區 <span class="uline">佳里</span></span>
+  <span>里 <span class="uline">${vilName}</span></span>
+  <span>調查日期：<span class="uline">${_rocY}</span>年<span class="uline">${_m}</span>月<span class="uline">${_d}</span>日　上午　下午</span>
+  <span>調查者：<span class="uline">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></span>
+</div>
+<table>
+<colgroup>
+  <col style="width:4%"><col style="width:5.5%"><col style="width:4%">
+  <col style="width:28%">
+  <col style="width:3%"><col style="width:3%"><col style="width:5%"><col style="width:4.5%"><col style="width:4.5%">
+  <col style="width:5%"><col style="width:5%">
+  <col style="width:4%"><col style="width:4%"><col style="width:4%"><col style="width:4%">
+  <col style="width:4%">
+</colgroup>
+<thead>
+<tr>
+  <th rowspan="3">編號</th>
+  <th rowspan="3">調查地區<br>分類<br>（註一）</th>
+  <th rowspan="3">衛教<br>人數</th>
+  <th rowspan="3">地　　　　　　　　址</th>
+  <th colspan="5">積　水　容　器</th>
+  <th colspan="2">孳生幼蟲發數</th>
+  <th colspan="4">採獲成蟲數（隻）</th>
+  <th rowspan="3">蛹數</th>
+</tr>
+<tr>
+  <th rowspan="2">戶內</th><th rowspan="2">戶外</th>
+  <th rowspan="2">容器種類<br>（註二）</th>
+  <th rowspan="2">容器<br>數量</th><th rowspan="2">陽性<br>數量</th>
+  <th rowspan="2">埃及<br>斑蚊</th><th rowspan="2">白線<br>斑蚊</th>
+  <th colspan="2">埃及斑蚊</th><th colspan="2">白線斑蚊</th>
+</tr>
+<tr>
+  <th>♀雌</th><th>♂雄</th><th>♀雌</th><th>♂雄</th>
+</tr>
+</thead>
+<tbody>${bodyHtml}</tbody>
+</table>
+<div class="fn">
+  註一：調查地區分類：1.住宅 2.機關 3.學校 4.空地 5.空屋 6.公園 7.好望角 8.花卉店 9.寺廟 10.教堂 11.市場 12.停車場 13.旅賓館 14.醫療院所 15.菜園及山區。<br>
+  註二：積水容器分類：1.花瓶；2.各式底盤；3.水溝；4.水塔、冷卻水塔；5.帆布、塑膠布；6.桶、缸、甕、盆；7.保利龍箱盤、塑膠籃；8.馬桶、水箱；9.杯、瓶、碗、罐、盒；10.地下室、防空洞；11.輪胎；12.其他。
+</div>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=1200,height=760');
+  if(!w){ alert('請允許彈出視窗（popup）'); return; }
+  w.document.write(html);
+  w.document.close();
+}
+
 function _showExportModal(rows, safeName){
   const existing = document.getElementById('export-modal');
   if(existing) existing.remove();

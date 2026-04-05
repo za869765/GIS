@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.529</title>
+<title>佳里 GIS v6.530</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5605,10 +5605,12 @@ function removeSurveyor(){
   }
 }
 function toggleCat(el){
-  var active = el.getAttribute('data-active')==='1';
-  active = !active;
-  el.setAttribute('data-active', active?'1':'0');
-  el.textContent = (active?'■':'□') + el.getAttribute('data-label');
+  document.querySelectorAll('.cat-btn').forEach(function(b){
+    b.setAttribute('data-active','0');
+    b.textContent = '□' + b.getAttribute('data-label');
+  });
+  el.setAttribute('data-active','1');
+  el.textContent = '■' + el.getAttribute('data-label');
   updateCasenoVis();
 }
 function updateCasenoVis(){
@@ -5651,6 +5653,7 @@ function syncPages(){
 }
 /* 初始化 */
 syncPages();
+toggleCat(document.getElementById('cat-1'));
 /* 每頁 上午/下午 也可直接點擊 */
 document.querySelectorAll('.ampm').forEach(function(e){
   e.addEventListener('click', function(){

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.552</title>
+<title>佳里 GIS v6.553</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -4729,7 +4729,22 @@ async function onMapSearch(){
         .slice(0,3);
     }
 
-    // 合併所有門牌結果（IndexedDB + DOOR_DB），去重
+    // ── 舊址對照搜尋（OLD_TO_NEW） ──
+    let oldAddrHits = [];
+    if(typeof OLD_TO_NEW!=='undefined'){
+      const qn = q.replace(/^臺南市佳里區/,'').replace(/^台南市佳里區/,'').trim();
+      Object.entries(OLD_TO_NEW).forEach(([oldAddr, newAddr])=>{
+        if(!oldAddr.includes(qn) && !qn.includes(oldAddr.slice(0,3))) return;
+        if(!oldAddr.includes(qn)) return;
+        // 找新址座標
+        if(typeof DOOR_DB!=='undefined'){
+          const hit = DOOR_DB.find(r=> r[2] && (r[2].replace('臺南市佳里區','').replace('台南市佳里區','')=== newAddr));
+          if(hit) oldAddrHits.push({lat:hit[0],lng:hit[1],addr:newAddr,disp:`${oldAddr} → ${newAddr}`});
+        }
+      });
+    }
+
+    // 合併所有門牌結果（IndexedDB + DOOR_DB + 舊址），去重
     const seen = new Set();
     _searchAllResults = [];
     [...addrPts.map(p=>{
@@ -4738,7 +4753,7 @@ async function onMapSearch(){
     }), ...doorHits.map(r=>{
       const full=r[2], disp=full.replace('臺南市佳里區','').replace('台南市佳里區','');
       return {lat:r[0],lng:r[1],addr:full,disp};
-    })].forEach(item=>{
+    }), ...oldAddrHits].forEach(item=>{
       if(!seen.has(item.disp)){seen.add(item.disp);_searchAllResults.push(item);}
     });
 
@@ -4951,9 +4966,12 @@ function _placePin(lat, lng, labelText, color){
   if(_searchMarker) map.removeLayer(_searchMarker);
   const shortLabel = labelText.replace('臺南市佳里區','').replace('台南市佳里區','');
   const vt = _vilTag ? _vilTag(lat,lng) : '';
+  // 查舊址備註
+  const oldNote = (typeof NEW_TO_OLD!=='undefined' && NEW_TO_OLD[shortLabel])
+    ? `\n原址：${NEW_TO_OLD[shortLabel]}` : '';
   _searchMarker = L.marker([lat,lng],{icon:_pinIcon(color||'#1a6fba'),zIndexOffset:1000})
     .addTo(map)
-    .bindTooltip(`${vt?vt.replace(/<[^>]+>/g,'')+'　':''}${shortLabel}`,
+    .bindTooltip(`${vt?vt.replace(/<[^>]+>/g,'')+'　':''}${shortLabel}${oldNote}`,
       {permanent:true, direction:'right', className:'pin-label'})
     .openTooltip();
   /* 顯示導航浮動列 — 僅門牌點，排除地段號與空標籤 */
@@ -7852,6 +7870,7 @@ map.on('dblclick',function(e){
 </script>
 <script src="land_db.js" charset="utf-8"></script>
 <script src="doornum_db.js" charset="utf-8"></script>
+<script src="old_addr_map.js" charset="utf-8"></script>
 
 <!-- ══ SETTINGS OVERLAY ══ -->
 <div id="settings-overlay" onclick="if(event.target===this)closeSettings()" style="position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center">

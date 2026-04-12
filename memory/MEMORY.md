@@ -7,4 +7,4 @@
 - [EAF 專案交接記錄 2026-04-02](project_eaf_handoff_20260402.md) — 當前版本 v2.5.7，本日完成功能清單、架構備忘、D1 狀態、待確認事項
 - [GIS 專案交接記錄 2026-04-07](project_gis_handoff_20260407.md) — jialie_gis_v6.html v6.553，新舊門牌對照 old_addr_map.js（2524組）、10筆補座標、潭墘街33筆
 - [GIS 專案交接記錄 2026-04-05](project_gis_handoff_20260405.md) — jialie_gis_v6.html v6.552，密調表行高歷程、已知問題
-- [每次 session 啟動先 git pull](feedback_session_start_workflow.md) — 雲端為主，啟動時先 pull GIS/EAF 兩個 repo 再動工
+- [每次 session 啟動先 git pull](feedback_session_start_workflow.md) — 雲端為主，啟動時先 pull GIS/EAF/CLASS 三個 repo，CLASS 空則 clone

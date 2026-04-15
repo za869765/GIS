@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.553</title>
+<title>佳里 GIS v6.554</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -35,16 +35,36 @@ self.addEventListener('activate',e=>{
 self.addEventListener('fetch',e=>{
   const u=e.request.url;
   if(u.includes('tile.openstreetmap.org')||u.includes('.tile.')){
-    e.respondWith(caches.open(TILES).then(c=>c.match(e.request).then(h=>{
+    e.respondWith((async()=>{
+      const c=await caches.open(TILES);
+      const h=await c.match(e.request);
       if(h)return h;
-      return fetch(e.request).then(r=>{if(r&&r.status===200)c.put(e.request,r.clone());return r;}).catch(()=>new Response('',{status:503}));
-    })));return;
+      try{
+        const r=await fetch(e.request);
+        if(r&&r.status===200){
+          const clone=r.clone();
+          e.waitUntil(c.put(e.request,clone));
+        }
+        return r;
+      }catch(_){return new Response('',{status:503});}
+    })());return;
   }
   if(PRECACHE.some(p=>u.startsWith(p.split('?')[0]))){
-    e.respondWith(caches.match(e.request).then(h=>{
+    e.respondWith((async()=>{
+      const h=await caches.match(e.request);
       if(h)return h;
-      return fetch(e.request).then(r=>{if(r&&r.status===200)caches.open(ASSET).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>new Response('Offline',{status:503}));
-    }));return;
+      try{
+        const r=await fetch(e.request);
+        if(r&&r.status===200){
+          const clone=r.clone();
+          e.waitUntil((async()=>{
+            const c=await caches.open(ASSET);
+            await c.put(e.request,clone);
+          })());
+        }
+        return r;
+      }catch(_){return new Response('Offline',{status:503});}
+    })());return;
   }
 });
 `;
@@ -4563,7 +4583,7 @@ async function searchAddressInDb(q){
       .map(r=>r.name)
       .slice(0, 5);
 
-    if(!matchingRoads.length) return { addrPts:[], roadOnly:[] };
+    if(!matchingRoads.length) return { addrPts:[], matchingRoads:[] };
 
     const addrPts = [];
     for(const road of matchingRoads){
@@ -4622,16 +4642,20 @@ function _fuzzyScore(str, q){
   return qi===q.length ? 30 : 0;
 }
 
+/* HTML escape（防 XSS） */
+function _escHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 /* 高亮匹配字元 */
 function _hlMatch(text, q){
-  if(!q) return text;
+  if(!q) return _escHtml(text);
   const idx = text.indexOf(q);
-  if(idx>=0) return text.slice(0,idx)+'<span class="msr-hl">'+text.slice(idx,idx+q.length)+'</span>'+text.slice(idx+q.length);
+  if(idx>=0) return _escHtml(text.slice(0,idx))+'<span class="msr-hl">'+_escHtml(text.slice(idx,idx+q.length))+'</span>'+_escHtml(text.slice(idx+q.length));
   // 子序列：逐字標色
   let out='', qi=0;
   for(let i=0;i<text.length;i++){
-    if(qi<q.length && text[i]===q[qi]){ out+='<span class="msr-hl">'+text[i]+'</span>'; qi++; }
-    else out+=text[i];
+    if(qi<q.length && text[i]===q[qi]){ out+='<span class="msr-hl">'+_escHtml(text[i])+'</span>'; qi++; }
+    else out+=_escHtml(text[i]);
   }
   return out;
 }

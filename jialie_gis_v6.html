@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.821</title>
+<title>佳里 GIS v6.822</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1334,13 +1334,15 @@ body.vil-mode #vil-mode-badge::before{content:'';display:inline-block;width:6px;
 #sc-rank-panel.switching .rank-row{animation:rank-row-cascade .35s var(--ease-snap) backwards}
 
 /* ═══ v5.2 · 進度條補間 + 排名 FLIP（時長全部 .55s 對齊） ═══ */
-#sc-rank-panel .rank-bar-fill{transition:width .55s cubic-bezier(.22,1,.36,1),background .3s;will-change:width}
+/* 關掉 v4 的 scaleX/cascade 動畫，避免 FLIP 排序時 nth-child 變動 → v4 動畫重播 → 雙重感 */
+#sc-rank-panel .rank-row{animation:none !important}
+#sc-rank-panel .rank-bar-fill{animation:none !important;transition:width .55s cubic-bezier(.22,1,.36,1),background .3s;will-change:width}
 #sc-rank-panel .rank-bar-fill.lv-critical{background:linear-gradient(90deg,#8E44AD,#9B59B6) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 10px rgba(155,89,182,.4)}
 #sc-rank-panel .rank-bar-fill.lv-high{background:linear-gradient(90deg,#C0392B,#E74C3C) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 10px rgba(231,76,60,.4)}
 #sc-rank-panel .rank-bar-fill.lv-mid{background:linear-gradient(90deg,#E67E22,#F39C12) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 10px rgba(243,156,18,.4)}
 #sc-rank-panel .rank-bar-fill.lv-low{background:linear-gradient(90deg,#D4A017,#F1C40F) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 10px rgba(241,196,15,.35)}
 #sc-rank-panel .rank-bar-fill.lv-none{background:linear-gradient(90deg,#9EB1C1,#BDC3C7) !important}
-#sc-rank-panel .rank-row.current .rank-bar-fill{background:linear-gradient(90deg,var(--c-primary),var(--c-primary-500)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 0 12px rgba(30,111,186,.6) !important;animation:rank-current-pulse 2.2s ease-in-out infinite}
+#sc-rank-panel .rank-row.current .rank-bar-fill{background:linear-gradient(90deg,var(--c-primary),var(--c-primary-500)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 0 12px rgba(30,111,186,.6) !important;animation:rank-current-pulse 2.2s ease-in-out infinite !important}
 @keyframes rank-current-pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.15)}}
 #sc-rank-panel .rank-row{transition:transform .55s cubic-bezier(.22,1,.36,1),background .2s;will-change:transform;position:relative}
 #sc-rank-panel .rank-row.flip-from{transition:none !important}

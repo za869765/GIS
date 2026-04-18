@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.810</title>
+<title>佳里 GIS v6.811</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1374,7 +1374,8 @@ body.vil-mode .leaflet-tooltip.vil-label,body.vil-mode .leaflet-label{animation:
   @keyframes mobile-sheet-slide{from{opacity:0;transform:translateY(30px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
   #vil-info-panel::before,#vil-info-panel::after,.vil-legend::after,#vil-legend::after{display:none !important}
   #vil-info-panel .bar-female::after,#vil-info-panel .bar-male::after,#sc-rank-panel .rank-bar-fill::after{display:none !important}
-  #sc-rank-panel{position:fixed !important;bottom:calc(var(--panel-h) + 8px + var(--safe-b)) !important;left:8px !important;right:8px !important;top:auto !important;width:auto !important;max-height:70vh !important;overflow:hidden !important;display:flex !important;flex-direction:column !important;animation:mobile-sheet-slide .42s var(--ease-snap) !important;z-index:810 !important}
+  #sc-rank-panel{position:fixed !important;bottom:calc(var(--panel-h) + 8px + var(--safe-b)) !important;left:8px !important;right:8px !important;top:auto !important;width:auto !important;max-height:70vh !important;overflow:hidden !important;flex-direction:column !important;animation:mobile-sheet-slide .42s var(--ease-snap) !important;z-index:810 !important}
+  #sc-rank-panel[style*="display: none"],#sc-rank-panel[style*="display:none"]{display:none !important}
   #sc-rank-panel [data-list],#sc-rank-panel > div:last-child{flex:1;overflow-y:auto}
   body.vil-panel-info-only #sc-rank-panel{display:none !important}
   body.vil-panel-rank-only #vil-info-panel{display:none !important}

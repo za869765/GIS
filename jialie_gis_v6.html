@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.800</title>
+<title>佳里 GIS v6.810</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -2914,7 +2914,7 @@ function _showScPanel(vilName, key, sort){
 
   const tabs=SC_META.map(m=>{
     const active=m.k===_scPanelKey;
-    return `<button onclick="_showScPanel('','${m.k}')" style="font-size:10px;padding:3px 7px;border-radius:20px;border:1.5px solid ${active?'#1565c0':'#e0e0e0'};background:${active?'#1565c0':'#fafafa'};color:${active?'#fff':'#666'};cursor:pointer;white-space:nowrap;font-weight:${active?700:400}">${m.l}</button>`;
+    return `<button class="rank-chip${active?' active':''}" onclick="_showScPanel('','${m.k}')" style="font-size:10px;padding:3px 7px;border-radius:20px;border:1.5px solid ${active?'#1565c0':'#e0e0e0'};background:${active?'#1565c0':'#fafafa'};color:${active?'#fff':'#666'};cursor:pointer;white-space:nowrap;font-weight:${active?700:400}">${m.l}</button>`;
   }).join('');
 
   // 排序切換：Segmented Control 樣式
@@ -2935,11 +2935,11 @@ function _showScPanel(vilName, key, sort){
     const barColor=isCur?'#1565c0':i<=3?'#90caf9':'#c8e6c9';
     const distPct=distTotal>0?(val/distTotal*100).toFixed(1):'0.0';
     const ratePct=byRate?`人口比率 ${(val/getPop(vn)*100).toFixed(1)}%`:'';
-    return `<div style="display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:6px;${isCur?'background:#f0f6ff;':''}">
+    return `<div class="rank-row" style="display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:6px;${isCur?'background:#f0f6ff;':''}">
       <span style="width:18px;text-align:right;font-size:10px;font-weight:700;color:${rColor}">${i+1}</span>
       <span style="width:52px;font-size:11px;color:${isCur?'#1565c0':'#333'};font-weight:${isCur?700:400};flex-shrink:0">${vn}${isCur?' ◀':''}</span>
-      <div style="flex:1;height:11px;background:#f0f0f0;border-radius:4px;overflow:hidden" title="${ratePct}">
-        <div style="width:${barPct}%;height:100%;background:${barColor};border-radius:4px"></div>
+      <div class="rank-bar" style="flex:1;height:11px;background:#f0f0f0;border-radius:4px;overflow:hidden" title="${ratePct}">
+        <div class="rank-bar-fill" style="width:${barPct}%;height:100%;background:${barColor};border-radius:4px"></div>
       </div>
       <span style="width:38px;text-align:right;font-size:10px;color:${isCur?'#1565c0':'#555'};font-weight:${isCur?700:400}">${val.toLocaleString()}</span>
       <span style="width:32px;text-align:right;font-size:9px;color:#aaa">${distPct}%</span>

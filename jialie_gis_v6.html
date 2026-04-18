@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.811</title>
+<title>佳里 GIS v6.820</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1332,6 +1332,35 @@ body.vil-mode #vil-mode-badge::before{content:'';display:inline-block;width:6px;
 #sc-rank-panel .rank-num,#sc-rank-panel .rank-count{font-family:var(--ff-num);font-variant-numeric:tabular-nums;font-weight:700;transition:color .2s,transform .2s;display:inline-block}
 #sc-rank-panel .rank-row:hover .rank-count{color:var(--c-primary);transform:scale(1.1)}
 #sc-rank-panel.switching .rank-row{animation:rank-row-cascade .35s var(--ease-snap) backwards}
+
+/* ═══ v5.2 · 進度條補間 + 排名 FLIP ═══ */
+#sc-rank-panel .rank-bar-fill{transition:width .85s cubic-bezier(.22,1,.36,1),background .3s;will-change:width}
+#sc-rank-panel .rank-bar-fill.lv-critical{background:linear-gradient(90deg,#8E44AD,#9B59B6) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 10px rgba(155,89,182,.4)}
+#sc-rank-panel .rank-bar-fill.lv-high{background:linear-gradient(90deg,#C0392B,#E74C3C) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 10px rgba(231,76,60,.4)}
+#sc-rank-panel .rank-bar-fill.lv-mid{background:linear-gradient(90deg,#E67E22,#F39C12) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 10px rgba(243,156,18,.4)}
+#sc-rank-panel .rank-bar-fill.lv-low{background:linear-gradient(90deg,#D4A017,#F1C40F) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 10px rgba(241,196,15,.35)}
+#sc-rank-panel .rank-bar-fill.lv-none{background:linear-gradient(90deg,#9EB1C1,#BDC3C7) !important}
+#sc-rank-panel .rank-row.current .rank-bar-fill{background:linear-gradient(90deg,var(--c-primary),var(--c-primary-500)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 0 12px rgba(30,111,186,.6) !important;animation:rank-current-pulse 2.2s ease-in-out infinite}
+@keyframes rank-current-pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.15)}}
+#sc-rank-panel .rank-row{transition:transform .6s cubic-bezier(.22,1,.36,1),background .2s;will-change:transform;position:relative}
+#sc-rank-panel .rank-row.flip-from{transition:none !important}
+#sc-rank-panel .rank-row.flip-to{transition:transform .65s cubic-bezier(.22,1,.36,1);transform:none}
+#sc-rank-panel .rank-row.rank-changed{animation:rank-changed-flash .7s ease-out}
+@keyframes rank-changed-flash{0%{background:rgba(16,212,116,.15)}100%{background:transparent}}
+#sc-rank-panel .rank-row.rank-up::before{content:'';position:absolute;left:0;top:10%;bottom:10%;width:3px;background:#10d474;border-radius:0 999px 999px 0;box-shadow:0 0 8px rgba(16,212,116,.55);animation:rank-indicator-in .5s var(--ease-snap)}
+#sc-rank-panel .rank-row.rank-down::before{content:'';position:absolute;left:0;top:10%;bottom:10%;width:3px;background:#c0392b;border-radius:0 999px 999px 0;box-shadow:0 0 8px rgba(192,57,43,.5);animation:rank-indicator-in .5s var(--ease-snap)}
+@keyframes rank-indicator-in{from{opacity:0;transform:scaleY(0)}to{opacity:1;transform:scaleY(1)}}
+#sc-rank-panel .rank-row.rank-up .rank-num{color:#0aa658 !important;animation:rank-num-pop .6s ease-out}
+#sc-rank-panel .rank-row.rank-down .rank-num{color:#c0392b !important;animation:rank-num-pop .6s ease-out}
+#sc-rank-panel .rank-row.rank-up .rank-num::after{content:' ▲';color:#10d474;font-size:8px;margin-left:1px}
+#sc-rank-panel .rank-row.rank-down .rank-num::after{content:' ▼';color:#c0392b;font-size:8px;margin-left:1px}
+@keyframes rank-num-pop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+#sc-rank-panel .rank-row.rank-changed{animation:rank-changed-flash-up .8s ease-out}
+#sc-rank-panel .rank-row.rank-down.rank-changed{animation:rank-changed-flash-down .8s ease-out}
+@keyframes rank-changed-flash-up{0%{background:rgba(16,212,116,.22)}100%{background:transparent}}
+@keyframes rank-changed-flash-down{0%{background:rgba(192,57,43,.18)}100%{background:transparent}}
+/* 關掉連續流光，減少畫面晃動 */
+#sc-rank-panel .rank-bar-fill::after{display:none !important}
 
 /* B22–B23 · 地圖里別多邊形 heatmap（vil-mode 啟用） */
 body.vil-mode .leaflet-overlay-pane{animation:leaflet-polygon-fade .8s var(--ease-snap)}
@@ -2878,6 +2907,44 @@ function _demogHtml(name, forToast=false){
   }
 }
 
+/* ── v5.1 · LiveNum：countUp / countUpPct ── */
+window.LiveNum = (function(){
+  const ease = t => 1 - Math.pow(1-t, 3);
+  function countUp(el, target, opts){
+    if(!el) return;
+    const dur = (opts&&opts.duration)||850;
+    const start = parseFloat(String(el.textContent||'').replace(/[,%\s]/g,'')) || 0;
+    target = Number(target)||0;
+    if(start === target){ el.textContent = target.toLocaleString(); return; }
+    const t0 = performance.now();
+    function step(now){
+      const t = Math.min(1, (now-t0)/dur);
+      const v = start + (target-start) * ease(t);
+      el.textContent = Math.round(v).toLocaleString();
+      if(t<1) requestAnimationFrame(step);
+      else el.textContent = target.toLocaleString();
+    }
+    requestAnimationFrame(step);
+  }
+  function countUpPct(el, target, opts){
+    if(!el) return;
+    const dur = (opts&&opts.duration)||850;
+    const start = parseFloat(String(el.textContent||'').replace(/[,%\s]/g,'')) || 0;
+    target = Number(target)||0;
+    if(Math.abs(start - target) < 0.01){ el.textContent = target.toFixed(1)+'%'; return; }
+    const t0 = performance.now();
+    function step(now){
+      const t = Math.min(1, (now-t0)/dur);
+      const v = start + (target-start) * ease(t);
+      el.textContent = v.toFixed(1)+'%';
+      if(t<1) requestAnimationFrame(step);
+      else el.textContent = target.toFixed(1)+'%';
+    }
+    requestAnimationFrame(step);
+  }
+  return { countUp, countUpPct };
+})();
+
 /* ── 各里篩檢排名圖表面板 ── */
 let _scPanelKey='br', _scPanelSort='abs'; // sort: 'rate'=人口比率 | 'abs'=人數
 function _showScPanel(vilName, key, sort){
@@ -2927,31 +2994,21 @@ function _showScPanel(vilName, key, sort){
     </div>`;
 
   const distTotal=Object.keys(VIL_DEMOG).reduce((s,vn)=>s+getVal(vn),0);
-  const bars=sorted.map((vn,i)=>{
+  const rankData=sorted.map((vn,i)=>{
     const val=getVal(vn);
     const ref=byRate?val/getPop(vn):val;
-    const barPct=Math.round(ref/maxRef*100);
-    const isCur=vn===curVil;
-    const rColor=i<=3?'#1565c0':i>=n16-4?'#bbb':'#666';
-    const barColor=isCur?'#1565c0':i<=3?'#90caf9':'#c8e6c9';
-    const distPct=distTotal>0?(val/distTotal*100).toFixed(1):'0.0';
-    const ratePct=byRate?`人口比率 ${(val/getPop(vn)*100).toFixed(1)}%`:'';
-    return `<div class="rank-row" style="display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:6px;${isCur?'background:#f0f6ff;':''}">
-      <span style="width:18px;text-align:right;font-size:10px;font-weight:700;color:${rColor}">${i+1}</span>
-      <span style="width:52px;font-size:11px;color:${isCur?'#1565c0':'#333'};font-weight:${isCur?700:400};flex-shrink:0">${vn}${isCur?' ◀':''}</span>
-      <div class="rank-bar" style="flex:1;height:11px;background:#f0f0f0;border-radius:4px;overflow:hidden" title="${ratePct}">
-        <div class="rank-bar-fill" style="width:${barPct}%;height:100%;background:${barColor};border-radius:4px"></div>
-      </div>
-      <span style="width:38px;text-align:right;font-size:10px;color:${isCur?'#1565c0':'#555'};font-weight:${isCur?700:400}">${val.toLocaleString()}</span>
-      <span style="width:32px;text-align:right;font-size:9px;color:#aaa">${distPct}%</span>
-    </div>`;
-  }).join('');
+    return {
+      vil:vn, rank:i+1, count:val,
+      distPct:distTotal>0?(val/distTotal*100):0,
+      ratePct:val/getPop(vn)*100,
+      barPct:Math.round(ref/maxRef*100)
+    };
+  });
 
   const curRank=sorted.indexOf(curVil)+1;
   const sortLabel=byRate?'人口比率':'人口數量';
-  panel.innerHTML=`
-    <div style="padding:12px 14px 0;flex-shrink:0">
-      <!-- 標題列 -->
+  const _listStyle='overflow-y:auto;padding:0 8px 12px;flex:1';
+  const headerHtml=`<div id="sc-rank-hdr" style="padding:12px 14px 0;flex-shrink:0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div>
           <div style="font-size:13px;font-weight:700;color:#1a1a2e">📊 各里篩檢排名</div>
@@ -2959,30 +3016,39 @@ function _showScPanel(vilName, key, sort){
         </div>
         <button onclick="document.getElementById('sc-rank-panel').style.display='none';_clearScChoropleth();if(window._scPanelCollapsedSheet){window._scPanelCollapsedSheet=false;toggleSheetPanel();}" style="border:none;background:#f0f0f0;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;color:#888;flex-shrink:0">✕</button>
       </div>
-      <!-- 篩檢項目 -->
       <div style="margin-bottom:8px">
         <div style="font-size:9px;color:#aaa;font-weight:700;letter-spacing:.8px;margin-bottom:5px">篩 檢 項 目</div>
         <div style="display:flex;flex-wrap:wrap;gap:4px">${tabs}</div>
       </div>
-      <!-- 分隔線 + 排序方式 -->
       <div style="border-top:1.5px solid #f0f0f0;margin:0 -14px;padding:8px 14px 10px;display:flex;align-items:center;justify-content:space-between;background:#fafafa">
         <span style="font-size:9px;color:#aaa;font-weight:700;letter-spacing:.8px">排 序 方 式</span>
         ${sortBtns}
       </div>
     </div>
     <div style="height:1px;background:#e8e8e8;flex-shrink:0"></div>
-    <div style="padding:4px 10px 2px;flex-shrink:0;display:flex;justify-content:space-between">
+    <div id="sc-rank-cols" style="padding:4px 10px 2px;flex-shrink:0;display:flex;justify-content:space-between">
       <span style="font-size:9px;color:#aaa">排名（${sortLabel}）</span>
       <div style="display:flex;gap:4px"><span style="font-size:9px;color:#aaa;width:38px;text-align:right">人數</span><span style="font-size:9px;color:#aaa;width:32px;text-align:right">佔全區</span></div>
-    </div>
-    <div style="overflow-y:auto;padding:0 8px 12px;flex:1">${bars}</div>
-    <div style="padding:6px 14px 10px;border-top:1px solid #f0f0f0;font-size:9px;flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap">
+    </div>`;
+  const footerHtml=`<div id="sc-rank-ftr" style="padding:6px 14px 10px;border-top:1px solid #f0f0f0;font-size:9px;flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap">
       ${SC_CHORO.map(c=>`<span><span style="display:inline-block;width:9px;height:9px;background:${c.fill};border-radius:2px;margin-right:2px;vertical-align:middle"></span><span style="color:${c.text};font-weight:600">${c.label}</span></span>`).join('')}
       <span style="color:#bbb;margin-left:auto">9.375% / 6.25% / 4.6875% / 3.125%</span>
     </div>`;
+
+  const existingList=panel.querySelector('#sc-rank-list');
+  if(existingList && existingList.children.length===n16){
+    // 更新路徑：保留 list DOM，FLIP 重排 + countUp
+    panel.removeChild(existingList);
+    panel.innerHTML=headerHtml+`<div id="sc-rank-list" style="${_listStyle}"></div>`+footerHtml;
+    panel.querySelector('#sc-rank-list').replaceWith(existingList);
+    _flipUpdateRankList(rankData,curVil);
+  } else {
+    // 首建
+    const rowsHtml=rankData.map(d=>_rankRowHtml(d,curVil,n16)).join('');
+    panel.innerHTML=headerHtml+`<div id="sc-rank-list" style="${_listStyle}">${rowsHtml}</div>`+footerHtml;
+  }
   panel.style.display='flex';
   _applyScChoropleth();
-  // 桌機（≥1024）：自動摺疊右側資訊欄以露出地圖
   if(window.innerWidth>=1024){
     const sheet=document.getElementById('sheet');
     if(sheet && !sheet.classList.contains('panel-collapsed')){
@@ -2990,6 +3056,132 @@ function _showScPanel(vilName, key, sort){
       toggleSheetPanel();
     }
   }
+}
+
+function _rankLevel(pct){
+  if(pct>=9.375) return 'lv-critical';
+  if(pct>=6.25) return 'lv-high';
+  if(pct>=4.6875) return 'lv-mid';
+  if(pct>=3.125) return 'lv-low';
+  return 'lv-none';
+}
+
+function _rankRowHtml(d,curVil,n){
+  const isCur=d.vil===curVil;
+  const i=d.rank-1;
+  const rColor=i<=3?'#1565c0':i>=n-4?'#bbb':'#666';
+  const lv=_rankLevel(d.distPct);
+  return `<div class="rank-row${isCur?' current':''}" data-vil="${d.vil}" data-rank="${d.rank}" style="display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:6px;${isCur?'background:#f0f6ff;':''}">`
+    +`<span class="rank-num" style="width:18px;text-align:right;font-size:10px;font-weight:700;color:${rColor};display:inline-block">${d.rank}</span>`
+    +`<span class="rank-vil" style="width:52px;font-size:11px;color:${isCur?'#1565c0':'#333'};font-weight:${isCur?700:400};flex-shrink:0">${d.vil}${isCur?' ◀':''}</span>`
+    +`<div class="rank-bar" style="flex:1;height:11px;background:#f0f0f0;border-radius:4px;overflow:hidden" title="人口比率 ${d.ratePct.toFixed(1)}%">`
+      +`<div class="rank-bar-fill ${lv}" style="width:${d.barPct}%;height:100%;border-radius:4px"></div>`
+    +`</div>`
+    +`<span class="rank-count" style="width:38px;text-align:right;font-size:10px;color:${isCur?'#1565c0':'#555'};font-weight:${isCur?700:400}">${d.count.toLocaleString()}</span>`
+    +`<span class="rank-pct" style="width:32px;text-align:right;font-size:9px;color:#aaa">${d.distPct.toFixed(1)}%</span>`
+    +`</div>`;
+}
+
+function _flipUpdateRankList(rankData,curVil){
+  const list=document.getElementById('sc-rank-list');
+  if(!list) return;
+  const rows=Array.from(list.querySelectorAll('.rank-row'));
+  const n=rankData.length;
+  const rowMap=new Map();
+  rows.forEach(r=>rowMap.set(r.dataset.vil,r));
+  // vil 集合不一致 → 整個重建
+  for(const d of rankData){
+    if(!rowMap.has(d.vil)){
+      list.innerHTML=rankData.map(dd=>_rankRowHtml(dd,curVil,n)).join('');
+      return;
+    }
+  }
+  if(rows.length!==n){
+    list.innerHTML=rankData.map(dd=>_rankRowHtml(dd,curVil,n)).join('');
+    return;
+  }
+
+  // 1. First + 舊排名
+  const firstPos=new Map();
+  const oldOrder=new Map();
+  rows.forEach(r=>{
+    firstPos.set(r.dataset.vil,r.getBoundingClientRect().top);
+    oldOrder.set(r.dataset.vil,parseInt(r.dataset.rank)||0);
+  });
+
+  // 2. 重新排序 DOM
+  rankData.forEach((d,i)=>{
+    const row=rowMap.get(d.vil);
+    row.dataset.rank=d.rank;
+    if(list.children[i]!==row) list.insertBefore(row,list.children[i]||null);
+  });
+
+  // 3. 更新每列內容
+  rankData.forEach(d=>{
+    const row=rowMap.get(d.vil);
+    const isCur=d.vil===curVil;
+    const i=d.rank-1;
+    const rColor=i<=3?'#1565c0':i>=n-4?'#bbb':'#666';
+
+    const numEl=row.querySelector('.rank-num');
+    if(numEl){numEl.textContent=d.rank;numEl.style.color=rColor;}
+    const vilEl=row.querySelector('.rank-vil');
+    if(vilEl){
+      vilEl.textContent=d.vil+(isCur?' ◀':'');
+      vilEl.style.color=isCur?'#1565c0':'#333';
+      vilEl.style.fontWeight=isCur?700:400;
+    }
+    const bar=row.querySelector('.rank-bar');
+    if(bar) bar.title='人口比率 '+d.ratePct.toFixed(1)+'%';
+    const fill=row.querySelector('.rank-bar-fill');
+    if(fill){
+      fill.style.width=d.barPct+'%';
+      fill.classList.remove('lv-critical','lv-high','lv-mid','lv-low','lv-none');
+      fill.classList.add(_rankLevel(d.distPct));
+    }
+    const countEl=row.querySelector('.rank-count');
+    if(countEl){
+      LiveNum.countUp(countEl,d.count,{duration:850});
+      countEl.style.color=isCur?'#1565c0':'#555';
+      countEl.style.fontWeight=isCur?700:400;
+    }
+    const pctEl=row.querySelector('.rank-pct');
+    if(pctEl) LiveNum.countUpPct(pctEl,d.distPct,{duration:850});
+
+    row.classList.toggle('current',isCur);
+    row.style.background=isCur?'#f0f6ff':'';
+  });
+
+  // 4. FLIP Last + Invert + Play
+  rankData.forEach(d=>{
+    const row=rowMap.get(d.vil);
+    const oldTop=firstPos.get(d.vil);
+    const newTop=row.getBoundingClientRect().top;
+    const dy=oldTop-newTop;
+    const oldRank=oldOrder.get(d.vil);
+    const rankDelta=oldRank-d.rank;
+
+    row.classList.remove('rank-up','rank-down','rank-changed');
+    if(Math.abs(dy)<0.5) return;
+
+    row.classList.add('flip-from');
+    row.style.transform=`translateY(${dy}px)`;
+    if(rankDelta>0) row.classList.add('rank-up');
+    else if(rankDelta<0) row.classList.add('rank-down');
+
+    requestAnimationFrame(()=>{
+      row.classList.remove('flip-from');
+      row.classList.add('flip-to');
+      row.style.transform='';
+      setTimeout(()=>{
+        row.classList.remove('flip-to','rank-up','rank-down');
+      },700);
+    });
+    if(rankDelta!==0){
+      row.classList.add('rank-changed');
+      setTimeout(()=>row.classList.remove('rank-changed'),800);
+    }
+  });
 }
 
 function clickVil(name){

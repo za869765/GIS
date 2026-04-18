@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.554</title>
+<title>佳里 GIS v6.700</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -876,6 +876,225 @@ button,.fac-btn,.bnav-item,.dbnav,.case-card,.dc-vil,.staff-chip,.dist-ver-btn,.
 .sm-title{font-size:15px;font-weight:700;color:var(--text1)}
 .sm-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3);padding:0 4px}
 .sm-save{width:100%;background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:13px;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px}
+
+/* ═══════════════════════════════════════════
+   v3 相容橋接：把 v3 引用的 v2 變數映射到現行變數
+═══════════════════════════════════════════ */
+:root{
+  --c-primary:    var(--blue);
+  --c-primary-500:var(--blue);
+  --c-primary-50: var(--blue-lt);
+  --c-surface:    var(--surface);
+  --c-surface-2:  var(--surface2);
+  --c-text:       var(--text1);
+  --c-warning:    #e8b814;
+  --c-success:    var(--ok);
+  --r-pill:       999px;
+  --r-sm:         var(--radius-sm);
+  --ff-num:       'Roboto Mono','JetBrains Mono',ui-monospace,SFMono-Regular,'Menlo','Consolas',monospace;
+  --sh-2:         var(--shadow);
+  --sh-3:         var(--shadow-lg);
+}
+
+/* ═══════════════════════════════════════════
+   v3 動畫強化層 (JIALIE-GIS-ANIMATED-v3.md / 2026-04-19)
+═══════════════════════════════════════════ */
+
+/* ───── 全局變數（補充） ───── */
+:root{
+  --ani-fast:   .18s;
+  --ani-base:   .28s;
+  --ani-slow:   .55s;
+  --ease-out:   cubic-bezier(.22,1,.36,1);
+  --ease-snap:  cubic-bezier(.32,.72,.24,1.1);
+  --ease-smooth:cubic-bezier(.4,0,.2,1);
+  --c-live:     #10D474;
+  --c-live-glow:rgba(16,212,116,.5);
+  --sh-3d-1: 0 1px 2px rgba(11,61,110,.08),
+             0 2px 4px rgba(11,61,110,.06),
+             0 4px 10px rgba(11,61,110,.08);
+  --sh-3d-2: 0 2px 4px rgba(11,61,110,.1),
+             0 6px 12px rgba(11,61,110,.08),
+             0 14px 28px rgba(11,61,110,.12),
+             0 22px 40px rgba(11,61,110,.08);
+  --sh-3d-3: 0 4px 8px rgba(11,61,110,.12),
+             0 12px 24px rgba(11,61,110,.14),
+             0 24px 48px rgba(11,61,110,.16),
+             0 40px 72px rgba(11,61,110,.1);
+}
+
+/* 🔬 1. 里別統計 — 即時數據科技 HUD */
+#stats-strip{position:relative;background:linear-gradient(180deg,var(--c-surface-2) 0%,var(--c-surface) 100%);overflow:hidden}
+#stats-strip::before{content:'';position:absolute;top:0;left:-30%;width:30%;height:100%;background:linear-gradient(90deg,transparent 0%,rgba(16,212,116,.08) 50%,transparent 100%);animation:stat-scan 4.5s linear infinite;pointer-events:none;z-index:1}
+@keyframes stat-scan{0%{left:-30%}100%{left:100%}}
+#stats-strip::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,var(--c-primary-500) 20%,var(--c-live) 50%,var(--c-primary-500) 80%,transparent 100%);opacity:.4;animation:stat-line-flow 3s ease-in-out infinite}
+@keyframes stat-line-flow{0%,100%{opacity:.3;transform:scaleX(.9)}50%{opacity:.7;transform:scaleX(1)}}
+.stat-item{position:relative;transition:background .2s var(--ease-smooth)}
+.stat-item::before{content:'';position:absolute;bottom:0;left:10%;right:10%;height:2px;background:linear-gradient(90deg,transparent,var(--c-primary-500),transparent);opacity:0;transition:opacity .3s}
+.stat-item:hover::before{opacity:.6;animation:stat-bar-fill 1.2s ease-out}
+@keyframes stat-bar-fill{0%{transform:scaleX(0);transform-origin:left}50%{transform:scaleX(1);transform-origin:left}51%{transform-origin:right}100%{transform:scaleX(0);transform-origin:right}}
+.stat-item .num{font-family:var(--ff-num);font-variant-numeric:tabular-nums;font-weight:800;background:linear-gradient(180deg,var(--c-text) 0%,var(--c-primary) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 2px 8px rgba(11,61,110,.08);position:relative;animation:number-roll .6s var(--ease-snap);transition:transform .25s var(--ease-smooth)}
+@keyframes number-roll{0%{opacity:0;transform:translateY(-8px) rotateX(-60deg);filter:blur(4px)}60%{opacity:1;filter:blur(0)}100%{transform:translateY(0) rotateX(0)}}
+.stat-item .num::after{content:'';position:absolute;top:-2px;right:-10px;width:6px;height:6px;border-radius:50%;background:var(--c-live);box-shadow:0 0 0 0 var(--c-live-glow);animation:live-dot-pulse 1.8s ease-out infinite}
+@keyframes live-dot-pulse{0%{box-shadow:0 0 0 0 var(--c-live-glow);opacity:1}70%{box-shadow:0 0 0 10px rgba(16,212,116,0);opacity:.9}100%{box-shadow:0 0 0 0 rgba(16,212,116,0);opacity:1}}
+.stat-item .lbl{display:inline-flex;align-items:center;gap:4px;position:relative}
+.stat-item .lbl::before{content:'▸';color:var(--c-primary-500);font-size:8px;opacity:.5;transition:opacity .2s}
+.stat-item:hover .lbl::before{opacity:1;animation:tick-blink 1s infinite}
+@keyframes tick-blink{50%{opacity:.3}}
+.stat-item:hover{background:linear-gradient(180deg,var(--c-primary-50) 0%,var(--c-surface) 100%)}
+.stat-item:hover .num{transform:translateY(-1px) scale(1.04);filter:drop-shadow(0 2px 6px rgba(30,111,186,.35))}
+.stat-item:active .num{animation:number-flash .3s}
+@keyframes number-flash{50%{filter:drop-shadow(0 0 12px var(--c-live-glow));transform:scale(1.08)}}
+.stat-item.updating{animation:stat-update .6s}
+.stat-item.updating .num{animation:number-roll .5s var(--ease-snap)}
+@keyframes stat-update{0%,100%{background:transparent}30%{background:rgba(16,212,116,.15)}}
+
+/* 🗺 2. 地圖 — 偽 3D 圖層 */
+#map{perspective:1600px;perspective-origin:50% 30%}
+body::before{content:'';position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(11,61,110,.06) 85%,rgba(11,61,110,.14) 100%);mix-blend-mode:multiply}
+body[data-theme="dark"]::before{background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.35) 85%,rgba(0,0,0,.6) 100%);mix-blend-mode:normal}
+.leaflet-tile-pane{filter:drop-shadow(0 1px 0 rgba(11,61,110,.04))}
+.leaflet-overlay-pane path{filter:drop-shadow(0 1px 2px rgba(11,61,110,.18)) drop-shadow(0 3px 6px rgba(11,61,110,.08));transition:filter .25s}
+.leaflet-overlay-pane path:hover{filter:drop-shadow(0 2px 4px rgba(11,61,110,.25)) drop-shadow(0 6px 12px rgba(11,61,110,.18))}
+.leaflet-marker-pane{will-change:transform}
+.leaflet-marker-icon{filter:drop-shadow(0 3px 6px rgba(11,61,110,.3)) drop-shadow(0 8px 14px rgba(11,61,110,.18));transition:transform .25s var(--ease-snap), filter .25s}
+.leaflet-marker-icon:hover{transform:translateY(-3px) scale(1.08);filter:drop-shadow(0 6px 10px rgba(11,61,110,.35)) drop-shadow(0 14px 22px rgba(11,61,110,.22));z-index:1000 !important}
+.leaflet-popup-content-wrapper{box-shadow:0 2px 4px rgba(11,61,110,.1),0 8px 16px rgba(11,61,110,.12),0 16px 32px rgba(11,61,110,.1),0 0 0 1px rgba(11,61,110,.04) !important;animation:popup-3d-in .35s var(--ease-snap)}
+@keyframes popup-3d-in{0%{opacity:0;transform:translateY(10px) rotateX(-20deg) scale(.9);filter:blur(2px)}100%{opacity:1;transform:translateY(0) rotateX(0) scale(1);filter:blur(0)}}
+.leaflet-tooltip{animation:tooltip-in .2s var(--ease-out);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+@keyframes tooltip-in{from{opacity:0;transform:translateY(4px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+#map.panning .leaflet-tile-pane{filter:brightness(.96) contrast(1.02)}
+#map.zooming::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at center,rgba(30,111,186,.08) 0%,transparent 50%);animation:zoom-flash .4s ease-out}
+@keyframes zoom-flash{0%,100%{opacity:0}30%{opacity:1}}
+
+/* 🧭 3. 導航 — 3D 沉浸感 */
+#nav-bar{box-shadow:var(--sh-3d-2);transform-style:preserve-3d;animation:nav-bar-in .45s var(--ease-snap)}
+@keyframes nav-bar-in{0%{opacity:0;transform:translateX(-50%) translateY(20px) rotateX(-15deg)}100%{opacity:1;transform:translateX(-50%) translateY(0) rotateX(0)}}
+#nav-bar::before{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg,transparent 0%,var(--c-primary-500) 30%,var(--c-live) 50%,var(--c-primary-500) 70%,transparent 100%);background-size:200% 100%;border-radius:var(--r-pill);animation:route-flow 2.5s linear infinite;opacity:.6}
+@keyframes route-flow{from{background-position:200% 0}to{background-position:-200% 0}}
+#nav-bar-dest::before{display:inline-block;animation:nav-pin-bob 2.2s ease-in-out infinite}
+@keyframes nav-pin-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+#nav-panel{transform-style:preserve-3d;transform-origin:bottom center}
+@media(max-width:767px){#nav-panel{transform:translateX(-50%) translateY(100%) rotateX(-8deg)}#nav-panel.open{transform:translateX(-50%) translateY(0) rotateX(0)}}
+@media(min-width:768px){#nav-panel{transform-origin:bottom right;transform:translateY(calc(100% + 40px)) rotateX(-10deg);box-shadow:var(--sh-3d-3)}#nav-panel.open{transform:translateY(0) rotateX(0)}}
+#nav-panel-hd{position:relative;overflow:hidden}
+#nav-panel-hd::after{content:'';position:absolute;top:0;left:-40%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);animation:nav-head-scan 3.5s ease-in-out infinite}
+@keyframes nav-head-scan{0%{left:-40%}60%{left:100%}100%{left:100%}}
+.nav-step{position:relative;animation:step-enter .4s var(--ease-snap) backwards;transition:background .2s,transform .25s var(--ease-smooth),padding .2s}
+.nav-step:nth-child(1){animation-delay:.05s}
+.nav-step:nth-child(2){animation-delay:.12s}
+.nav-step:nth-child(3){animation-delay:.19s}
+.nav-step:nth-child(4){animation-delay:.26s}
+.nav-step:nth-child(5){animation-delay:.33s}
+.nav-step:nth-child(6){animation-delay:.4s}
+.nav-step:nth-child(n+7){animation-delay:.47s}
+@keyframes step-enter{from{opacity:0;transform:translateX(-14px) scale(.96);filter:blur(2px)}to{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}}
+.nav-step:hover{background:var(--c-primary-50);transform:translateX(4px);padding-left:6px;border-radius:var(--r-sm);box-shadow:inset 3px 0 0 var(--c-primary-500)}
+.nav-step-icon{transition:transform .3s var(--ease-snap)}
+.nav-step:hover .nav-step-icon{transform:scale(1.2) rotate(-5deg);color:var(--c-primary)}
+.nav-step.current,.nav-step:first-child{background:linear-gradient(90deg,rgba(30,111,186,.08) 0%,transparent 100%);box-shadow:inset 3px 0 0 var(--c-live)}
+.nav-step.current .nav-step-icon,.nav-step:first-child .nav-step-icon{animation:step-breathe 2.2s ease-in-out infinite;color:var(--c-live)}
+@keyframes step-breathe{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 var(--c-live-glow))}50%{transform:scale(1.15);filter:drop-shadow(0 0 8px var(--c-live-glow))}}
+#nav-backdrop{background:radial-gradient(circle at 70% 70%,rgba(11,61,110,.3) 0%,rgba(11,61,110,.45) 100%);animation:backdrop-in .25s ease-out}
+@keyframes backdrop-in{from{opacity:0}to{opacity:1}}
+
+/* ⚡ 4. GPS 雷達掃描 & FAB 呼吸 */
+#gps-btn.locating{animation:gps-spin .8s linear infinite,gps-radar-shadow 2s ease-in-out infinite !important}
+#gps-btn.locating::before{content:'';position:absolute;inset:-14px;border-radius:50%;border:2px solid var(--c-warning);border-top-color:transparent;border-right-color:transparent;animation:radar-sweep 1.5s linear infinite;pointer-events:none}
+@keyframes radar-sweep{from{transform:rotate(0deg);opacity:.8}to{transform:rotate(360deg);opacity:.3}}
+@keyframes gps-radar-shadow{0%,100%{box-shadow:0 0 0 0 rgba(232,184,20,.4),var(--sh-2)}50%{box-shadow:0 0 0 12px rgba(232,184,20,0),var(--sh-2)}}
+#cpt-fab{position:fixed;animation:fab-breathe 3s ease-in-out infinite}
+@keyframes fab-breathe{0%,100%{box-shadow:var(--sh-3),0 0 0 0 rgba(11,61,110,.3)}50%{box-shadow:var(--sh-3),0 0 0 10px rgba(11,61,110,0)}}
+#cpt-fab.mode-on{animation:fab-breathe-warn 1.4s ease-in-out infinite}
+@keyframes fab-breathe-warn{0%,100%{box-shadow:var(--sh-3),0 0 0 0 rgba(232,184,20,.5)}50%{box-shadow:var(--sh-3),0 0 0 14px rgba(232,184,20,0)}}
+#cpt-fab::before{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.25) 0%,transparent 60%);pointer-events:none}
+#cpt-fab:active{transform:scale(.88) rotate(45deg);transition:transform .15s}
+
+/* ⚡ 5. 按鈕波紋 & chip 彈跳 */
+.ds-chip,.bnav-item,.dbnav,.fac-grp-btn,.zoom-chip,.tb-icon-btn,#nav-bar-from,#nav-bar-to,#nav-bar-query,#cpt-save-btn,#cpt-cancel-btn,#cpt-del-btn,.cpt-bld-btn{position:relative;overflow:hidden}
+.ds-chip::after,.bnav-item::after,.dbnav::after,.fac-grp-btn::after,.zoom-chip::after,.tb-icon-btn::after,#nav-bar-from::after,#nav-bar-to::after,#nav-bar-query::after,#cpt-save-btn::after,#cpt-cancel-btn::after,#cpt-del-btn::after,.cpt-bld-btn::after{content:'';position:absolute;top:50%;left:50%;width:0;height:0;border-radius:50%;background:rgba(255,255,255,.55);transform:translate(-50%,-50%);pointer-events:none;opacity:0}
+.ds-chip:active::after,.bnav-item:active::after,.dbnav:active::after,.fac-grp-btn:active::after,.zoom-chip:active::after,.tb-icon-btn:active::after,#nav-bar-from:active::after,#nav-bar-to:active::after,#nav-bar-query:active::after,#cpt-save-btn:active::after,#cpt-cancel-btn:active::after,#cpt-del-btn:active::after,.cpt-bld-btn:active::after{animation:ripple .5s ease-out}
+@keyframes ripple{0%{width:0;height:0;opacity:.6}100%{width:250px;height:250px;opacity:0}}
+.ds-chip.active{animation:chip-pop .45s var(--ease-snap)}
+@keyframes chip-pop{0%{transform:scale(1)}40%{transform:scale(1.12) translateY(-1px)}70%{transform:scale(.97)}100%{transform:scale(1)}}
+.bnav-item::before{transition:transform .35s var(--ease-snap) !important}
+.dbnav.active{animation:tab-glow 2.5s ease-in-out infinite}
+@keyframes tab-glow{0%,100%{box-shadow:inset 0 -2px 0 var(--c-primary)}50%{box-shadow:inset 0 -2px 0 var(--c-primary),0 -6px 12px -6px var(--c-primary-500)}}
+
+/* ⚡ 6. Sheet / Modal / Banner 進場 */
+#sheet.open .search-wrap{animation:slide-down .35s var(--ease-snap) both}
+@keyframes slide-down{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.msr-item{animation:msr-cascade .28s var(--ease-snap) backwards}
+.msr-item:nth-child(1){animation-delay:.02s}
+.msr-item:nth-child(2){animation-delay:.05s}
+.msr-item:nth-child(3){animation-delay:.08s}
+.msr-item:nth-child(4){animation-delay:.11s}
+.msr-item:nth-child(5){animation-delay:.14s}
+.msr-item:nth-child(n+6){animation-delay:.17s}
+@keyframes msr-cascade{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.msr-item{transition:background .15s,padding-left .2s}
+.msr-item:hover,.msr-item.active{padding-left:18px;border-left:3px solid var(--c-primary-500)}
+#pt-edit-banner.show{animation:banner-pulse-warn 1.8s ease-in-out infinite}
+@keyframes banner-pulse-warn{0%,100%{box-shadow:var(--sh-3),0 0 0 0 rgba(232,184,20,.5)}50%{box-shadow:var(--sh-3),0 0 0 10px rgba(232,184,20,0)}}
+#pt-pick-banner.show{animation:banner-pulse-info 2s ease-in-out infinite}
+@keyframes banner-pulse-info{0%,100%{box-shadow:var(--sh-2),0 0 0 0 rgba(30,111,186,.5)}50%{box-shadow:var(--sh-2),0 0 0 8px rgba(30,111,186,0)}}
+#vil-info-panel{animation:hologram-in .4s var(--ease-snap);transform-style:preserve-3d;position:relative}
+#vil-info-panel::before{content:'';position:absolute;top:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c-primary-500) 50%,transparent);animation:hologram-scan 2.5s ease-in-out infinite;opacity:.6}
+@keyframes hologram-in{from{opacity:0;transform:translateY(-8px) rotateX(-20deg) scale(.95);filter:blur(4px)}to{opacity:1;transform:translateY(0) rotateX(0) scale(1);filter:blur(0)}}
+@keyframes hologram-scan{0%{left:-20%;width:20%}50%{left:50%;width:40%}100%{left:100%;width:20%}}
+#cpt-modal-box{transform-origin:bottom center}
+@media(max-width:767px){@keyframes sheetUp{from{opacity:0;transform:translateY(24px) rotateX(-12deg);filter:blur(2px)}to{opacity:1;transform:translateY(0) rotateX(0);filter:blur(0)}}}
+@media(min-width:768px){#cpt-modal-box{animation:modal-3d-in .4s var(--ease-snap) !important}@keyframes modal-3d-in{from{opacity:0;transform:translateY(30px) rotateX(-10deg) scale(.94);filter:blur(3px)}to{opacity:1;transform:translateY(0) rotateX(0) scale(1);filter:blur(0)}}}
+
+/* ⚡ 7. 搜尋列 focus 雷射框 */
+#map-search-inner{position:relative;overflow:visible}
+#map-search-inner::before{content:'';position:absolute;inset:-2px;border-radius:inherit;background:linear-gradient(135deg,var(--c-primary-500),var(--c-live),var(--c-primary-500));background-size:200% 200%;opacity:0;pointer-events:none;z-index:-1;transition:opacity .25s;animation:search-border-flow 3s ease-in-out infinite}
+#map-search-inner:focus-within::before{opacity:1}
+@keyframes search-border-flow{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+#map-search-inner > span:first-child{transition:color .2s,transform .3s var(--ease-snap)}
+#map-search-inner:focus-within > span:first-child{color:var(--c-primary);transform:scale(1.15);animation:search-icon-bob 1.4s ease-in-out infinite}
+@keyframes search-icon-bob{0%,100%{transform:scale(1.15) translateY(0)}50%{transform:scale(1.15) translateY(-2px)}}
+
+/* ⚡ 8. 側欄收合箭頭 & Legend 3D */
+#sheet-toggle-btn{transition:right .3s var(--ease-smooth),background .15s,color .15s,transform .2s}
+#sheet-toggle-btn:hover{transform:translateY(-50%) scale(1.1)}
+#sheet-toggle-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(30,111,186,.15) 100%);opacity:0;transition:opacity .2s;border-radius:inherit}
+#sheet-toggle-btn:hover::before{opacity:1}
+#legend-desktop{animation:panel-3d-in .45s var(--ease-snap) .2s backwards}
+@keyframes panel-3d-in{from{opacity:0;transform:translateX(20px) rotateY(15deg);filter:blur(3px)}to{opacity:1;transform:translateX(0) rotateY(0);filter:blur(0)}}
+#print-btn-wrap{animation:panel-3d-in .45s var(--ease-snap) .1s backwards}
+
+/* ⚡ 9. 進入頁面整體動畫序列 */
+#dist-strip{animation:strip-in .5s var(--ease-snap) .15s backwards}
+.ds-chip{animation:chip-in .4s var(--ease-snap) backwards}
+.ds-chip:nth-child(1){animation-delay:.2s}
+.ds-chip:nth-child(2){animation-delay:.24s}
+.ds-chip:nth-child(3){animation-delay:.28s}
+.ds-chip:nth-child(4){animation-delay:.32s}
+.ds-chip:nth-child(5){animation-delay:.36s}
+.ds-chip:nth-child(6){animation-delay:.4s}
+.ds-chip:nth-child(7){animation-delay:.44s}
+.ds-chip:nth-child(n+8){animation-delay:.48s}
+@keyframes strip-in{from{opacity:0}to{opacity:1}}
+@keyframes chip-in{from{opacity:0;transform:translateY(-6px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+#map-search-bar{animation:search-in .5s var(--ease-snap)}
+@keyframes search-in{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+#gps-btn,#cpt-fab{animation:fab-in .5s var(--ease-snap) .35s backwards}
+@keyframes fab-in{from{opacity:0;transform:scale(0) rotate(-60deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+#left-tools{animation:tools-in .45s var(--ease-snap) .3s backwards}
+@keyframes tools-in{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+#sheet > div[role="tabpanel"],#sheet .search-wrap + *{position:relative}
+
+/* 減動效偏好 */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.05ms !important}
+  #stats-strip::before,#stats-strip::after,#nav-panel-hd::after,#vil-info-panel::before,.stat-item .num::after,#nav-bar::before{display:none !important}
+}
+
+/* 暗色模式補充 */
+body[data-theme="dark"] .stat-item .num{background:linear-gradient(180deg,#E8ECF2 0%,#8BB4E0 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+body[data-theme="dark"] #stats-strip::before{background:linear-gradient(90deg,transparent,rgba(16,212,116,.18),transparent)}
+body[data-theme="dark"] .leaflet-overlay-pane path{filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)) drop-shadow(0 4px 10px rgba(0,0,0,.3))}
 </style>
 </head>
 <body>
@@ -1816,6 +2035,18 @@ const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voy
   errorTileUrl:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="%23f0ede8"/><text x="128" y="134" font-size="13" text-anchor="middle" fill="%23bbb">離線</text></svg>'
 }).addTo(map);
 map.attributionControl.setPrefix('此地圖為佳里區衛生所 內部使用 僅供參考');
+
+/* v3 動畫掛鉤：地圖拖動 / 縮放時加 class 觸發 CSS 效果 */
+(function(){
+  const mapEl = document.getElementById('map');
+  if (!mapEl) return;
+  map.on('movestart', () => mapEl.classList.add('panning'));
+  map.on('moveend',   () => mapEl.classList.remove('panning'));
+  map.on('zoomstart', () => {
+    mapEl.classList.add('zooming');
+    setTimeout(() => mapEl.classList.remove('zooming'), 400);
+  });
+})();
 
 /* ═══════════════════════════════════════════
    VILLAGE BOUNDARIES

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.820</title>
+<title>佳里 GIS v6.821</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1333,8 +1333,8 @@ body.vil-mode #vil-mode-badge::before{content:'';display:inline-block;width:6px;
 #sc-rank-panel .rank-row:hover .rank-count{color:var(--c-primary);transform:scale(1.1)}
 #sc-rank-panel.switching .rank-row{animation:rank-row-cascade .35s var(--ease-snap) backwards}
 
-/* ═══ v5.2 · 進度條補間 + 排名 FLIP ═══ */
-#sc-rank-panel .rank-bar-fill{transition:width .85s cubic-bezier(.22,1,.36,1),background .3s;will-change:width}
+/* ═══ v5.2 · 進度條補間 + 排名 FLIP（時長全部 .55s 對齊） ═══ */
+#sc-rank-panel .rank-bar-fill{transition:width .55s cubic-bezier(.22,1,.36,1),background .3s;will-change:width}
 #sc-rank-panel .rank-bar-fill.lv-critical{background:linear-gradient(90deg,#8E44AD,#9B59B6) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 10px rgba(155,89,182,.4)}
 #sc-rank-panel .rank-bar-fill.lv-high{background:linear-gradient(90deg,#C0392B,#E74C3C) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 10px rgba(231,76,60,.4)}
 #sc-rank-panel .rank-bar-fill.lv-mid{background:linear-gradient(90deg,#E67E22,#F39C12) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 10px rgba(243,156,18,.4)}
@@ -1342,9 +1342,9 @@ body.vil-mode #vil-mode-badge::before{content:'';display:inline-block;width:6px;
 #sc-rank-panel .rank-bar-fill.lv-none{background:linear-gradient(90deg,#9EB1C1,#BDC3C7) !important}
 #sc-rank-panel .rank-row.current .rank-bar-fill{background:linear-gradient(90deg,var(--c-primary),var(--c-primary-500)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 0 12px rgba(30,111,186,.6) !important;animation:rank-current-pulse 2.2s ease-in-out infinite}
 @keyframes rank-current-pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.15)}}
-#sc-rank-panel .rank-row{transition:transform .6s cubic-bezier(.22,1,.36,1),background .2s;will-change:transform;position:relative}
+#sc-rank-panel .rank-row{transition:transform .55s cubic-bezier(.22,1,.36,1),background .2s;will-change:transform;position:relative}
 #sc-rank-panel .rank-row.flip-from{transition:none !important}
-#sc-rank-panel .rank-row.flip-to{transition:transform .65s cubic-bezier(.22,1,.36,1);transform:none}
+#sc-rank-panel .rank-row.flip-to{transition:transform .55s cubic-bezier(.22,1,.36,1);transform:none}
 #sc-rank-panel .rank-row.rank-changed{animation:rank-changed-flash .7s ease-out}
 @keyframes rank-changed-flash{0%{background:rgba(16,212,116,.15)}100%{background:transparent}}
 #sc-rank-panel .rank-row.rank-up::before{content:'';position:absolute;left:0;top:10%;bottom:10%;width:3px;background:#10d474;border-radius:0 999px 999px 0;box-shadow:0 0 8px rgba(16,212,116,.55);animation:rank-indicator-in .5s var(--ease-snap)}
@@ -2912,7 +2912,7 @@ window.LiveNum = (function(){
   const ease = t => 1 - Math.pow(1-t, 3);
   function countUp(el, target, opts){
     if(!el) return;
-    const dur = (opts&&opts.duration)||850;
+    const dur = (opts&&opts.duration)||550;
     const start = parseFloat(String(el.textContent||'').replace(/[,%\s]/g,'')) || 0;
     target = Number(target)||0;
     if(start === target){ el.textContent = target.toLocaleString(); return; }
@@ -2928,7 +2928,7 @@ window.LiveNum = (function(){
   }
   function countUpPct(el, target, opts){
     if(!el) return;
-    const dur = (opts&&opts.duration)||850;
+    const dur = (opts&&opts.duration)||550;
     const start = parseFloat(String(el.textContent||'').replace(/[,%\s]/g,'')) || 0;
     target = Number(target)||0;
     if(Math.abs(start - target) < 0.01){ el.textContent = target.toFixed(1)+'%'; return; }
@@ -3008,7 +3008,8 @@ function _showScPanel(vilName, key, sort){
   const curRank=sorted.indexOf(curVil)+1;
   const sortLabel=byRate?'人口比率':'人口數量';
   const _listStyle='overflow-y:auto;padding:0 8px 12px;flex:1';
-  const headerHtml=`<div id="sc-rank-hdr" style="padding:12px 14px 0;flex-shrink:0">
+  const _ftrStyle='padding:6px 14px 10px;border-top:1px solid #f0f0f0;font-size:9px;flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap';
+  const hdrContent=`<div style="padding:12px 14px 0;flex-shrink:0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div>
           <div style="font-size:13px;font-weight:700;color:#1a1a2e">📊 各里篩檢排名</div>
@@ -3026,26 +3027,28 @@ function _showScPanel(vilName, key, sort){
       </div>
     </div>
     <div style="height:1px;background:#e8e8e8;flex-shrink:0"></div>
-    <div id="sc-rank-cols" style="padding:4px 10px 2px;flex-shrink:0;display:flex;justify-content:space-between">
+    <div style="padding:4px 10px 2px;flex-shrink:0;display:flex;justify-content:space-between">
       <span style="font-size:9px;color:#aaa">排名（${sortLabel}）</span>
       <div style="display:flex;gap:4px"><span style="font-size:9px;color:#aaa;width:38px;text-align:right">人數</span><span style="font-size:9px;color:#aaa;width:32px;text-align:right">佔全區</span></div>
     </div>`;
-  const footerHtml=`<div id="sc-rank-ftr" style="padding:6px 14px 10px;border-top:1px solid #f0f0f0;font-size:9px;flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap">
-      ${SC_CHORO.map(c=>`<span><span style="display:inline-block;width:9px;height:9px;background:${c.fill};border-radius:2px;margin-right:2px;vertical-align:middle"></span><span style="color:${c.text};font-weight:600">${c.label}</span></span>`).join('')}
-      <span style="color:#bbb;margin-left:auto">9.375% / 6.25% / 4.6875% / 3.125%</span>
-    </div>`;
+  const ftrContent=`${SC_CHORO.map(c=>`<span><span style="display:inline-block;width:9px;height:9px;background:${c.fill};border-radius:2px;margin-right:2px;vertical-align:middle"></span><span style="color:${c.text};font-weight:600">${c.label}</span></span>`).join('')}
+    <span style="color:#bbb;margin-left:auto">9.375% / 6.25% / 4.6875% / 3.125%</span>`;
 
-  const existingList=panel.querySelector('#sc-rank-list');
-  if(existingList && existingList.children.length===n16){
-    // 更新路徑：保留 list DOM，FLIP 重排 + countUp
-    panel.removeChild(existingList);
-    panel.innerHTML=headerHtml+`<div id="sc-rank-list" style="${_listStyle}"></div>`+footerHtml;
-    panel.querySelector('#sc-rank-list').replaceWith(existingList);
+  const hdrSlot=panel.querySelector('#sc-rank-hdr-wrap');
+  const listSlot=panel.querySelector('#sc-rank-list');
+  const ftrSlot=panel.querySelector('#sc-rank-ftr');
+  if(hdrSlot && listSlot && ftrSlot && listSlot.children.length===n16){
+    // 更新路徑：只改 hdr/ftr 內容，list DOM 完全不動 → FLIP 乾淨無閃爍
+    hdrSlot.innerHTML=hdrContent;
+    ftrSlot.innerHTML=ftrContent;
     _flipUpdateRankList(rankData,curVil);
   } else {
-    // 首建
+    // 首建：建立 3 個穩定 slot
     const rowsHtml=rankData.map(d=>_rankRowHtml(d,curVil,n16)).join('');
-    panel.innerHTML=headerHtml+`<div id="sc-rank-list" style="${_listStyle}">${rowsHtml}</div>`+footerHtml;
+    panel.innerHTML=
+      `<div id="sc-rank-hdr-wrap" style="flex-shrink:0">${hdrContent}</div>`+
+      `<div id="sc-rank-list" style="${_listStyle}">${rowsHtml}</div>`+
+      `<div id="sc-rank-ftr" style="${_ftrStyle}">${ftrContent}</div>`;
   }
   panel.style.display='flex';
   _applyScChoropleth();
@@ -3141,12 +3144,12 @@ function _flipUpdateRankList(rankData,curVil){
     }
     const countEl=row.querySelector('.rank-count');
     if(countEl){
-      LiveNum.countUp(countEl,d.count,{duration:850});
+      LiveNum.countUp(countEl,d.count,{duration:550});
       countEl.style.color=isCur?'#1565c0':'#555';
       countEl.style.fontWeight=isCur?700:400;
     }
     const pctEl=row.querySelector('.rank-pct');
-    if(pctEl) LiveNum.countUpPct(pctEl,d.distPct,{duration:850});
+    if(pctEl) LiveNum.countUpPct(pctEl,d.distPct,{duration:550});
 
     row.classList.toggle('current',isCur);
     row.style.background=isCur?'#f0f6ff':'';

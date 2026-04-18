@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.700</title>
+<title>佳里 GIS v6.701</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1095,9 +1095,85 @@ body[data-theme="dark"]::before{background:radial-gradient(ellipse at center,tra
 body[data-theme="dark"] .stat-item .num{background:linear-gradient(180deg,#E8ECF2 0%,#8BB4E0 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 body[data-theme="dark"] #stats-strip::before{background:linear-gradient(90deg,transparent,rgba(16,212,116,.18),transparent)}
 body[data-theme="dark"] .leaflet-overlay-pane path{filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)) drop-shadow(0 4px 10px rgba(0,0,0,.3))}
+
+/* ═══════════════════════════════════════════
+   v6.701 精簡：關掉過多 infinite 動畫，保留核心焦點
+   （FAB 呼吸 / hologram / GPS 雷達 / banner pulse / step 呼吸）
+═══════════════════════════════════════════ */
+#stats-strip::before,
+#stats-strip::after,
+.stat-item .num::after,
+#nav-bar::before,
+#nav-bar-dest::before,
+#nav-panel-hd::after,
+#map-search-inner::before{
+  animation:none !important;
+  display:none !important;
+}
+#stats-strip{overflow:visible}
+.stat-item .lbl::before{display:none}
+.dbnav.active{animation:none !important}
+#map-search-inner:focus-within > span:first-child{animation:none !important;transform:scale(1.15)}
+
+/* ═══════════════════════════════════════════
+   🎬 開場戲 (1.5s)：地圖 blur 淡入 + 金線掃過
+═══════════════════════════════════════════ */
+body.intro #map{
+  animation:intro-map-in .85s .15s var(--ease-snap) backwards;
+}
+@keyframes intro-map-in{
+  from{opacity:0;transform:scale(1.035);filter:blur(6px) brightness(.8)}
+  to  {opacity:1;transform:scale(1);filter:blur(0) brightness(1)}
+}
+
+body.intro::after{
+  content:'';
+  position:fixed;inset:0;z-index:9999;pointer-events:none;
+  background:linear-gradient(110deg,
+    transparent 0%,
+    transparent 42%,
+    rgba(255,215,130,.45) 49%,
+    rgba(255,245,210,.88) 50%,
+    rgba(255,215,130,.45) 51%,
+    transparent 58%,
+    transparent 100%);
+  background-size:260% 100%;
+  background-position:-80% 0;
+  animation:intro-sweep 1.25s .35s cubic-bezier(.7,0,.3,1) forwards;
+  mix-blend-mode:screen;
+}
+@keyframes intro-sweep{
+  0%  {background-position:-80% 0;opacity:0}
+  12% {opacity:1}
+  88% {opacity:1}
+  100%{background-position:200% 0;opacity:0}
+}
+
+/* 第二道柔光（墊底暈感） */
+body.intro::before{
+  content:'';
+  position:fixed;inset:0;z-index:9998;pointer-events:none;
+  background:radial-gradient(ellipse at center,
+    rgba(255,245,220,.35) 0%,
+    rgba(255,215,130,.12) 40%,
+    transparent 70%);
+  animation:intro-glow 1.5s ease-out forwards;
+  mix-blend-mode:screen;
+}
+@keyframes intro-glow{
+  0%  {opacity:0}
+  25% {opacity:1}
+  100%{opacity:0}
+}
+
+@media(prefers-reduced-motion:reduce){
+  body.intro::after,body.intro::before{display:none}
+  body.intro #map{animation:none}
+}
 </style>
 </head>
-<body>
+<body class="intro">
+<script>setTimeout(()=>document.body.classList.remove('intro'),1800);</script>
 
 <!-- ── TOP BAR ── -->
 <div id="topbar">

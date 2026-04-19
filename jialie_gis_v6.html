@@ -17,8 +17,11 @@
   const ASSET_CACHE = 'jialie-assets-v6';
   const TILE_CACHE  = 'jialie-tiles-v6';
   const swCode = `
-const ASSET='${'"'}jialie-assets-v6${"'"}';
-const TILES='${'"'}jialie-tiles-v6${"'"}';
+/* bug #11: 原本 \`'\${'"'}jialie-assets-v6\${"'"}'\` 展開後變成 '"jialie-assets-v6''
+   (兩個 string literal 中間沒運算子) → SW parse 錯誤 → 永遠 install 失敗 → 離線 cache 失效。
+   改回乾淨字串字面。 */
+const ASSET='jialie-assets-v6';
+const TILES='jialie-tiles-v6';
 const PRECACHE=[
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
@@ -5277,6 +5280,13 @@ function parseSearchQuery(q){
   // 清掉「臺南市佳里區」前綴
   q = q.replace(/^臺南市佳里區/, '').replace(/^台南市佳里區/, '').trim();
 
+  // bug #13: DB / 使用者輸入存在兩種「之 X」格式：
+  //   (a) 之X號 — 「延平路15之2號」（之在號之前）
+  //   (b) 號之X — 「佳里興545號之10」「和平街39巷10號之1」（之在號之後）
+  // 原 Pattern A 只接受 (a)；遇到 (b) 整段 fail 落到 Pattern B/C 拿不到 num。
+  // 正規化：把「號之X」改寫為「之X號」，後續 regex 維持單一形式。
+  q = q.replace(/(\d+)\s*號\s*之\s*(\d+)/g, '$1之$2號');
+
   // Pattern A: 路名 + 號碼（可能含之、樓、巷弄）
   // e.g. 進學路159號  /  進學路148巷5號  /  延平路15之2號
   const mFull = q.match(/^([^\d]+?)([\d]+[巷弄][^\d]*)?(\d+)(?:之(\d+))?號?$/);
@@ -5452,13 +5462,15 @@ async function onMapSearch(){
         const candidates = [];
         for(let i = 0; i < DOOR_DB.length; i++){
           const addr = DOOR_DB[i][2];
-          const stripped = addr.replace('臺南市佳里區','').replace('台南市佳里區','');
+          let stripped = addr.replace('臺南市佳里區','').replace('台南市佳里區','');
           if(!stripped.includes(roadKey) || already.has(stripped)) continue;
           // 排除命名巷（漢字+巷）
           if(/[\u4e00-\u9fff]巷/.test(stripped)) continue;
           // 排除沒有實際門牌號碼的條目（只有路名，無「X號」）
           if(!/\d+號/.test(stripped)) continue;
-          const m = stripped.match(/(\d+)(?:之(\d+))?號/);
+          // bug #13: 同步 normalize「號之X」→「之X號」，避免 hExt 抓不到
+          const norm = stripped.replace(/(\d+)\s*號\s*之\s*(\d+)/g, '$1之$2號');
+          const m = norm.match(/(\d+)(?:之(\d+))?號/);
           const hNum = m ? parseInt(m[1]) : 9999;
           const hExt = m ? parseInt(m[2]||0)||0 : 0;
           candidates.push({ r: DOOR_DB[i], num: hNum, ext: hExt, addr: stripped, direct: isDirect(stripped) });
@@ -5503,7 +5515,8 @@ async function onMapSearch(){
     if(typeof OLD_TO_NEW!=='undefined'){
       const qn = q.replace(/^臺南市佳里區/,'').replace(/^台南市佳里區/,'').trim();
       Object.entries(OLD_TO_NEW).forEach(([oldAddr, newAddr])=>{
-        if(!oldAddr.includes(qn) && !qn.includes(oldAddr.slice(0,3))) return;
+        // bug #31a: 原本兩行 if 第二行讓「qn 含 oldAddr 前綴」分支失效，且邏輯重複；
+        // 簡化為「oldAddr 含整段 qn 才命中」單一條件（與後句一致）。
         if(!oldAddr.includes(qn)) return;
         // 找新址座標
         if(typeof DOOR_DB!=='undefined'){
@@ -5514,8 +5527,15 @@ async function onMapSearch(){
     }
 
     // 合併所有門牌結果（IndexedDB + DOOR_DB + 舊址），去重
+    // bug #31b: 原本以 item.disp 去重，但舊址 disp 是「舊→新」不會跟 DOOR_DB 純新址 disp 相同，
+    // 結果同一新址會出現兩次。改用 lat,lng 6 位精度 + addr 為複合 key，跨資料源正確去重。
     const seen = new Set();
     _searchAllResults = [];
+    const dedupKey = (it) => {
+      const lat = (it.lat || 0).toFixed(6);
+      const lng = (it.lng || 0).toFixed(6);
+      return `${lat},${lng}|${it.addr || ''}`;
+    };
     [...addrPts.map(p=>{
       const label=p.road+(p.lane||'')+(p.num?p.num+'號':'')+(p.numExt?'之'+p.numExt:'');
       return {lat:p.lat,lng:p.lng,addr:label,disp:label};
@@ -5523,7 +5543,8 @@ async function onMapSearch(){
       const full=r[2], disp=full.replace('臺南市佳里區','').replace('台南市佳里區','');
       return {lat:r[0],lng:r[1],addr:full,disp};
     }), ...oldAddrHits].forEach(item=>{
-      if(!seen.has(item.disp)){seen.add(item.disp);_searchAllResults.push(item);}
+      const k = dedupKey(item);
+      if(!seen.has(k)){seen.add(k);_searchAllResults.push(item);}
     });
 
     if(!_searchAllResults.length){
@@ -5759,11 +5780,15 @@ function mapSearchSelectPoint(lat, lng, label, doRadius=true){
   if(doRadius) show50mList(lat, lng, dispLabel);
 }
 
+// bug #34: 佳里區 bbox 兩處硬寫不同數字，geocodeLocal 放寬到整個台南西半部會把
+// 七股/西港同名路存進 localStorage 永久快取錯誤座標。抽常數統一引用。
+const JIALI_BBOX = { latMin: 23.08, latMax: 23.27, lngMin: 120.07, lngMax: 120.28 };
+
 async function geocodeMapSearch(q){
   if(!navigator.onLine){ return; }
   try{
     // viewbox 限定臺南市佳里區範圍，排除其他縣市同名路
-    const vb='120.07,23.08,120.28,23.27';
+    const vb=`${JIALI_BBOX.lngMin},${JIALI_BBOX.latMin},${JIALI_BBOX.lngMax},${JIALI_BBOX.latMax}`;
     const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&countrycodes=tw&viewbox=${vb}&bounded=1&accept-language=zh-TW`;
     const res=await fetch(url,{headers:{'User-Agent':'JialiGIS/5.0'},signal:AbortSignal.timeout(6000)});
     const data=await res.json();
@@ -5842,7 +5867,8 @@ function show50mList(lat, lng, label=''){
       resultsEl.scrollTop = 0;
       _radiusShownAt = Date.now();
       const vt = _vilTag(lat, lng);
-      resultsEl.innerHTML = `<div style="padding:10px 14px;font-size:13px;font-weight:700;color:var(--text1)">📍 ${vt}${label}</div>`;
+      // bug #32: label 來自使用者搜尋輸入 / Nominatim 回傳，未 escape 直接 innerHTML 易被 self-XSS
+      resultsEl.innerHTML = `<div style="padding:10px 14px;font-size:13px;font-weight:700;color:var(--text1)">📍 ${vt}${_escHtml(label)}</div>`;
     }
     return;
   }
@@ -7767,7 +7793,14 @@ function _refreshDoorLayer(){
   _doorLayerGroup.addTo(map);
 }
 
-map.on('zoomend moveend', _refreshDoorLayer);
+// bug #33: 24k 筆 DOOR_DB，每次 zoom/move 都全掃 + L.marker 重建會卡。
+// 加 150ms debounce，連續事件只跑最後一次。
+let _doorLayerDebounce = null;
+function _refreshDoorLayerDebounced(){
+  if(_doorLayerDebounce) clearTimeout(_doorLayerDebounce);
+  _doorLayerDebounce = setTimeout(()=>{ _doorLayerDebounce = null; _refreshDoorLayer(); }, 150);
+}
+map.on('zoomend moveend', _refreshDoorLayerDebounced);
 
 /* ══════════════════════════════════════════
    佳里 GIS v6 — 新增功能 JS
@@ -8059,8 +8092,20 @@ function geocodeLocal(addr,cb){
   .then(function(d){
     if(d&&d[0]){
       var lat=parseFloat(d[0].lat), lng=parseFloat(d[0].lon);
-      if(lat>23.0&&lat<23.4&&lng>119.9&&lng<120.5){
-        localStorage.setItem(k,JSON.stringify({lat:lat,lng:lng}));
+      // bug #34: 統一用 JIALI_BBOX 常數，避免儲存非佳里區的同名路
+      if(lat>JIALI_BBOX.latMin&&lat<JIALI_BBOX.latMax&&lng>JIALI_BBOX.lngMin&&lng<JIALI_BBOX.lngMax){
+        // bug #34: localStorage 寫入加 try/catch，QuotaExceededError 時清掉舊 gc:* key
+        try{
+          localStorage.setItem(k,JSON.stringify({lat:lat,lng:lng}));
+        }catch(_e){
+          try{
+            for(var i=localStorage.length-1;i>=0;i--){
+              var kk=localStorage.key(i);
+              if(kk&&kk.indexOf('gc:')===0) localStorage.removeItem(kk);
+            }
+            localStorage.setItem(k,JSON.stringify({lat:lat,lng:lng}));
+          }catch(_e2){}
+        }
         cb(lat,lng);
       }
     }

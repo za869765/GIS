@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.825</title>
+<title>佳里 GIS v6.826</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1617,6 +1617,7 @@ body[data-theme="dark"] #vil-info-panel .bar-female::before,body[data-theme="dar
 <div id="measure-bar">
   <button class="meas-btn" id="meas-btn-dist"   onclick="setMeasureMode('dist')"   title="距離量測"><span class="meas-btn-icon" id="meas-icon-dist">↔</span><span id="meas-text-dist">測距</span></button>
   <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測"><span class="meas-btn-icon" id="meas-icon-circle">◯</span><span id="meas-text-circle">畫圓</span></button>
+  <button class="meas-btn" id="meas-btn-sv"     onclick="toggleStreetviewMode()"   title="街景模式（點地圖任一處看街景）"><span class="meas-btn-icon" id="meas-icon-sv">🛣️</span><span id="meas-text-sv">街景</span></button>
 </div>
 
 <!-- ── 機關圖層卡（可拖曳，點空白處移動） ── -->
@@ -3324,6 +3325,29 @@ document.addEventListener('click',function(e){
   if(!lat||!lng) return;
   window.open('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+lat+','+lng,'_blank','noopener');
 });
+/* ── v6.826 街景模式（toolbar toggle，點地圖任一處看街景） ── */
+let _streetviewMode=false;
+function toggleStreetviewMode(){ _streetviewMode?_exitStreetviewMode():_enterStreetviewMode(); }
+function _enterStreetviewMode(){
+  _streetviewMode=true;
+  var btn=document.getElementById('meas-btn-sv'),txt=document.getElementById('meas-text-sv');
+  if(btn) btn.classList.add('active');
+  if(txt) txt.textContent='點地圖';
+  map.getContainer().style.cursor='crosshair';
+}
+function _exitStreetviewMode(){
+  _streetviewMode=false;
+  var btn=document.getElementById('meas-btn-sv'),txt=document.getElementById('meas-text-sv');
+  if(btn) btn.classList.remove('active');
+  if(txt) txt.textContent='街景';
+  map.getContainer().style.cursor='';
+}
+map.on('click',function(e){
+  if(!_streetviewMode) return;
+  window.open('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+e.latlng.lat+','+e.latlng.lng,'_blank','noopener');
+  _exitStreetviewMode();
+});
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&_streetviewMode) _exitStreetviewMode(); });
 function addMarker(c){
   if(!c.lat||!c.lng) return;
   const col=TYPE_COLORS[c.type]||'#7f8c8d';
@@ -5123,7 +5147,7 @@ async function toggleFacilityLayer(){
     const label = names.map(n=>`<b>${n}</b>`).join('<br>') +
                   `<br><span style="font-size:11px;color:#888">${addr}</span>`;
     L.marker(coord, {icon:_facIcon(t)})
-      .bindPopup(label, {maxWidth:200})
+      .bindPopup(label+_streetviewBtnHtml(coord[0],coord[1]), {maxWidth:200})
       .addTo(_facLayerGroup);
   }
   _facLayerGroup.addTo(map);
@@ -5184,7 +5208,7 @@ async function toggleFacGroup(gid){
     if(!coord) continue;
     const dispName = names[0]||addr;
     const navLabel = dispName.replace(/'/g,"\\'");
-    const navBtn = `<button class="nav-fac-btn" onclick="navFacTo(${coord[0]},${coord[1]},'${navLabel}')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>`;
+    const navBtn = `<button class="nav-fac-btn" onclick="navFacTo(${coord[0]},${coord[1]},'${navLabel}')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>`+_streetviewBtnHtml(coord[0],coord[1]);
     const label = names.map((n,i)=>
       `<b>${n}</b>${phones[i]?`<br><span style="font-size:11px;color:#555">☎ ${phones[i]}</span>`:''}`
     ).join('<br>') + `<br><span style="font-size:11px;color:#888">${addr}</span>${navBtn}`;
@@ -5197,7 +5221,7 @@ async function toggleFacGroup(gid){
     _cpts.filter(function(cp){ return cp.group === gid && cp.lat && cp.lng; }).forEach(function(cp){
       var cname = cp.name || cp.addr;
       var navLabel3 = cname.replace(/'/g,"\\'");
-      var navBtn3 = '<button class="nav-fac-btn" onclick="navFacTo('+cp.lat+','+cp.lng+',\''+navLabel3+'\');map.closePopup()" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>';
+      var navBtn3 = '<button class="nav-fac-btn" onclick="navFacTo('+cp.lat+','+cp.lng+',\''+navLabel3+'\');map.closePopup()" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>'+_streetviewBtnHtml(cp.lat,cp.lng);
       var label3 = '<b>'+cname+'</b>'+(cp.tel?'<br><span style="font-size:11px;color:#555">☎ '+cp.tel+'</span>':'')+'<br><span style="font-size:11px;color:#888">'+cp.addr+'</span><br><span style="font-size:10px;color:#e67e22">📌 自定義</span>'+navBtn3;
       L.marker([cp.lat, cp.lng], {icon: _cptIcon(cp.group, cp.bldType)})
         .bindPopup(label3, {maxWidth:220})
@@ -7597,6 +7621,7 @@ function _highlightParcelApprox(lat, lng, areaM2){
 }
 
 map.on('click', async (e)=>{
+  if(_streetviewMode) return; // 街景模式：由獨立 listener 處理，主查詢 handler 不介入
   if(_ptPickMode){ _applyCoordPick(e.latlng.lat, e.latlng.lng); return; } // 座標取點模式
   if(_cptFabMode){ openCptCreate(e.latlng.lat, e.latlng.lng); return; } // 手機 FAB 新增模式
   if(_measMode) return; // 量測模式：不查詢門牌地段

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.826</title>
+<title>佳里 GIS v6.827</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1617,14 +1617,23 @@ body[data-theme="dark"] #vil-info-panel .bar-female::before,body[data-theme="dar
 <div id="measure-bar">
   <button class="meas-btn" id="meas-btn-dist"   onclick="setMeasureMode('dist')"   title="距離量測"><span class="meas-btn-icon" id="meas-icon-dist">↔</span><span id="meas-text-dist">測距</span></button>
   <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測"><span class="meas-btn-icon" id="meas-icon-circle">◯</span><span id="meas-text-circle">畫圓</span></button>
-  <button class="meas-btn" id="meas-btn-sv"     onclick="toggleStreetviewMode()"   title="街景模式（點地圖任一處看街景）"><span class="meas-btn-icon" id="meas-icon-sv">🛣️</span><span id="meas-text-sv">街景</span></button>
+</div>
+
+<!-- ── v6.827 街景浮動 mini-card（B2：點地圖任一處出現） ── -->
+<div id="sv-floating-card" style="position:fixed;left:14px;bottom:14px;z-index:560;background:rgba(255,255,255,.96);border:1px solid #ccc;border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.25);display:none;flex-direction:column;gap:8px;font-family:'Noto Sans TC',sans-serif;min-width:180px;max-width:240px">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <span style="font-size:11px;color:#888;font-weight:600">📍 已選位置</span>
+    <button onclick="hideSvFloatingCard()" title="關閉" style="background:none;border:none;color:#999;cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
+  </div>
+  <div id="sv-card-coord" style="font-size:11px;color:#555;font-family:monospace"></div>
+  <button onclick="_svCardClick()" style="background:#34495e;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer">🛣️ 查看街景</button>
 </div>
 
 <!-- ── 機關圖層卡（可拖曳，點空白處移動） ── -->
 <div id="left-tools">
   <button id="vil-mode-toggle-btn" onclick="toggleVilLayer()" style="background:var(--surface2);border:2px solid var(--border2);border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;color:var(--text2);white-space:nowrap;font-family:inherit">📊 里別 OFF</button>
-  <button id="fac-grp-toggle" onclick="_toggleFacGrpPanel()" style="display:none;background:var(--surface2);border:1.5px solid var(--border2);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;color:var(--text2);width:100%;font-family:inherit">＋ 圖層</button>
-  <div id="fac-group-btns" style="display:flex;flex-direction:column;gap:4px">
+  <button id="fac-grp-toggle" onclick="_toggleFacGrpPanel()" style="background:var(--surface2);border:1.5px solid var(--border2);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;color:var(--text2);width:100%;font-family:inherit">＋ 圖層</button>
+  <div id="fac-group-btns" style="display:none;flex-direction:column;gap:4px">
     <button class="fac-grp-btn" id="fac-grp-gov"       onclick="toggleFacGroup('gov')"      >🏛 機關</button>
     <button class="fac-grp-btn" id="fac-grp-school"    onclick="toggleFacGroup('school')"   >🏫 學校</button>
     <button class="fac-grp-btn" id="fac-grp-community" onclick="toggleFacGroup('community')">🏘 活動中心</button>
@@ -3321,33 +3330,61 @@ function _streetviewBtnHtml(lat,lng){
 document.addEventListener('click',function(e){
   var btn=e.target&&e.target.closest?e.target.closest('.btn-streetview'):null;
   if(!btn) return;
-  var lat=btn.dataset.svLat, lng=btn.dataset.svLng;
-  if(!lat||!lng) return;
-  window.open('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+lat+','+lng,'_blank','noopener');
+  var lat=parseFloat(btn.dataset.svLat), lng=parseFloat(btn.dataset.svLng);
+  if(isNaN(lat)||isNaN(lng)) return;
+  _openStreetviewWithCheck(lat,lng);
 });
-/* ── v6.826 街景模式（toolbar toggle，點地圖任一處看街景） ── */
-let _streetviewMode=false;
-function toggleStreetviewMode(){ _streetviewMode?_exitStreetviewMode():_enterStreetviewMode(); }
-function _enterStreetviewMode(){
-  _streetviewMode=true;
-  var btn=document.getElementById('meas-btn-sv'),txt=document.getElementById('meas-text-sv');
-  if(btn) btn.classList.add('active');
-  if(txt) txt.textContent='點地圖';
-  map.getContainer().style.cursor='crosshair';
+/* ── v6.827 A1 免 key 粗略過濾：DOOR_DB nearest neighbor 距離判斷 ── */
+function _nearestDoorDist(lat,lng){
+  if(typeof DOOR_DB==='undefined'||!DOOR_DB.length) return Infinity;
+  var cosLat=Math.cos(lat*Math.PI/180),min=Infinity;
+  for(var i=0,n=DOOR_DB.length;i<n;i++){
+    var r=DOOR_DB[i];
+    var dy=(r[0]-lat)*111000;
+    var dx=(r[1]-lng)*111000*cosLat;
+    var d=Math.sqrt(dx*dx+dy*dy);
+    if(d<min){ min=d; if(min<10) return min; }
+  }
+  return min;
 }
-function _exitStreetviewMode(){
-  _streetviewMode=false;
-  var btn=document.getElementById('meas-btn-sv'),txt=document.getElementById('meas-text-sv');
-  if(btn) btn.classList.remove('active');
-  if(txt) txt.textContent='街景';
-  map.getContainer().style.cursor='';
+function _openStreetviewWithCheck(lat,lng){
+  var d=_nearestDoorDist(lat,lng);
+  if(d>200 && d!==Infinity){
+    if(!confirm('該位置附近 200m 內沒有門牌資料（最近門牌約 '+Math.round(d)+' m），\nGoogle 街景可能無覆蓋（黑屏）。\n\n仍要查詢嗎？')) return;
+  }
+  window.open('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+lat+','+lng,'_blank','noopener');
+}
+/* ── v6.827 B2 浮動 mini-card：點地圖任一處 → 左下角浮現街景按鈕 ── */
+var _svCardLat=null,_svCardLng=null,_svCardTimer=null;
+function showSvFloatingCard(lat,lng){
+  _svCardLat=lat; _svCardLng=lng;
+  var card=document.getElementById('sv-floating-card');
+  if(!card) return;
+  var c=document.getElementById('sv-card-coord');
+  if(c) c.textContent=lat.toFixed(5)+', '+lng.toFixed(5);
+  card.style.display='flex';
+  if(_svCardTimer) clearTimeout(_svCardTimer);
+  _svCardTimer=setTimeout(hideSvFloatingCard,8000);
+}
+function hideSvFloatingCard(){
+  var card=document.getElementById('sv-floating-card');
+  if(card) card.style.display='none';
+  if(_svCardTimer){ clearTimeout(_svCardTimer); _svCardTimer=null; }
+}
+function _svCardClick(){
+  if(_svCardLat!=null && _svCardLng!=null) _openStreetviewWithCheck(_svCardLat,_svCardLng);
+  hideSvFloatingCard();
 }
 map.on('click',function(e){
-  if(!_streetviewMode) return;
-  window.open('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+e.latlng.lat+','+e.latlng.lng,'_blank','noopener');
-  _exitStreetviewMode();
+  /* 各種 mode 啟用時不顯示 mini-card，避免干擾 */
+  if(typeof addMode!=='undefined' && addMode) return;
+  if(typeof _measMode!=='undefined' && _measMode) return;
+  if(typeof _ptEditMode!=='undefined' && _ptEditMode) return;
+  if(typeof _ptPickMode!=='undefined' && _ptPickMode) return;
+  if(typeof _cptFabMode!=='undefined' && _cptFabMode) return;
+  if(typeof _vilBoundaryOn!=='undefined' && _vilBoundaryOn) return;
+  showSvFloatingCard(e.latlng.lat,e.latlng.lng);
 });
-document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&_streetviewMode) _exitStreetviewMode(); });
 function addMarker(c){
   if(!c.lat||!c.lng) return;
   const col=TYPE_COLORS[c.type]||'#7f8c8d';
@@ -5174,7 +5211,7 @@ function _toggleFacGrpPanel(){
   const panel = document.getElementById('fac-group-btns');
   const btn = document.getElementById('fac-grp-toggle');
   if(!panel||!btn) return;
-  const open = panel.style.display !== 'none' && panel.style.display !== '';
+  const open = panel.style.display !== 'none';
   panel.style.display = open ? 'none' : 'flex';
   btn.textContent = open ? '＋ 圖層' : '－ 圖層';
 }
@@ -7621,7 +7658,6 @@ function _highlightParcelApprox(lat, lng, areaM2){
 }
 
 map.on('click', async (e)=>{
-  if(_streetviewMode) return; // 街景模式：由獨立 listener 處理，主查詢 handler 不介入
   if(_ptPickMode){ _applyCoordPick(e.latlng.lat, e.latlng.lng); return; } // 座標取點模式
   if(_cptFabMode){ openCptCreate(e.latlng.lat, e.latlng.lng); return; } // 手機 FAB 新增模式
   if(_measMode) return; // 量測模式：不查詢門牌地段
@@ -8341,7 +8377,7 @@ function searchLandParcel(){
   if(area&&area!='0')pop+='<div style="font-size:11px;color:#555">\u9762\u7a4d\uff1a'+area+' m\xb2</div>';
   if(pval&&pval!='0')pop+='<div style="font-size:11px;color:#555">\u516c\u544a\u73fe\u5024\uff1a'+Number(pval).toLocaleString()+' \u5143/m\xb2</div>';
   pop+='</div>';
-  _landMk.bindPopup(pop,{maxWidth:220}).openPopup();
+  _landMk.bindPopup(pop+_streetviewBtnHtml(lat,lng),{maxWidth:220}).openPopup();
   map.setView([lat,lng],17);
   var txt='\u4f73\u91cc\u6bb5 '+key+' \uff1a\u7d93\u7def ('+lat.toFixed(5)+', '+lng.toFixed(5)+')';
   if(area&&area!='0')txt+=' \u30b7\u9762\u7a4d '+area+' m\xb2';
@@ -8819,11 +8855,27 @@ map.on('dblclick',function(e){
 
   // 移入面板（量測 + 方圓 + 門牌點）並清除固定定位
   const _measureBar = document.getElementById('measure-bar');
-  [_measureBar, _radiusBar, _doorBtn].filter(Boolean).forEach(el=>{
+  const _ctrlItems = [_measureBar, _radiusBar, _doorBtn].filter(Boolean);
+  _ctrlItems.forEach(el=>{
     el.style.position='relative';
     el.style.left=el.style.right=el.style.top=el.style.bottom=el.style.zIndex='';
     el.style.cursor='default';
     panel.appendChild(el);
+  });
+  /* v6.827 C1.b：加摺疊 toggle，預設收合，只顯示「☰ 工具」 */
+  const _ctrlToggle=document.createElement('button');
+  _ctrlToggle.id='ctrl-panel-toggle';
+  _ctrlToggle.style.cssText='background:rgba(255,255,255,.94);border:1.5px solid var(--border2);border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);font-family:inherit;color:var(--text2);white-space:nowrap';
+  _ctrlToggle.textContent='☰ 工具';
+  _ctrlToggle.title='展開/收合工具列';
+  panel.insertBefore(_ctrlToggle,panel.firstChild);
+  /* 預設收合 */
+  _ctrlItems.forEach(el=>{ el._origDisplay=el.style.display||''; el.style.display='none'; });
+  _ctrlToggle.addEventListener('click',function(ev){
+    ev.stopPropagation();
+    const hidden=_ctrlItems[0] && _ctrlItems[0].style.display==='none';
+    _ctrlItems.forEach(el=>{ el.style.display = hidden ? (el._origDisplay||'') : 'none'; });
+    _ctrlToggle.textContent = hidden ? '✕ 收合' : '☰ 工具';
   });
   document.body.appendChild(panel);
 

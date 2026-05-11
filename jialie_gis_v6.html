@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.823</title>
+<title>佳里 GIS v6.824</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1400,6 +1400,60 @@ body.vil-mode .leaflet-tooltip.vil-label,body.vil-mode .leaflet-label{animation:
 @keyframes stats-toggle-pulse{0%,100%{box-shadow:0 2px 6px rgba(16,212,116,.25),0 0 0 0 rgba(16,212,116,.4)}50%{box-shadow:0 2px 6px rgba(16,212,116,.35),0 0 0 8px rgba(16,212,116,0)}}
 #vil-stat-toggle.on::before,[data-vil-stat-toggle].on::before{content:'';position:absolute;top:0;left:-30%;width:30%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:stats-toggle-sweep 2.5s ease-in-out infinite}
 @keyframes stats-toggle-sweep{0%{left:-30%}60%{left:100%}100%{left:100%}}
+
+/* ═══════════════════════════════════════════
+   v6.824 LAG 修補 (2026-05-11)
+   v6.800 Live Data Theater 整合後，vil-mode 下仍有 21 個 infinite
+   裝飾動畫同時跑（badge/info-panel/rank-panel/polygon/legend/toggle/
+   stats-strip），手機 GPU compositor 撐不住 → LAG。
+   本 block 在 vil-mode 下統一停這些裝飾性 infinite，保留:
+   - 一次性進場動畫（rank-row-cascade / vil-pop-enter / panel-3d-reveal 等）
+   - 功能性動畫（GPS spin / loading spin）
+   參考 v6.701 精簡策略；可逆 — 刪除整個 block 即恢復 v6.823 行為。
+═══════════════════════════════════════════ */
+body.vil-mode #vil-mode-badge,
+body.vil-mode #vil-mode-badge::before,
+body.vil-mode #vil-info-panel::before,
+body.vil-mode #vil-info-panel::after,
+body.vil-mode #vil-info-panel h3,
+body.vil-mode #vil-info-panel .vil-title,
+body.vil-mode #vil-info-panel > div:first-child strong,
+body.vil-mode #vil-info-panel [data-vil-title],
+body.vil-mode #vil-info-panel .bar-female::after,
+body.vil-mode #vil-info-panel .bar-male::after,
+body.vil-mode #vil-info-panel .bar-female::before,
+body.vil-mode #vil-info-panel .bar-male::before,
+body.vil-mode #vil-info-panel .pct-female,
+body.vil-mode #vil-info-panel .pct-male,
+body.vil-mode #vil-info-panel [data-age-idx],
+body.vil-mode #vil-info-panel .age-index,
+body.vil-mode #sc-rank-panel > div:first-child::after,
+body.vil-mode #sc-rank-panel .panel-hd::after,
+body.vil-mode #sc-rank-panel [data-panel-hd]::after,
+body.vil-mode #sc-rank-panel .rank-chip.active,
+body.vil-mode #sc-rank-panel [data-rank-cat].active,
+body.vil-mode #sc-rank-panel .rank-row.current,
+body.vil-mode #sc-rank-panel .rank-row.active,
+body.vil-mode #sc-rank-panel [data-rank-row].current,
+body.vil-mode #sc-rank-panel [data-rank-row].active,
+body.vil-mode #sc-rank-panel .rank-row.current::before,
+body.vil-mode #sc-rank-panel .rank-row.active::before,
+body.vil-mode #sc-rank-panel .rank-row.current .rank-bar-fill,
+body.vil-mode #sc-rank-panel .rank-row.active .rank-bar-fill,
+body.vil-mode .leaflet-overlay-pane path.selected,
+body.vil-mode .leaflet-overlay-pane path.active,
+body.vil-mode .vil-legend::after,
+body.vil-mode #vil-legend::after,
+body.vil-mode #vil-stat-toggle.on,
+body.vil-mode #vil-stat-toggle[data-on="1"],
+body.vil-mode [data-vil-stat-toggle].on,
+body.vil-mode #vil-stat-toggle.on::before,
+body.vil-mode [data-vil-stat-toggle].on::before,
+body.vil-mode #stats-strip::before,
+body.vil-mode #stats-strip::after,
+body.vil-mode .stat-item .num::after{
+  animation:none !important;
+}
 
 /* 📱 B27 · 手機響應式 (<768px)：面板改 bottom sheet、關閉流光省電 */
 @media(max-width:767px){

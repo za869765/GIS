@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.824</title>
+<title>佳里 GIS v6.825</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -3312,12 +3312,24 @@ function addrStr(c){
   if(!c.road) return c.addrFull||'';
   return c.road+(c.lane||'')+(c.houseNum?c.houseNum+'號'+(c.houseNumExt?'之'+c.houseNumExt:'')+(c.floor?c.floor+'樓':''):'');
 }
+/* ── v6.825 街景整合：popup 內「查看街景」按鈕（外部連結，無 API Key） ── */
+function _streetviewBtnHtml(lat,lng){
+  if(lat==null||lng==null||isNaN(lat)||isNaN(lng)) return '';
+  return '<button class="btn-streetview" data-sv-lat="'+lat+'" data-sv-lng="'+lng+'" style="display:block;width:100%;margin-top:6px;background:#34495e;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🛣️ 查看街景</button>';
+}
+document.addEventListener('click',function(e){
+  var btn=e.target&&e.target.closest?e.target.closest('.btn-streetview'):null;
+  if(!btn) return;
+  var lat=btn.dataset.svLat, lng=btn.dataset.svLng;
+  if(!lat||!lng) return;
+  window.open('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+lat+','+lng,'_blank','noopener');
+});
 function addMarker(c){
   if(!c.lat||!c.lng) return;
   const col=TYPE_COLORS[c.type]||'#7f8c8d';
   const dist=VIL_TO_DIST[c.village]||'';
   const m=L.marker([c.lat,c.lng],{icon:mkIcon(col),draggable:true,zIndexOffset:500}).addTo(map);
-  m.bindPopup(`<b style="font-size:13px">${c.name}</b><br><span style="font-size:11px;color:#555">${c.type} · ${SL[c.status]}</span><br><span style="font-size:10px;color:#aaa">${c.village||''}${dist?' ('+dist+')':''} ${addrStr(c)}</span>`);
+  m.bindPopup(`<b style="font-size:13px">${c.name}</b><br><span style="font-size:11px;color:#555">${c.type} · ${SL[c.status]}</span><br><span style="font-size:10px;color:#aaa">${c.village||''}${dist?' ('+dist+')':''} ${addrStr(c)}</span>${_streetviewBtnHtml(c.lat,c.lng)}`);
   m.on('click',()=>{selectCase(c.id);if(window.innerWidth<768)expandSheet('peek');});
   m.on('dragend',ev=>{
     const p=ev.target.getLatLng();
@@ -8515,7 +8527,7 @@ function searchDoorNum(){
     var lat=r[0],lng=r[1],addr=r[2];
     bounds.push([lat,lng]);
     L.circleMarker([lat,lng],{radius:6,color:'#e67e22',fillColor:'#f39c12',fillOpacity:0.9,weight:2})
-     .bindPopup('<b>'+addr+'</b><br><small>'+lat.toFixed(5)+', '+lng.toFixed(5)+'</small><br><button class="nav-fac-btn" onclick="navFacTo('+lat+','+lng+',\''+addr.replace('臺南市佳里區','').replace('台南市佳里區','').replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:6px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>')
+     .bindPopup('<b>'+addr+'</b><br><small>'+lat.toFixed(5)+', '+lng.toFixed(5)+'</small><br><button class="nav-fac-btn" onclick="navFacTo('+lat+','+lng+',\''+addr.replace('臺南市佳里區','').replace('台南市佳里區','').replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;margin-top:6px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>'+_streetviewBtnHtml(lat,lng))
      .addTo(doorLayer);
   });
   if(bounds.length===1){

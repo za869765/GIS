@@ -1619,14 +1619,14 @@ body[data-theme="dark"] #vil-info-panel .bar-female::before,body[data-theme="dar
   <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測"><span class="meas-btn-icon" id="meas-icon-circle">◯</span><span id="meas-text-circle">畫圓</span></button>
 </div>
 
-<!-- ── v6.827 街景浮動 mini-card（B2：點地圖任一處出現） ── -->
-<div id="sv-floating-card" style="position:fixed;left:14px;bottom:14px;z-index:560;background:rgba(255,255,255,.96);border:1px solid #ccc;border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.25);display:none;flex-direction:column;gap:8px;font-family:'Noto Sans TC',sans-serif;min-width:180px;max-width:240px">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-    <span style="font-size:11px;color:#888;font-weight:600">📍 已選位置</span>
-    <button onclick="hideSvFloatingCard()" title="關閉" style="background:none;border:none;color:#999;cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
+<!-- ── v6.828 街景浮動 mini-card（class-based, 待對應 CSS chunk 重新加入） ── -->
+<div id="sv-floating-card">
+  <div class="sv-card-head">
+    <span class="sv-card-title">📍 已選位置</span>
+    <button onclick="hideSvFloatingCard()" title="關閉" class="sv-card-close">✕</button>
   </div>
-  <div id="sv-card-coord" style="font-size:11px;color:#555;font-family:monospace"></div>
-  <button onclick="_svCardClick()" style="background:#34495e;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer">🛣️ 查看街景</button>
+  <div id="sv-card-coord" class="sv-card-coord"></div>
+  <button onclick="_svCardClick()" class="sv-card-action">🛣️ 查看街景</button>
 </div>
 
 <!-- ── 機關圖層卡（可拖曳，點空白處移動） ── -->
@@ -3364,7 +3364,7 @@ function showSvFloatingCard(lat,lng){
   if(c) c.textContent=lat.toFixed(5)+', '+lng.toFixed(5);
   card.style.display='flex';
   if(_svCardTimer) clearTimeout(_svCardTimer);
-  _svCardTimer=setTimeout(hideSvFloatingCard,8000);
+  _svCardTimer=setTimeout(hideSvFloatingCard, window.innerWidth<768 ? 12000 : 8000);
 }
 function hideSvFloatingCard(){
   var card=document.getElementById('sv-floating-card');

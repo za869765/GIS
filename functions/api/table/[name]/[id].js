@@ -24,33 +24,18 @@ const TABLES = {
 export async function onRequestGet({ env, params }) {
   const t = TABLES[params.name];
   if (!t) return json({ error: 'unknown table' }, 404);
-  const id = params.id;
+  const id = decodeURIComponent(params.id);
   const row = await env.DB.prepare(
     `SELECT * FROM ${params.name} WHERE ${t.pk} = ?`
   ).bind(id).first();
-  if (!row) {
-    // debug: 回傳 id 的 codepoints + DB 內 source='admin' 的 id 列表
-    const codepoints = [...id].map(c => c.codePointAt(0).toString(16)).join(' ');
-    const sample = await env.DB.prepare(
-      `SELECT ${t.pk} AS k FROM ${params.name} WHERE source='admin' LIMIT 5`
-    ).all();
-    return json({
-      error: 'not found',
-      debug: {
-        params_id: id,
-        params_id_codepoints: codepoints,
-        params_id_length: id.length,
-        sample_admin_keys: sample.results.map(r => r.k)
-      }
-    }, 404);
-  }
+  if (!row) return json({ error: 'not found' }, 404);
   return json(row);
 }
 
 export async function onRequestPut({ env, params, request }) {
   const t = TABLES[params.name];
   if (!t) return json({ error: 'unknown table' }, 404);
-  const id = params.id;
+  const id = decodeURIComponent(params.id);
   const body = await request.json().catch(() => ({}));
 
   const updatable = t.cols.filter(c => c in body && c !== t.pk);
@@ -73,7 +58,7 @@ export async function onRequestPut({ env, params, request }) {
 export async function onRequestDelete({ env, params }) {
   const t = TABLES[params.name];
   if (!t) return json({ error: 'unknown table' }, 404);
-  const id = params.id;
+  const id = decodeURIComponent(params.id);
   try {
     const res = await env.DB.prepare(
       `DELETE FROM ${params.name} WHERE ${t.pk} = ?`

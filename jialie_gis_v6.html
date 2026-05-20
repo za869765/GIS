@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.827</title>
+<title>佳里 GIS v6.828</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1501,7 +1501,7 @@ body[data-theme="dark"] #vil-info-panel .gender-bar-wrap,body[data-theme="dark"]
 body[data-theme="dark"] #vil-info-panel .bar-female::before,body[data-theme="dark"] #vil-info-panel .bar-male::before{box-shadow:0 0 10px rgba(255,255,255,.8),0 0 18px currentColor}
 
 /* ═══════════════════════════════════════════
-   v6.828 街景 mini-card 三端響應式 (CSS chunk, 暫時跳過 animation 兩行)
+   v6.828 街景 mini-card 三端響應式 (桌機/平板/手機)
 ═══════════════════════════════════════════ */
 #sv-floating-card{position:fixed;left:14px;bottom:14px;z-index:600;background:rgba(255,255,255,.96);border:1px solid #ccc;border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.25);display:none;flex-direction:column;gap:8px;font-family:'Noto Sans TC',sans-serif;min-width:180px;max-width:240px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 #sv-floating-card .sv-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -1512,6 +1512,7 @@ body[data-theme="dark"] #vil-info-panel .bar-female::before,body[data-theme="dar
 #sv-floating-card .sv-card-action{background:#34495e;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s,transform .15s}
 #sv-floating-card .sv-card-action:hover{background:#2c3e50;transform:translateY(-1px)}
 #sv-floating-card .sv-card-action:active{transform:translateY(0)}
+/* 平板 768-1023 */
 @media(min-width:768px) and (max-width:1023px){
   #sv-floating-card{min-width:200px;max-width:280px;padding:11px 13px;left:16px;bottom:16px}
 }
@@ -1523,11 +1524,13 @@ body[data-theme="dark"] #vil-info-panel .bar-female::before,body[data-theme="dar
   #sv-floating-card .sv-card-action{font-size:15px;padding:13px 16px;min-height:46px;border-radius:10px}
   #sv-floating-card .sv-card-close{width:36px;height:36px;font-size:22px}
 }
+/* 暗色模式 */
 body[data-theme="dark"] #sv-floating-card{background:rgba(20,28,40,.96);border-color:#2a3a4e;color:#e1e8ef}
 body[data-theme="dark"] #sv-floating-card .sv-card-title{color:#9eaab9}
 body[data-theme="dark"] #sv-floating-card .sv-card-coord{color:#a8b5c5}
 body[data-theme="dark"] #sv-floating-card .sv-card-close{color:#aab5c0}
 body[data-theme="dark"] #sv-floating-card .sv-card-close:hover{background:rgba(255,255,255,.08);color:#fff}
+/* 動畫:從下方滑入 */
 @keyframes sv-card-slide-in{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 #sv-floating-card[style*="flex"]{animation:sv-card-slide-in .25s cubic-bezier(.4,2,.6,1)}
 </style>
@@ -1650,7 +1653,7 @@ body[data-theme="dark"] #sv-floating-card .sv-card-close:hover{background:rgba(2
   <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測"><span class="meas-btn-icon" id="meas-icon-circle">◯</span><span id="meas-text-circle">畫圓</span></button>
 </div>
 
-<!-- ── v6.828 街景浮動 mini-card（class-based, 待對應 CSS chunk 重新加入） ── -->
+<!-- ── v6.827/828 街景浮動 mini-card（B2：點地圖任一處出現，三端響應式） ── -->
 <div id="sv-floating-card">
   <div class="sv-card-head">
     <span class="sv-card-title">📍 已選位置</span>

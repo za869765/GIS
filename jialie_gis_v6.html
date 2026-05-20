@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.831</title>
+<title>佳里 GIS v6.832</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5692,18 +5692,23 @@ async function onMapSearch(){
     // 結果同一新址會出現兩次。改用 lat,lng 6 位精度 + addr 為複合 key，跨資料源正確去重。
     const seen = new Set();
     _searchAllResults = [];
+    // bug #32: dedup key 統一 strip「臺南市佳里區」前綴，否則 oldAddrHits
+    // (addr 沒前綴) 跟 doorHits (addr 有前綴) 同址但 key 不同擋不住。
+    // 同時把 oldAddrHits 排最前 — 使用者打舊址時最關心的就是「原→新」對照，
+    // doorHits 同址會被 dedup 擋掉，剩 oldAddrHits 帶「原址 → 新址」disp 顯示。
     const dedupKey = (it) => {
       const lat = (it.lat || 0).toFixed(6);
       const lng = (it.lng || 0).toFixed(6);
-      return `${lat},${lng}|${it.addr || ''}`;
+      const addr = (it.addr || '').replace('臺南市佳里區','').replace('台南市佳里區','');
+      return `${lat},${lng}|${addr}`;
     };
-    [...addrPts.map(p=>{
+    [...oldAddrHits, ...addrPts.map(p=>{
       const label=p.road+(p.lane||'')+(p.num?p.num+'號':'')+(p.numExt?'之'+p.numExt:'');
       return {lat:p.lat,lng:p.lng,addr:label,disp:label};
     }), ...doorHits.map(r=>{
       const full=r[2], disp=full.replace('臺南市佳里區','').replace('台南市佳里區','');
       return {lat:r[0],lng:r[1],addr:full,disp};
-    }), ...oldAddrHits].forEach(item=>{
+    })].forEach(item=>{
       const k = dedupKey(item);
       if(!seen.has(k)){seen.add(k);_searchAllResults.push(item);}
     });

@@ -1,0 +1,8 @@
+name = "gis"
+compatibility_date = "2026-05-20"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gis-db"
+database_id = "a28c7a97-fcad-497f-a2fe-42db552f2862"

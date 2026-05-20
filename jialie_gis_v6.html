@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.829</title>
+<title>佳里 GIS v6.830</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -8846,6 +8846,68 @@ map.on('dblclick',function(e){
 <script src="land_db.js" charset="utf-8"></script>
 <script src="doornum_db.js" charset="utf-8"></script>
 <script src="old_addr_map.js" charset="utf-8"></script>
+
+<script>
+/* ═══ D1 OVERLAY (admin 編輯的資料覆寫到 static JS 之上) ═══
+   主頁開啟後背景拉 /api/overlay；拿到後把 admin 新增/修改的
+   OLD_TO_NEW 跟 DOOR_DB 條目 merge 進現有變數，並把整批 overlay
+   存進 localStorage 作為離線 fallback (Service Worker 已 cache 整個
+   .js 檔但 D1 內容沒在 SW 範圍)。
+*/
+(function(){
+  const LS_KEY = 'gis_overlay_v1';
+  const TTL_MS = 5 * 60 * 1000;  // 5 分鐘內不重抓
+
+  function applyOverlay(o){
+    if(!o) return;
+    if(o.old_to_new && typeof OLD_TO_NEW !== 'undefined'){
+      let n = 0;
+      for(const [k, v] of Object.entries(o.old_to_new)){
+        OLD_TO_NEW[k] = v;
+        n++;
+      }
+      if(n) console.log('[GIS-overlay] old_to_new merged:', n);
+    }
+    if(o.door_db && Array.isArray(o.door_db) && typeof DOOR_DB !== 'undefined'){
+      const existing = new Set(DOOR_DB.map(r => r[2]));
+      let added = 0, replaced = 0;
+      for(const [lat, lng, addr] of o.door_db){
+        if(existing.has(addr)){
+          const idx = DOOR_DB.findIndex(r => r[2] === addr);
+          DOOR_DB[idx] = [lat, lng, addr];
+          replaced++;
+        } else {
+          DOOR_DB.push([lat, lng, addr]);
+          existing.add(addr);
+          added++;
+        }
+      }
+      if(added || replaced) console.log('[GIS-overlay] door_db: +' + added + ' added, ' + replaced + ' replaced');
+    }
+    window.__GIS_OVERLAY__ = o;
+  }
+
+  // 先用 localStorage 內的舊 overlay（離線/快速啟動）
+  try {
+    const cached = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if(cached && cached.payload && (Date.now() - cached.ts) < 24 * 3600 * 1000){
+      applyOverlay(cached.payload);
+    }
+  } catch(_) {}
+
+  // 背景 fetch 最新 overlay
+  if('fetch' in window){
+    fetch('/api/overlay', { credentials: 'omit', cache: 'no-cache' })
+      .then(r => r.ok ? r.json() : null)
+      .then(o => {
+        if(!o) return;
+        applyOverlay(o);
+        try { localStorage.setItem(LS_KEY, JSON.stringify({ ts: Date.now(), payload: o })); } catch(_) {}
+      })
+      .catch(e => console.warn('[GIS-overlay] fetch failed:', e.message));
+  }
+})();
+</script>
 
 <!-- ══ SETTINGS OVERLAY ══ -->
 <div id="settings-overlay" onclick="if(event.target===this)closeSettings()" style="position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center">

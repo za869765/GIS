@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>佳里 GIS — 資料管理 v1.0.0</title>
+<style>
+* { box-sizing: border-box; }
+:root {
+  --blue: #1b4f72; --blue-dk: #0f2d42; --blue-lt: #d6eaf8;
+  --bg: #f4f6f8; --surface: #fff; --border: #d6dbe2;
+  --text: #1a202c; --text2: #4a5568; --text3: #8a96a3;
+  --ok: #27ae60; --danger: #c0392b; --warn: #c0550a;
+  --radius: 10px;
+}
+body { font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; margin:0; background:var(--bg); color:var(--text); font-size:14px; }
+header { background:var(--blue); color:#fff; padding:12px 20px; display:flex; align-items:center; gap:16px; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+header h1 { margin:0; font-size:16px; font-weight:600; }
+header .ver { font-size:11px; opacity:.7; }
+header .spacer { flex:1; }
+header button { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.3); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; }
+header button:hover { background:rgba(255,255,255,.25); }
+
+#login { max-width:340px; margin:80px auto; background:var(--surface); padding:32px 28px; border-radius:var(--radius); box-shadow:0 4px 24px rgba(0,0,0,.08); }
+#login h2 { margin:0 0 16px; font-size:18px; color:var(--blue); }
+#login p { color:var(--text2); margin:0 0 20px; font-size:13px; }
+#login input { width:100%; padding:10px 12px; font-size:16px; border:1px solid var(--border); border-radius:6px; }
+#login button { width:100%; margin-top:14px; padding:10px; background:var(--blue); color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:14px; font-weight:600; }
+#login button:hover { background:var(--blue-dk); }
+#login .msg { margin-top:10px; font-size:12px; color:var(--danger); min-height:16px; }
+
+#main { display:none; padding:0; }
+.tabs { display:flex; background:var(--surface); border-bottom:1px solid var(--border); padding:0 20px; overflow-x:auto; }
+.tab { padding:12px 18px; cursor:pointer; border-bottom:3px solid transparent; font-size:13px; white-space:nowrap; color:var(--text2); }
+.tab:hover { background:var(--blue-lt); }
+.tab.active { color:var(--blue); border-bottom-color:var(--blue); font-weight:600; }
+
+.toolbar { background:var(--surface); padding:12px 20px; border-bottom:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.toolbar input[type="search"] { flex:1; min-width:200px; padding:8px 12px; border:1px solid var(--border); border-radius:6px; font-size:13px; }
+.toolbar select { padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; background:#fff; }
+.toolbar button { padding:8px 12px; background:#fff; color:var(--blue); border:1px solid var(--blue); border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; }
+.toolbar button:hover { background:var(--blue-lt); }
+.toolbar button.primary { background:var(--blue); color:#fff; }
+.toolbar button.primary:hover { background:var(--blue-dk); }
+.toolbar button.danger { color:var(--danger); border-color:var(--danger); }
+.toolbar button.danger:hover { background:#fef0ee; }
+
+.table-wrap { padding:0 20px 20px; }
+table { width:100%; border-collapse:collapse; background:var(--surface); margin-top:12px; border-radius:var(--radius); overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+th { background:var(--blue-lt); color:var(--blue); text-align:left; padding:10px 12px; font-size:12px; font-weight:600; border-bottom:1px solid var(--border); }
+td { padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:top; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:#fafbfc; }
+td.actions { white-space:nowrap; }
+td.actions button { padding:4px 10px; margin-right:4px; font-size:11px; border-radius:4px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+td.actions button:hover { background:var(--blue-lt); border-color:var(--blue); color:var(--blue); }
+td.actions button.del:hover { background:#fef0ee; border-color:var(--danger); color:var(--danger); }
+.badge { display:inline-block; padding:2px 7px; border-radius:10px; font-size:11px; }
+.badge.admin { background:#fef0ee; color:var(--danger); }
+.badge.seed { background:#e9ecef; color:var(--text3); }
+
+.empty { padding:60px 20px; text-align:center; color:var(--text3); font-size:13px; }
+.pager { display:flex; gap:8px; justify-content:center; padding:12px; align-items:center; font-size:12px; color:var(--text2); }
+.pager button { padding:5px 12px; border:1px solid var(--border); border-radius:4px; background:#fff; cursor:pointer; }
+.pager button:disabled { opacity:.4; cursor:not-allowed; }
+
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:1000; }
+.modal-bg.show { display:flex; }
+.modal { background:#fff; border-radius:var(--radius); padding:24px; min-width:380px; max-width:560px; max-height:90vh; overflow-y:auto; box-shadow:0 12px 40px rgba(0,0,0,.2); }
+.modal h3 { margin:0 0 16px; font-size:16px; color:var(--blue); }
+.modal .field { margin-bottom:12px; }
+.modal .field label { display:block; font-size:12px; color:var(--text2); margin-bottom:4px; font-weight:600; }
+.modal .field input, .modal .field textarea { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:inherit; }
+.modal .field textarea { min-height:60px; resize:vertical; }
+.modal .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+.modal .actions button { padding:8px 16px; border-radius:6px; cursor:pointer; font-size:13px; border:1px solid var(--border); background:#fff; }
+.modal .actions button.primary { background:var(--blue); color:#fff; border-color:var(--blue); }
+
+.toast { position:fixed; top:80px; left:50%; transform:translateX(-50%); padding:10px 20px; border-radius:8px; color:#fff; font-size:13px; font-weight:600; z-index:2000; box-shadow:0 4px 16px rgba(0,0,0,.25); display:none; }
+.toast.ok { background:var(--ok); }
+.toast.err { background:var(--danger); }
+
+@media (max-width:640px) {
+  .toolbar { padding:10px; }
+  .table-wrap { padding:0 10px 10px; }
+  th, td { padding:8px 6px; font-size:12px; }
+  .modal { min-width:280px; max-width:94vw; padding:18px; }
+}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h2>佳里 GIS 資料管理</h2>
+  <p>請輸入 PIN 密碼</p>
+  <input id="pin" type="password" inputmode="numeric" autocomplete="off" autofocus>
+  <button onclick="login()">登入</button>
+  <div class="msg" id="loginMsg"></div>
+</div>
+
+<div id="main">
+  <header>
+    <h1>佳里 GIS 資料管理</h1>
+    <span class="ver">v1.0.0</span>
+    <span class="spacer"></span>
+    <button onclick="window.open('/','_blank')">前往 GIS 主頁</button>
+    <button onclick="logout()">登出</button>
+  </header>
+  <div class="tabs" id="tabs"></div>
+  <div class="toolbar">
+    <input type="search" id="searchInput" placeholder="搜尋關鍵字 (按 Enter)">
+    <select id="sourceFilter">
+      <option value="">全部來源</option>
+      <option value="admin">僅管理者編輯</option>
+      <option value="seed">僅原始 seed</option>
+    </select>
+    <button class="primary" onclick="openCreateModal()">+ 新增</button>
+    <button onclick="openImportModal()">匯入 CSV</button>
+    <button onclick="doExport('csv')">匯出 CSV</button>
+    <button onclick="doExport('json')">匯出 JSON</button>
+    <button id="exportOverlayBtn" onclick="doExport('csv', true)" style="display:none">匯出有整編紀錄</button>
+  </div>
+  <div class="table-wrap">
+    <table id="dataTable">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+    <div class="pager" id="pager"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal" id="modal"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TABLES = {
+  old_to_new: {
+    label: '舊新門牌對照',
+    pk: 'old_addr',
+    cols: [
+      { key:'old_addr', label:'舊址', required:true },
+      { key:'new_addr', label:'新址', required:true },
+      { key:'notes',    label:'備註' }
+    ]
+  },
+  door_db: {
+    label: '門牌資料庫 DOOR_DB',
+    pk: 'id',
+    cols: [
+      { key:'id',    label:'ID', readonly:true },
+      { key:'lat',   label:'緯度', type:'number', step:'0.0000001', required:true },
+      { key:'lng',   label:'經度', type:'number', step:'0.0000001', required:true },
+      { key:'addr',  label:'地址', required:true },
+      { key:'notes', label:'備註' }
+    ],
+    supportsOverlayExport: true
+  },
+  village_info: {
+    label: '里別資訊',
+    pk: 'village',
+    cols: [
+      { key:'village',      label:'里名', required:true },
+      { key:'head',         label:'里長' },
+      { key:'phone',        label:'聯絡電話' },
+      { key:'address',      label:'里辦地址' },
+      { key:'service_area', label:'服務區域' },
+      { key:'population',   label:'人口數', type:'number' },
+      { key:'notes',        label:'備註' },
+      { key:'extra',        label:'其他 (JSON)', textarea:true }
+    ]
+  },
+  kv_misc: {
+    label: '雜項 KV',
+    pk: 'key',
+    cols: [
+      { key:'key',      label:'鍵', required:true },
+      { key:'category', label:'分類' },
+      { key:'value',    label:'值 (JSON 或文字)', textarea:true },
+      { key:'notes',    label:'備註' }
+    ]
+  }
+};
+
+let currentTable = 'old_to_new';
+let currentPage = 0;
+const PAGE_SIZE = 50;
+let totalRows = 0;
+let editingRow = null;
+
+// ─ Login ─
+async function login() {
+  const pin = document.getElementById('pin').value;
+  const msg = document.getElementById('loginMsg');
+  msg.textContent = '驗證中...';
+  msg.style.color = 'var(--text3)';
+  const res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pin }) });
+  if (res.ok) {
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+    initUI();
+  } else {
+    msg.textContent = 'PIN 錯誤';
+    msg.style.color = 'var(--danger)';
+  }
+}
+async function logout() {
+  await fetch('/api/logout', { method:'POST' });
+  location.reload();
+}
+async function checkAuth() {
+  const res = await fetch('/api/me');
+  const { authenticated } = await res.json();
+  if (authenticated) {
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+    initUI();
+  }
+}
+document.getElementById('pin').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+// ─ UI init ─
+function initUI() {
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = Object.entries(TABLES)
+    .map(([k, t]) => `<div class="tab${k === currentTable ? ' active' : ''}" data-tab="${k}">${t.label}</div>`).join('');
+  tabs.onclick = e => {
+    const tab = e.target.closest('.tab');
+    if (!tab) return;
+    switchTab(tab.dataset.tab);
+  };
+  document.getElementById('searchInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { currentPage = 0; loadRows(); }
+  });
+  document.getElementById('sourceFilter').addEventListener('change', () => { currentPage = 0; loadRows(); });
+  switchTab(currentTable);
+}
+
+function switchTab(name) {
+  currentTable = name;
+  currentPage = 0;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.getElementById('exportOverlayBtn').style.display = TABLES[name].supportsOverlayExport ? 'inline-block' : 'none';
+  loadRows();
+}
+
+// ─ Load rows ─
+async function loadRows() {
+  const q = document.getElementById('searchInput').value.trim();
+  const source = document.getElementById('sourceFilter').value;
+  const params = new URLSearchParams({
+    limit: PAGE_SIZE,
+    offset: currentPage * PAGE_SIZE,
+  });
+  if (q) params.set('q', q);
+  if (source) params.set('source', source);
+
+  const res = await fetch(`/api/table/${currentTable}?${params}`);
+  if (res.status === 401) { location.reload(); return; }
+  const data = await res.json();
+  totalRows = data.total;
+  renderTable(data.rows);
+  renderPager();
+}
+
+function renderTable(rows) {
+  const t = TABLES[currentTable];
+  const thead = document.querySelector('#dataTable thead');
+  const tbody = document.querySelector('#dataTable tbody');
+  thead.innerHTML = '<tr>' + t.cols.map(c => `<th>${c.label}</th>`).join('') + '<th>來源</th><th>更新時間</th><th>操作</th></tr>';
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="${t.cols.length + 3}" class="empty">查無資料</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `<tr>${
+    t.cols.map(c => `<td>${esc(r[c.key])}</td>`).join('')
+  }<td><span class="badge ${r.source}">${r.source}</span></td><td>${esc(r.updated_at || '')}</td><td class="actions">
+    <button onclick='editRow(${JSON.stringify(r).replace(/'/g, "&#39;")})'>編輯</button>
+    <button class="del" onclick="delRow('${esc(r[t.pk])}')">刪除</button>
+  </td></tr>`).join('');
+}
+
+function esc(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/[<>&"']/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function renderPager() {
+  const pages = Math.ceil(totalRows / PAGE_SIZE) || 1;
+  const start = totalRows ? currentPage * PAGE_SIZE + 1 : 0;
+  const end = Math.min((currentPage + 1) * PAGE_SIZE, totalRows);
+  document.getElementById('pager').innerHTML = `
+    <button onclick="currentPage = Math.max(0, currentPage-1); loadRows();" ${currentPage === 0 ? 'disabled' : ''}>← 上一頁</button>
+    <span>第 ${currentPage + 1} / ${pages} 頁 (${start}–${end} / ${totalRows} 筆)</span>
+    <button onclick="currentPage = Math.min(${pages - 1}, currentPage+1); loadRows();" ${currentPage >= pages - 1 ? 'disabled' : ''}>下一頁 →</button>
+  `;
+}
+
+// ─ Create / Edit modal ─
+function openCreateModal() {
+  editingRow = null;
+  renderEditModal({});
+}
+function editRow(row) {
+  editingRow = row;
+  renderEditModal(row);
+}
+function renderEditModal(row) {
+  const t = TABLES[currentTable];
+  const isEdit = !!editingRow;
+  document.getElementById('modal').innerHTML = `
+    <h3>${isEdit ? '編輯' : '新增'} — ${t.label}</h3>
+    ${t.cols.map(c => `
+      <div class="field">
+        <label>${c.label}${c.required ? ' *' : ''}</label>
+        ${c.textarea
+          ? `<textarea id="f_${c.key}">${esc(row[c.key])}</textarea>`
+          : `<input id="f_${c.key}" type="${c.type || 'text'}"${c.step ? ' step="' + c.step + '"' : ''}${c.readonly && isEdit ? ' readonly' : ''} value="${esc(row[c.key])}">`}
+      </div>
+    `).join('')}
+    <div class="actions">
+      <button onclick="closeModal()">取消</button>
+      <button class="primary" onclick="saveRow()">${isEdit ? '更新' : '新增'}</button>
+    </div>
+  `;
+  document.getElementById('modalBg').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modalBg').classList.remove('show');
+}
+async function saveRow() {
+  const t = TABLES[currentTable];
+  const body = {};
+  for (const c of t.cols) {
+    const el = document.getElementById(`f_${c.key}`);
+    let v = el.value.trim();
+    if (v === '' && c.key !== t.pk) continue;
+    if (c.type === 'number') v = Number(v);
+    body[c.key] = v;
+  }
+  // 必填檢查
+  for (const c of t.cols.filter(c => c.required)) {
+    if (body[c.key] === undefined || body[c.key] === '' || Number.isNaN(body[c.key])) {
+      toast(`必填: ${c.label}`, 'err');
+      return;
+    }
+  }
+  const url = editingRow
+    ? `/api/table/${currentTable}/${encodeURIComponent(editingRow[t.pk])}`
+    : `/api/table/${currentTable}`;
+  const method = editingRow ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const json = await res.json();
+  if (res.ok) {
+    closeModal();
+    toast(editingRow ? '已更新' : '已新增', 'ok');
+    loadRows();
+  } else {
+    toast('錯誤: ' + (json.error || res.status), 'err');
+  }
+}
+
+async function delRow(id) {
+  if (!confirm('確認刪除 ' + id + ' ?')) return;
+  const res = await fetch(`/api/table/${currentTable}/${encodeURIComponent(id)}`, { method:'DELETE' });
+  const json = await res.json();
+  if (res.ok) {
+    toast('已刪除', 'ok');
+    loadRows();
+  } else {
+    toast('錯誤: ' + (json.error || res.status), 'err');
+  }
+}
+
+// ─ Import ─
+function openImportModal() {
+  document.getElementById('modal').innerHTML = `
+    <h3>匯入 — ${TABLES[currentTable].label}</h3>
+    <div class="field">
+      <label>選擇 CSV 檔 (UTF-8, 首列為欄位名稱)</label>
+      <input type="file" id="importFile" accept=".csv,.txt">
+    </div>
+    <div class="field">
+      <label>或直接貼上 CSV 內容</label>
+      <textarea id="importText" rows="8" placeholder="${TABLES[currentTable].cols.map(c=>c.key).join(',')}"></textarea>
+    </div>
+    <div class="field">
+      <label>模式</label>
+      <select id="importMode">
+        <option value="replace">replace (同主鍵覆蓋, 推薦)</option>
+        <option value="append">append (同主鍵衝突回報錯)</option>
+      </select>
+    </div>
+    <div class="actions">
+      <button onclick="closeModal()">取消</button>
+      <button class="primary" onclick="doImport()">匯入</button>
+    </div>
+  `;
+  document.getElementById('modalBg').classList.add('show');
+}
+async function doImport() {
+  let csv = document.getElementById('importText').value;
+  const file = document.getElementById('importFile').files[0];
+  if (file) csv = await file.text();
+  if (!csv.trim()) { toast('請提供 CSV', 'err'); return; }
+  const mode = document.getElementById('importMode').value;
+  const res = await fetch(`/api/import/${currentTable}`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ format:'csv', data: csv, mode })
+  });
+  const json = await res.json();
+  if (res.ok) {
+    closeModal();
+    toast(`匯入完成：${json.inserted} / ${json.total_in} 筆`, 'ok');
+    loadRows();
+  } else {
+    toast('錯誤: ' + (json.error || res.status), 'err');
+  }
+}
+
+// ─ Export ─
+function doExport(format, hasOverlay = false) {
+  const q = document.getElementById('searchInput').value.trim();
+  const source = document.getElementById('sourceFilter').value;
+  const p = new URLSearchParams({ format });
+  if (q) p.set('q', q);
+  if (source) p.set('source', source);
+  if (hasOverlay) p.set('has_overlay', '1');
+  window.location.href = `/api/export/${currentTable}?${p}`;
+}
+
+// ─ Toast ─
+function toast(msg, kind = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + kind;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 2400);
+}
+
+document.getElementById('modalBg').addEventListener('click', e => {
+  if (e.target.id === 'modalBg') closeModal();
+});
+
+checkAuth();
+</script>
+</body>
+</html>

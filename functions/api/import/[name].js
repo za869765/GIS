@@ -19,9 +19,12 @@ const TABLES = {
   },
   village_info: {
     pk: 'village',
-    cols: ['village', 'head', 'phone', 'address', 'service_area', 'population', 'notes', 'extra'],
+    cols: ['village', 'nurse', 'head_name', 'tel', 'mobile', 'address',
+           'pop_total', 'pop_male', 'pop_female', 'pop_young', 'pop_adult', 'pop_old',
+           'ab_total', 'ab_plain', 'ab_mountain', 'prev_care', 'notes'],
     required: ['village'],
-    numCols: ['population']
+    numCols: ['pop_total', 'pop_male', 'pop_female', 'pop_young', 'pop_adult', 'pop_old',
+              'ab_total', 'ab_plain', 'ab_mountain']
   },
   kv_misc: {
     pk: 'key',

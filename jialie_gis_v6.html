@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.830</title>
+<title>佳里 GIS v6.831</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -8883,6 +8883,34 @@ map.on('dblclick',function(e){
         }
       }
       if(added || replaced) console.log('[GIS-overlay] door_db: +' + added + ' added, ' + replaced + ' replaced');
+    }
+    if(o.village_info && Array.isArray(o.village_info) && o.village_info.length){
+      let n = 0;
+      for(const row of o.village_info){
+        const v = row.village;
+        if(!v) continue;
+        if(row.nurse != null && typeof VIL_TO_MANAGER !== 'undefined') VIL_TO_MANAGER[v] = row.nurse;
+        if(typeof VIL_CHIEF !== 'undefined' && (row.head_name != null || row.tel != null || row.mobile != null || row.address != null)){
+          VIL_CHIEF[v] = {
+            n:    row.head_name ?? (VIL_CHIEF[v] && VIL_CHIEF[v].n)    ?? '',
+            tel:  row.tel       ?? (VIL_CHIEF[v] && VIL_CHIEF[v].tel)  ?? '',
+            mob:  row.mobile    ?? (VIL_CHIEF[v] && VIL_CHIEF[v].mob)  ?? '',
+            addr: row.address   ?? (VIL_CHIEF[v] && VIL_CHIEF[v].addr) ?? ''
+          };
+        }
+        if(typeof VIL_DEMOG !== 'undefined' && row.pop_total != null){
+          let sc = {};
+          try { sc = row.prev_care ? JSON.parse(row.prev_care) : {}; } catch(_) {}
+          VIL_DEMOG[v] = {
+            pop: row.pop_total,  m: row.pop_male,  f: row.pop_female,
+            y:   row.pop_young,  w: row.pop_adult, o: row.pop_old,
+            ab:  row.ab_total,   abp: row.ab_plain, abm: row.ab_mountain,
+            sc
+          };
+        }
+        n++;
+      }
+      if(n) console.log('[GIS-overlay] village_info merged:', n);
     }
     window.__GIS_OVERLAY__ = o;
   }

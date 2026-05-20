@@ -11,7 +11,7 @@ export async function onRequestGet({ env }) {
     db.prepare(
       "SELECT lat, lng, addr, notes FROM door_db WHERE source='admin'"
     ).all(),
-    db.prepare("SELECT * FROM village_info").all(),
+    db.prepare("SELECT * FROM village_info WHERE source='admin'").all(),
     db.prepare("SELECT key, category, value, notes FROM kv_misc").all()
   ]);
 

@@ -162,14 +162,23 @@ const TABLES = {
     label: '里別資訊',
     pk: 'village',
     cols: [
-      { key:'village',      label:'里名', required:true },
-      { key:'head',         label:'里長' },
-      { key:'phone',        label:'聯絡電話' },
-      { key:'address',      label:'里辦地址' },
-      { key:'service_area', label:'服務區域' },
-      { key:'population',   label:'人口數', type:'number' },
-      { key:'notes',        label:'備註' },
-      { key:'extra',        label:'其他 (JSON)', textarea:true }
+      { key:'village',     label:'里名', required:true },
+      { key:'nurse',       label:'護理師' },
+      { key:'head_name',   label:'里長姓名' },
+      { key:'tel',         label:'市話' },
+      { key:'mobile',      label:'手機' },
+      { key:'address',     label:'里辦地址' },
+      { key:'pop_total',   label:'總人口', type:'number' },
+      { key:'pop_male',    label:'男', type:'number' },
+      { key:'pop_female',  label:'女', type:'number' },
+      { key:'pop_young',   label:'幼 0-14', type:'number' },
+      { key:'pop_adult',   label:'壯 15-64', type:'number' },
+      { key:'pop_old',     label:'老 65+', type:'number' },
+      { key:'ab_total',    label:'原住民合計', type:'number' },
+      { key:'ab_plain',    label:'平地原住民', type:'number' },
+      { key:'ab_mountain', label:'山地原住民', type:'number' },
+      { key:'prev_care',   label:'預防保健 (JSON)', textarea:true },
+      { key:'notes',       label:'備註' }
     ]
   },
   kv_misc: {

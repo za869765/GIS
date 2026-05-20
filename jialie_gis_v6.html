@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.828</title>
+<title>佳里 GIS v6.827</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1499,40 +1499,6 @@ body.vil-mode .stat-item .num::after{
 body[data-theme="dark"] #vil-info-panel{background:linear-gradient(180deg,var(--c-surface) 0%,#0D1823 100%) !important}
 body[data-theme="dark"] #vil-info-panel .gender-bar-wrap,body[data-theme="dark"] #sc-rank-panel .rank-bar{background:#1A2838;box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
 body[data-theme="dark"] #vil-info-panel .bar-female::before,body[data-theme="dark"] #vil-info-panel .bar-male::before{box-shadow:0 0 10px rgba(255,255,255,.8),0 0 18px currentColor}
-
-/* ═══════════════════════════════════════════
-   v6.828 街景 mini-card 三端響應式 (桌機/平板/手機)
-═══════════════════════════════════════════ */
-#sv-floating-card{position:fixed;left:14px;bottom:14px;z-index:600;background:rgba(255,255,255,.96);border:1px solid #ccc;border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.25);display:none;flex-direction:column;gap:8px;font-family:'Noto Sans TC',sans-serif;min-width:180px;max-width:240px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-#sv-floating-card .sv-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
-#sv-floating-card .sv-card-title{font-size:11px;color:#888;font-weight:600}
-#sv-floating-card .sv-card-coord{font-size:11px;color:#555;font-family:monospace;word-break:break-all}
-#sv-floating-card .sv-card-close{background:none;border:none;color:#999;cursor:pointer;font-size:16px;padding:0;line-height:1;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
-#sv-floating-card .sv-card-close:hover{background:rgba(0,0,0,.06);color:#333}
-#sv-floating-card .sv-card-action{background:#34495e;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s,transform .15s}
-#sv-floating-card .sv-card-action:hover{background:#2c3e50;transform:translateY(-1px)}
-#sv-floating-card .sv-card-action:active{transform:translateY(0)}
-/* 平板 768-1023 */
-@media(min-width:768px) and (max-width:1023px){
-  #sv-floating-card{min-width:200px;max-width:280px;padding:11px 13px;left:16px;bottom:16px}
-}
-/* 手機 <768 — bottom sheet 風格，全寬，44px 觸控目標 */
-@media(max-width:767px){
-  #sv-floating-card{left:12px;right:12px;bottom:12px;min-width:0;max-width:none;padding:14px 16px;border-radius:14px;gap:10px}
-  #sv-floating-card .sv-card-title{font-size:12px}
-  #sv-floating-card .sv-card-coord{font-size:12px}
-  #sv-floating-card .sv-card-action{font-size:15px;padding:13px 16px;min-height:46px;border-radius:10px}
-  #sv-floating-card .sv-card-close{width:36px;height:36px;font-size:22px}
-}
-/* 暗色模式 */
-body[data-theme="dark"] #sv-floating-card{background:rgba(20,28,40,.96);border-color:#2a3a4e;color:#e1e8ef}
-body[data-theme="dark"] #sv-floating-card .sv-card-title{color:#9eaab9}
-body[data-theme="dark"] #sv-floating-card .sv-card-coord{color:#a8b5c5}
-body[data-theme="dark"] #sv-floating-card .sv-card-close{color:#aab5c0}
-body[data-theme="dark"] #sv-floating-card .sv-card-close:hover{background:rgba(255,255,255,.08);color:#fff}
-/* 動畫:從下方滑入 */
-@keyframes sv-card-slide-in{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-#sv-floating-card[style*="flex"]{animation:sv-card-slide-in .25s cubic-bezier(.4,2,.6,1)}
 </style>
 </head>
 <body class="intro">
@@ -1653,14 +1619,14 @@ body[data-theme="dark"] #sv-floating-card .sv-card-close:hover{background:rgba(2
   <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測"><span class="meas-btn-icon" id="meas-icon-circle">◯</span><span id="meas-text-circle">畫圓</span></button>
 </div>
 
-<!-- ── v6.827/828 街景浮動 mini-card（B2：點地圖任一處出現，三端響應式） ── -->
-<div id="sv-floating-card">
-  <div class="sv-card-head">
-    <span class="sv-card-title">📍 已選位置</span>
-    <button onclick="hideSvFloatingCard()" title="關閉" class="sv-card-close">✕</button>
+<!-- ── v6.827 街景浮動 mini-card（B2：點地圖任一處出現） ── -->
+<div id="sv-floating-card" style="position:fixed;left:14px;bottom:14px;z-index:560;background:rgba(255,255,255,.96);border:1px solid #ccc;border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.25);display:none;flex-direction:column;gap:8px;font-family:'Noto Sans TC',sans-serif;min-width:180px;max-width:240px">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <span style="font-size:11px;color:#888;font-weight:600">📍 已選位置</span>
+    <button onclick="hideSvFloatingCard()" title="關閉" style="background:none;border:none;color:#999;cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
   </div>
-  <div id="sv-card-coord" class="sv-card-coord"></div>
-  <button onclick="_svCardClick()" class="sv-card-action">🛣️ 查看街景</button>
+  <div id="sv-card-coord" style="font-size:11px;color:#555;font-family:monospace"></div>
+  <button onclick="_svCardClick()" style="background:#34495e;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer">🛣️ 查看街景</button>
 </div>
 
 <!-- ── 機關圖層卡（可拖曳，點空白處移動） ── -->
@@ -3398,7 +3364,7 @@ function showSvFloatingCard(lat,lng){
   if(c) c.textContent=lat.toFixed(5)+', '+lng.toFixed(5);
   card.style.display='flex';
   if(_svCardTimer) clearTimeout(_svCardTimer);
-  _svCardTimer=setTimeout(hideSvFloatingCard, window.innerWidth<768 ? 12000 : 8000);
+  _svCardTimer=setTimeout(hideSvFloatingCard,8000);
 }
 function hideSvFloatingCard(){
   var card=document.getElementById('sv-floating-card');

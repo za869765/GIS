@@ -24,7 +24,7 @@ const TABLES = {
 export async function onRequestGet({ env, params }) {
   const t = TABLES[params.name];
   if (!t) return json({ error: 'unknown table' }, 404);
-  const id = decodeURIComponent(params.id);
+  const id = params.id;
   const row = await env.DB.prepare(
     `SELECT * FROM ${params.name} WHERE ${t.pk} = ?`
   ).bind(id).first();
@@ -35,7 +35,7 @@ export async function onRequestGet({ env, params }) {
 export async function onRequestPut({ env, params, request }) {
   const t = TABLES[params.name];
   if (!t) return json({ error: 'unknown table' }, 404);
-  const id = decodeURIComponent(params.id);
+  const id = params.id;
   const body = await request.json().catch(() => ({}));
 
   const updatable = t.cols.filter(c => c in body && c !== t.pk);
@@ -58,7 +58,7 @@ export async function onRequestPut({ env, params, request }) {
 export async function onRequestDelete({ env, params }) {
   const t = TABLES[params.name];
   if (!t) return json({ error: 'unknown table' }, 404);
-  const id = decodeURIComponent(params.id);
+  const id = params.id;
   try {
     const res = await env.DB.prepare(
       `DELETE FROM ${params.name} WHERE ${t.pk} = ?`

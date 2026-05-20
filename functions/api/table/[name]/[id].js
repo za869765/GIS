@@ -28,7 +28,22 @@ export async function onRequestGet({ env, params }) {
   const row = await env.DB.prepare(
     `SELECT * FROM ${params.name} WHERE ${t.pk} = ?`
   ).bind(id).first();
-  if (!row) return json({ error: 'not found' }, 404);
+  if (!row) {
+    // debug: 回傳 id 的 codepoints + DB 內 source='admin' 的 id 列表
+    const codepoints = [...id].map(c => c.codePointAt(0).toString(16)).join(' ');
+    const sample = await env.DB.prepare(
+      `SELECT ${t.pk} AS k FROM ${params.name} WHERE source='admin' LIMIT 5`
+    ).all();
+    return json({
+      error: 'not found',
+      debug: {
+        params_id: id,
+        params_id_codepoints: codepoints,
+        params_id_length: id.length,
+        sample_admin_keys: sample.results.map(r => r.k)
+      }
+    }, 404);
+  }
   return json(row);
 }
 

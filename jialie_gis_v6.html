@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.834</title>
+<title>佳里 GIS v6.835</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -14,19 +14,25 @@
 /* ═══ SERVICE WORKER (離線磚塊與資源快取) ═══ */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  const ASSET_CACHE = 'jialie-assets-v6';
+  const ASSET_CACHE = 'jialie-assets-v6-data';   /* v6.835 bump：PRECACHE 新增本地大資料 JS，cache name 升版讓舊客戶端 activate 時自動清掉舊 cache */
   const TILE_CACHE  = 'jialie-tiles-v6';
   const swCode = `
 /* bug #11: 原本 \`'\${'"'}jialie-assets-v6\${"'"}'\` 展開後變成 '"jialie-assets-v6''
    (兩個 string literal 中間沒運算子) → SW parse 錯誤 → 永遠 install 失敗 → 離線 cache 失效。
    改回乾淨字串字面。 */
-const ASSET='jialie-assets-v6';
+/* v6.835: 本地大資料 JS（doornum 1.6MB / old_addr 217KB / land 36KB）加入 PRECACHE，
+   首次訪問後完全離線可用 + 重訪秒開。ORIGIN 由 outer template literal 解析時 inject。 */
+const ASSET='jialie-assets-v6-data';
 const TILES='jialie-tiles-v6';
+const ORIGIN='${location.origin}';
 const PRECACHE=[
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
   'https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js',
   'https://cdn.jsdelivr.net/npm/taiwan-atlas@latest/villages-10t.json',
+  ORIGIN+'/doornum_db.js',
+  ORIGIN+'/old_addr_map.js',
+  ORIGIN+'/land_db.js',
 ];
 self.addEventListener('install',e=>{
   self.skipWaiting();

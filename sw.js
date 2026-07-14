@@ -15,7 +15,7 @@
 
    本地資源用 new URL('檔名', self.location.href) 相對 sw.js 位置解析，
    因此同時支援 GitHub Pages 子路徑（/GIS/）與 Cloudflare Pages 根目錄（/）。 */
-const ASSET='jialie-assets-v6-data-838';
+const ASSET='jialie-assets-v6-data-839';
 const TILES='jialie-tiles-v6';
 /* 只清理本專案前綴的舊 cache；github.io 為多 repo 共用 origin，
    絕不刪除其他名稱（其他 repo/app）的 cache。 */

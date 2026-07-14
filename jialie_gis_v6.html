@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.838</title>
+<title>佳里 GIS v6.839</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -16,6 +16,7 @@
   if(!('serviceWorker' in navigator)) return;
   /* v6.838：改用同源實體 sw.js 註冊（舊版以 blob: URL 註冊 SW，Edge/Chrome 不支援）。
      ASSET cache 名稱升到 jialie-assets-v6-data-838，讓舊客戶端 activate 時清掉本專案舊 cache。
+     v6.839：sw.js 取出時剝掉 redirected flag（Pages clean-URL 308 地雷，詳見 sw.js 頂部註解）。
      快取範圍說明（與 sw.js 實作一致、不誇大）：
        - 程式庫、本地大資料 JS、jiali_3d.html：cache-first，首次造訪後可離線。
        - 地圖磚：SW 僅 cache-first「OpenStreetMap 標準磚」(tile.openstreetmap.org / '.tile.')，

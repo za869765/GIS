@@ -1,5 +1,10 @@
-/* 佳里 GIS Service Worker — v6.838
+/* 佳里 GIS Service Worker — v6.839
    同源實體檔案，取代舊版以 blob: URL 註冊的做法（Edge/Chrome 不支援用 blob URL 註冊 SW）。
+
+   v6.839：Cloudflare Pages 對 *.html 做 clean-URL 308 轉址，cache.add 跟隨轉址後
+   存下的 response 帶 redirected flag，而 Chrome 禁止用 redirected response 回應
+   navigation request（SW 接管後開 jiali_3d.html 直接變瀏覽器錯誤頁）。
+   取出時以 unredirect() 重建乾淨 Response，順便中和既有已中毒的快取項。
 
    快取策略（與實作一致，未擴張範圍、未做無界圖磚快取）：
    - ASSET（cache-first + 背景回填）：程式庫、本地大資料 JS、jiali_3d.html。首次造訪後可離線。
@@ -16,6 +21,13 @@ const TILES='jialie-tiles-v6';
    絕不刪除其他名稱（其他 repo/app）的 cache。 */
 const OWN_CACHE_PREFIXES=['jialie-assets-','jialie-tiles-'];
 const local=p=>new URL(p, self.location.href).href;
+/* redirected response 不能拿來回應 navigation（Chrome 會直接顯示錯誤頁），
+   以 body 重建一份乾淨 Response；非 redirected（含 opaque）原樣返回。 */
+async function unredirect(r){
+  if(!r || !r.redirected) return r;
+  const b=await r.blob();
+  return new Response(b,{status:r.status,statusText:r.statusText,headers:r.headers});
+}
 const PRECACHE=[
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
@@ -61,14 +73,14 @@ self.addEventListener('fetch',e=>{
       /* ignoreSearch：帶 query 的 3D 連結（jiali_3d.html?lat=…）仍命中無 query 的 canonical 快取，
          不需為每組座標各存一份，離線也能開啟 3D 頁。 */
       const h=await caches.match(e.request,{ignoreSearch:true});
-      if(h)return h;
+      if(h)return unredirect(h);
       try{
         const r=await fetch(e.request);
         if(r&&r.status===200){
           const clone=r.clone();
           e.waitUntil((async()=>{
             const c=await caches.open(ASSET);
-            await c.put(e.request,clone);
+            await c.put(e.request,await unredirect(clone));
           })());
         }
         return r;

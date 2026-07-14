@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b1c2c">
+<meta name="description" content="臺南市佳里區 3D 空照檢視（OpenMapTiles 建築擠出，非真實攝影測量）">
+<title>佳里區 3D 空照檢視</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<style>
+  :root {
+    --bg: rgba(10, 22, 36, 0.88);
+    --bg-solid: #0b1c2c;
+    --panel: rgba(15, 32, 50, 0.94);
+    --border: rgba(255, 255, 255, 0.14);
+    --text: #f3f7fb;
+    --muted: #a9b8c7;
+    --accent: #3db8ff;
+    --accent-2: #7dd3a7;
+    --danger: #ff8a80;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --radius: 14px;
+    --ctrl: 40px;
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-r: env(safe-area-inset-right, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-l: env(safe-area-inset-left, 0px);
+    --ui-bottom-gap: calc(52px + var(--safe-b));
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-solid);
+    color: var(--text);
+    font-family: "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  #map {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Keep custom UI above MapLibre attribution (bottom-right). */
+  .maplibregl-ctrl-bottom-right {
+    z-index: 2;
+    margin-bottom: 4px;
+    max-width: min(100vw - 12px, 420px);
+  }
+  .maplibregl-ctrl-attrib {
+    font-size: 10px !important;
+    line-height: 1.35 !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    color: #222 !important;
+    max-width: min(96vw, 420px);
+  }
+  .maplibregl-ctrl-attrib a { color: #0b57a4; }
+
+  .ui-layer {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .ui-layer > * { pointer-events: auto; }
+
+  .top-bar {
+    top: calc(10px + var(--safe-t));
+    left: calc(10px + var(--safe-l));
+    right: calc(10px + var(--safe-r));
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .brand {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 10px 12px;
+    min-width: min(100%, 220px);
+    backdrop-filter: blur(10px);
+  }
+  .brand h1 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .brand p {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+    max-width: min(100%, 560px);
+  }
+
+  .btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    border-radius: 999px;
+    min-height: var(--ctrl);
+    min-width: var(--ctrl);
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .btn:hover { border-color: rgba(61, 184, 255, 0.55); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .btn[aria-pressed="true"] {
+    background: linear-gradient(180deg, rgba(61, 184, 255, 0.28), rgba(61, 184, 255, 0.12));
+    border-color: rgba(61, 184, 255, 0.7);
+  }
+  .btn[aria-disabled="true"],
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: linear-gradient(180deg, rgba(61, 184, 255, 0.35), rgba(20, 80, 120, 0.55));
+  }
+  .btn .ico {
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  .bottom-panel {
+    left: calc(10px + var(--safe-l));
+    right: calc(10px + var(--safe-r));
+    bottom: var(--ui-bottom-gap);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .note {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--muted);
+    backdrop-filter: blur(10px);
+    max-width: min(100%, 640px);
+  }
+  .note strong { color: var(--text); font-weight: 700; }
+
+  .status {
+    position: absolute;
+    z-index: 6;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(92vw, 340px);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 18px 16px;
+    text-align: center;
+    backdrop-filter: blur(12px);
+  }
+  .status[hidden] { display: none !important; }
+  .status h2 {
+    margin: 0 0 8px;
+    font-size: 15px;
+  }
+  .status p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .status.error h2 { color: var(--danger); }
+  .spinner {
+    width: 28px;
+    height: 28px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation: none; border-top-color: var(--accent-2); }
+    .btn { transition: none; }
+  }
+
+  @media (max-width: 640px) {
+    .brand { padding: 8px 10px; }
+    .brand h1 { font-size: 14px; }
+    .btn {
+      min-height: 38px;
+      padding: 0 10px;
+      font-size: 11px;
+    }
+    .controls { max-width: 100%; }
+    .note { font-size: 10.5px; max-width: 100%; }
+    /* On narrow phones the bottom-right cluster stacks (from the bottom up)
+       attribution → scale → nav. Raising the note by 64px clears attribution, but
+       the scale bar (ScaleControl maxWidth=120) reaches further left than nav, so a
+       58px right reserve still intersected it. Reserve 140px on the right (> scale's
+       120px max) AND keep the 64px lift. Probed on real page: at 320x568 and 390x844
+       the note's box has zero intersection with nav, scale, attribution and the top
+       control bar (320: note 170px wide, 106px clear of topbar; 390: 240px wide,
+       444px clear). */
+    .bottom-panel {
+      right: calc(140px + var(--safe-r));
+      bottom: calc(var(--ui-bottom-gap) + 64px);
+    }
+  }
+
+  /* Visually hidden helper for screen readers if needed */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>
+</head>
+<body>
+  <div id="map" role="application" aria-label="佳里區 3D 地圖"></div>
+
+  <div id="loading" class="status" role="status" aria-live="polite" aria-busy="true">
+    <div class="spinner" aria-hidden="true"></div>
+    <h2>載入中</h2>
+    <p>正在準備地圖與佳里區邊界…</p>
+  </div>
+
+  <div id="error" class="status error" role="alert" aria-live="assertive" hidden>
+    <h2>載入失敗</h2>
+    <p id="error-msg">無法載入地圖資源。請檢查網路後重新整理。</p>
+    <p style="margin-top:10px">
+      <button type="button" class="btn btn-primary" id="btn-retry">重新載入</button>
+    </p>
+  </div>
+
+  <div class="ui-layer top-bar">
+    <div class="brand">
+      <h1>佳里區 3D 空照</h1>
+      <p>OpenMapTiles 建築擠出 · 非真實 3D 攝影測量</p>
+    </div>
+    <div class="controls" role="toolbar" aria-label="地圖控制">
+      <a class="btn btn-primary" href="jialie_gis_v6.html" id="btn-back" title="返回佳里 GIS">
+        <span class="ico" aria-hidden="true">←</span>返回 GIS
+      </a>
+      <button type="button" class="btn" id="btn-basemap" aria-pressed="true" aria-label="目前為衛星圖，點擊切換為向量圖" title="切換衛星／向量底圖">
+        向量圖
+      </button>
+      <button type="button" class="btn" id="btn-center" title="市區中心斜視">市中心</button>
+      <button type="button" class="btn" id="btn-district" title="全區俯視範圍">全區</button>
+      <button type="button" class="btn" id="btn-north" title="正北並重設視角">正北</button>
+      <button type="button" class="btn" id="btn-fly" aria-pressed="false" title="自動環景巡覽">環景</button>
+      <button type="button" class="btn" id="btn-buildings" aria-pressed="true" title="顯示或隱藏 3D 建築">
+        3D 建築
+      </button>
+    </div>
+  </div>
+
+  <div class="ui-layer bottom-panel">
+    <div class="note" id="source-note">
+      <strong>資料來源與限制：</strong>
+      向量底圖為 <a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> Liberty（OpenStreetMap 貢獻者）；
+      衛星影像為 Esri World Imagery（Esri、Vantor、Earthstar Geographics 及 GIS 社群）。
+      3D 建築幾何與高度來自 OpenStreetMap／OpenMapTiles 的 <code>building-3d</code> 擠出，覆蓋與高度可能不完整，並非真實攝影測量模型。
+    </div>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  /** @type {const} */
+  var CENTER = [120.1777263, 23.1638778];
+  /* Current taiwan-atlas / Taiwan administrative town code for 佳里區. */
+  var TOWN_CODES = ['67000120'];
+  var TOWN_NAME = '佳里區';
+  var TOWNS_URL = 'https://cdn.jsdelivr.net/npm/taiwan-atlas@latest/towns-10t.json';
+  var LIBERTY_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+  var ESRI_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  var ESRI_ATTR =
+    'Tiles &copy; <a href="https://www.esri.com/" target="_blank" rel="noopener noreferrer">Esri</a> — ' +
+    'Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community';
+
+  var DEFAULTS = {
+    center: CENTER.slice(),
+    zoom: 15.6,
+    bearing: -28,
+    pitch: 58
+  };
+
+  var DISTRICT_VIEW = {
+    zoom: 12.4,
+    bearing: 0,
+    pitch: 42
+  };
+
+  var NORTH_VIEW = {
+    bearing: 0,
+    pitch: 0
+  };
+
+  var BUILDING_LAYER_ID = 'building-3d';
+  var BOUNDARY_SRC = 'jiali-boundary';
+  var BOUNDARY_FILL = 'jiali-boundary-fill';
+  var BOUNDARY_LINE = 'jiali-boundary-line';
+  var ESRI_SRC = 'esri-world-imagery';
+  var ESRI_LAYER = 'esri-world-imagery-layer';
+
+  var reduceMotion = false;
+  try {
+    reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch (_) {}
+
+  var state = {
+    basemap: 'satellite', // 'vector' | 'satellite'
+    buildingsOn: true,
+    flying: false,
+    boundaryFeature: null,
+    boundaryBounds: null,
+    styleReady: false
+  };
+
+  var map = null;
+  var flyRaf = 0;
+  var flyToken = 0;
+
+  var elLoading = document.getElementById('loading');
+  var elError = document.getElementById('error');
+  var elErrorMsg = document.getElementById('error-msg');
+  var btnBasemap = document.getElementById('btn-basemap');
+  var btnCenter = document.getElementById('btn-center');
+  var btnDistrict = document.getElementById('btn-district');
+  var btnNorth = document.getElementById('btn-north');
+  var btnFly = document.getElementById('btn-fly');
+  var btnBuildings = document.getElementById('btn-buildings');
+  var btnRetry = document.getElementById('btn-retry');
+
+  function clamp(n, min, max) {
+    return Math.min(max, Math.max(min, n));
+  }
+
+  function parseNum(v) {
+    if (v == null || v === '') return null;
+    var n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function normalizeBearing(b) {
+    // MapLibre accepts any number; normalize to (-180, 180]
+    var x = ((b % 360) + 360) % 360;
+    return x > 180 ? x - 360 : x;
+  }
+
+  function readCameraFromQuery() {
+    var q = new URLSearchParams(window.location.search);
+    var lat = parseNum(q.get('lat'));
+    var lng = parseNum(q.get('lng'));
+    var z = parseNum(q.get('z'));
+    var bearing = parseNum(q.get('bearing'));
+    var pitch = parseNum(q.get('pitch'));
+
+    var center = DEFAULTS.center.slice();
+    if (lat != null && lng != null) {
+      center = [clamp(lng, -180, 180), clamp(lat, -90, 90)];
+    } else if (lat != null) {
+      center[1] = clamp(lat, -90, 90);
+    } else if (lng != null) {
+      center[0] = clamp(lng, -180, 180);
+    }
+
+    return {
+      center: center,
+      zoom: z != null ? clamp(z, 0, 22) : DEFAULTS.zoom,
+      bearing: bearing != null ? normalizeBearing(bearing) : DEFAULTS.bearing,
+      pitch: pitch != null ? clamp(pitch, 0, 85) : DEFAULTS.pitch
+    };
+  }
+
+  function showLoading(msg) {
+    elError.hidden = true;
+    elLoading.hidden = false;
+    elLoading.setAttribute('aria-busy', 'true');
+    if (msg) {
+      var p = elLoading.querySelector('p');
+      if (p) p.textContent = msg;
+    }
+  }
+
+  function hideLoading() {
+    elLoading.hidden = true;
+    elLoading.setAttribute('aria-busy', 'false');
+  }
+
+  function showError(msg) {
+    hideLoading();
+    elError.hidden = false;
+    elErrorMsg.textContent = msg || '無法載入地圖資源。請檢查網路後重新整理。';
+  }
+
+  function easeDuration(ms) {
+    return reduceMotion ? 0 : ms;
+  }
+
+  function stopFlyover() {
+    flyToken += 1;
+    if (flyRaf) {
+      cancelAnimationFrame(flyRaf);
+      flyRaf = 0;
+    }
+    state.flying = false;
+    btnFly.setAttribute('aria-pressed', 'false');
+    btnFly.textContent = '環景';
+  }
+
+  function startFlyover() {
+    if (!map || !state.styleReady) return;
+    if (reduceMotion) {
+      // Gentle static reframe instead of continuous motion
+      goCityCenter();
+      return;
+    }
+    stopFlyover();
+    state.flying = true;
+    btnFly.setAttribute('aria-pressed', 'true');
+    btnFly.textContent = '停止';
+
+    var token = flyToken;
+    var origin = map.getCenter();
+    var baseLng = origin.lng;
+    var baseLat = origin.lat;
+    var radius = 0.012; // ~1.3 km-ish at this latitude
+    var start = performance.now();
+    var period = 48000; // full orbit ~48s
+    var baseZoom = clamp(map.getZoom(), 14.2, 16.2);
+    var basePitch = clamp(map.getPitch() || DEFAULTS.pitch, 45, 65);
+
+    function frame(now) {
+      if (token !== flyToken || !state.flying) return;
+      var t = (now - start) / period;
+      var ang = t * Math.PI * 2;
+      var lng = baseLng + Math.cos(ang) * radius;
+      var lat = baseLat + Math.sin(ang) * radius * 0.85;
+      var bearing = normalizeBearing((-ang * 180) / Math.PI + 90);
+      map.jumpTo({
+        center: [lng, lat],
+        zoom: baseZoom,
+        bearing: bearing,
+        pitch: basePitch
+      });
+      flyRaf = requestAnimationFrame(frame);
+    }
+    flyRaf = requestAnimationFrame(frame);
+  }
+
+  function toggleFlyover() {
+    if (state.flying) stopFlyover();
+    else startFlyover();
+  }
+
+  function goCityCenter() {
+    stopFlyover();
+    if (!map) return;
+    map.easeTo({
+      center: CENTER.slice(),
+      zoom: DEFAULTS.zoom,
+      bearing: DEFAULTS.bearing,
+      pitch: DEFAULTS.pitch,
+      duration: easeDuration(1200)
+    });
+  }
+
+  function goDistrict() {
+    stopFlyover();
+    if (!map) return;
+    if (state.boundaryBounds) {
+      map.fitBounds(state.boundaryBounds, {
+        padding: { top: 80, bottom: 120, left: 40, right: 40 },
+        pitch: DISTRICT_VIEW.pitch,
+        bearing: DISTRICT_VIEW.bearing,
+        duration: easeDuration(1400),
+        maxZoom: 13.2
+      });
+      return;
+    }
+    map.easeTo({
+      center: CENTER.slice(),
+      zoom: DISTRICT_VIEW.zoom,
+      bearing: DISTRICT_VIEW.bearing,
+      pitch: DISTRICT_VIEW.pitch,
+      duration: easeDuration(1200)
+    });
+  }
+
+  function goNorthReset() {
+    stopFlyover();
+    if (!map) return;
+    map.easeTo({
+      bearing: NORTH_VIEW.bearing,
+      pitch: NORTH_VIEW.pitch,
+      duration: easeDuration(900)
+    });
+  }
+
+  function setBuildingsVisible(on) {
+    state.buildingsOn = !!on;
+    btnBuildings.setAttribute('aria-pressed', state.buildingsOn ? 'true' : 'false');
+    if (!map || !state.styleReady) return;
+    if (!map.getLayer(BUILDING_LAYER_ID)) return;
+    map.setLayoutProperty(
+      BUILDING_LAYER_ID,
+      'visibility',
+      state.buildingsOn ? 'visible' : 'none'
+    );
+  }
+
+  function ensureEsriLayer() {
+    if (!map.getSource(ESRI_SRC)) {
+      map.addSource(ESRI_SRC, {
+        type: 'raster',
+        tiles: [ESRI_TILES],
+        tileSize: 256,
+        attribution: ESRI_ATTR,
+        maxzoom: 19
+      });
+    }
+    if (!map.getLayer(ESRI_LAYER)) {
+      // Put imagery above vector ground/roads and below buildings/labels.
+      var beforeId = null;
+      var layers = map.getStyle().layers || [];
+      if (map.getLayer('building')) {
+        beforeId = 'building';
+      } else if (map.getLayer(BUILDING_LAYER_ID)) {
+        beforeId = BUILDING_LAYER_ID;
+      } else {
+        for (var i = 0; i < layers.length; i++) {
+          if (layers[i].type === 'symbol') {
+            beforeId = layers[i].id;
+            break;
+          }
+        }
+      }
+      map.addLayer(
+        {
+          id: ESRI_LAYER,
+          type: 'raster',
+          source: ESRI_SRC,
+          paint: { 'raster-opacity': 1 }
+        },
+        beforeId || undefined
+      );
+    }
+  }
+
+  // Track vector base layers we hid while satellite imagery covers them, so we can
+  // restore exactly those when switching back to the vector basemap.
+  var hiddenForSatellite = [];
+
+  function hideVectorBaseForSatellite() {
+    if (!map || !map.getLayer(ESRI_LAYER)) return;
+    if (hiddenForSatellite.length) return; // already hidden — idempotent
+    var layers = (map.getStyle() && map.getStyle().layers) || [];
+    for (var i = 0; i < layers.length; i++) {
+      var ly = layers[i];
+      if (ly.id === ESRI_LAYER) break; // only layers rendered *below* the imagery are covered
+      // Keep the cheap background quad visible so a failed imagery tile shows a
+      // neutral base instead of the dark app background. Leave our own overlays alone.
+      if (ly.type !== 'fill' && ly.type !== 'line' &&
+          ly.type !== 'fill-extrusion' && ly.type !== 'hillshade') continue;
+      if (ly.id === BUILDING_LAYER_ID || ly.id === BOUNDARY_FILL || ly.id === BOUNDARY_LINE) continue;
+      var vis = map.getLayoutProperty(ly.id, 'visibility');
+      if (vis !== 'none') {
+        hiddenForSatellite.push(ly.id);
+        map.setLayoutProperty(ly.id, 'visibility', 'none');
+      }
+    }
+  }
+
+  function restoreVectorBase() {
+    if (!map) { hiddenForSatellite = []; return; }
+    for (var i = 0; i < hiddenForSatellite.length; i++) {
+      if (map.getLayer(hiddenForSatellite[i])) {
+        map.setLayoutProperty(hiddenForSatellite[i], 'visibility', 'visible');
+      }
+    }
+    hiddenForSatellite = [];
+  }
+
+  function setBasemap(mode) {
+    state.basemap = mode === 'satellite' ? 'satellite' : 'vector';
+    var satelliteOn = state.basemap === 'satellite';
+    // aria-pressed reflects the CURRENT state (satellite on/off). The visible label
+    // is the NEXT action, which contradicts aria-pressed for screen readers, so the
+    // accessible name is set explicitly to describe the current + next state.
+    btnBasemap.setAttribute('aria-pressed', satelliteOn ? 'true' : 'false');
+    btnBasemap.setAttribute('aria-label', satelliteOn
+      ? '目前為衛星圖，點擊切換為向量圖'
+      : '目前為向量圖，點擊切換為衛星圖');
+    btnBasemap.textContent = satelliteOn ? '向量圖' : '衛星圖';
+    if (!map || !state.styleReady) return;
+
+    if (state.basemap === 'satellite') {
+      ensureEsriLayer();
+      if (map.getLayer(ESRI_LAYER)) {
+        map.setLayoutProperty(ESRI_LAYER, 'visibility', 'visible');
+      }
+      hideVectorBaseForSatellite();
+    } else {
+      if (map.getLayer(ESRI_LAYER)) {
+        map.setLayoutProperty(ESRI_LAYER, 'visibility', 'none');
+      }
+      restoreVectorBase();
+    }
+
+    setBuildingsVisible(state.buildingsOn);
+    // Ensure boundary stays on top of basemap fills
+    raiseBoundary();
+  }
+
+  function raiseBoundary() {
+    if (!map) return;
+    // Fill first, then line on top so the dashed outline stays visible
+    if (map.getLayer(BOUNDARY_FILL)) {
+      try { map.moveLayer(BOUNDARY_FILL); } catch (_) {}
+    }
+    if (map.getLayer(BOUNDARY_LINE)) {
+      try { map.moveLayer(BOUNDARY_LINE); } catch (_) {}
+    }
+  }
+
+  function addBoundaryLayers() {
+    if (!map || !state.boundaryFeature) return;
+
+    if (map.getSource(BOUNDARY_SRC)) {
+      map.getSource(BOUNDARY_SRC).setData(state.boundaryFeature);
+    } else {
+      map.addSource(BOUNDARY_SRC, {
+        type: 'geojson',
+        data: state.boundaryFeature
+      });
+    }
+
+    if (!map.getLayer(BOUNDARY_FILL)) {
+      map.addLayer({
+        id: BOUNDARY_FILL,
+        type: 'fill',
+        source: BOUNDARY_SRC,
+        paint: {
+          'fill-color': '#3db8ff',
+          'fill-opacity': 0.08
+        }
+      });
+    }
+    if (!map.getLayer(BOUNDARY_LINE)) {
+      map.addLayer({
+        id: BOUNDARY_LINE,
+        type: 'line',
+        source: BOUNDARY_SRC,
+        paint: {
+          'line-color': '#7dd3ff',
+          'line-width': 2.6,
+          'line-dasharray': [2, 1.2],
+          'line-opacity': 0.95
+        }
+      });
+    }
+    raiseBoundary();
+  }
+
+  function computeBounds(feature) {
+    var coords = [];
+    function walk(c) {
+      if (!c) return;
+      if (typeof c[0] === 'number' && typeof c[1] === 'number') {
+        coords.push(c);
+        return;
+      }
+      for (var i = 0; i < c.length; i++) walk(c[i]);
+    }
+    walk(feature.geometry && feature.geometry.coordinates);
+    if (!coords.length) return null;
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (var i = 0; i < coords.length; i++) {
+      var x = coords[i][0], y = coords[i][1];
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+    return [[minX, minY], [maxX, maxY]];
+  }
+
+  function findJialiFeature(geojson) {
+    var features = (geojson && geojson.features) || [];
+    var byCode = null;
+    for (var i = 0; i < features.length; i++) {
+      var p = features[i].properties || {};
+      var code = String(p.TOWNCODE || p.towncode || '');
+      var name = String(p.TOWNNAME || p.townname || '');
+      // Name is authoritative; code is a stable fallback.
+      if (name === TOWN_NAME) return features[i];
+      if (!byCode && TOWN_CODES.indexOf(code) !== -1) byCode = features[i];
+    }
+    return byCode;
+  }
+
+  async function loadBoundary() {
+    if (typeof topojson === 'undefined' || !topojson.feature) {
+      throw new Error('topojson-client 未載入');
+    }
+    var res = await fetch(TOWNS_URL);
+    if (!res.ok) throw new Error('邊界資料 HTTP ' + res.status);
+    var topo = await res.json();
+    if (!topo || !topo.objects || !topo.objects.towns) {
+      throw new Error('towns-10t 格式不符');
+    }
+    var geo = topojson.feature(topo, topo.objects.towns);
+    var feature = findJialiFeature(geo);
+    if (!feature) throw new Error('找不到佳里區邊界（TOWNNAME=佳里區 / TOWNCODE=67000120）');
+    state.boundaryFeature = feature;
+    state.boundaryBounds = computeBounds(feature);
+  }
+
+  function onStyleReady() {
+    state.styleReady = true;
+    // The 25s timeout or an early network error may have shown the error overlay
+    // before the style finally succeeded — clear it so a working map is not
+    // permanently masked.
+    elError.hidden = true;
+    // Ensure Liberty building-3d exists and is controllable
+    if (map.getLayer(BUILDING_LAYER_ID)) {
+      setBuildingsVisible(state.buildingsOn);
+    } else {
+      // Fallback: recreate OpenMapTiles fill-extrusion if style variant missing the layer
+      try {
+        map.addLayer({
+          id: BUILDING_LAYER_ID,
+          type: 'fill-extrusion',
+          source: 'openmaptiles',
+          'source-layer': 'building',
+          minzoom: 14,
+          paint: {
+            'fill-extrusion-base': ['get', 'render_min_height'],
+            'fill-extrusion-color': 'hsl(35,8%,85%)',
+            'fill-extrusion-height': ['get', 'render_height'],
+            'fill-extrusion-opacity': 0.8
+          }
+        });
+        setBuildingsVisible(state.buildingsOn);
+      } catch (e) {
+        console.warn('[jiali_3d] building-3d unavailable', e);
+      }
+    }
+    addBoundaryLayers();
+    setBasemap(state.basemap);
+    hideLoading();
+  }
+
+  function initMap(camera) {
+    if (typeof maplibregl === 'undefined') {
+      showError('MapLibre GL JS 未載入（需要 unpkg maplibre-gl@5.6.0）。');
+      return;
+    }
+
+    map = new maplibregl.Map({
+      container: 'map',
+      style: LIBERTY_STYLE,
+      center: camera.center,
+      zoom: camera.zoom,
+      bearing: camera.bearing,
+      pitch: camera.pitch,
+      maxPitch: 85,
+      attributionControl: false,
+      hash: false,
+      // Cooperative gestures optional; keep free pan for aerial viewer
+      fadeDuration: reduceMotion ? 0 : 300
+    });
+
+    // The Liberty style's own sources already carry OpenFreeMap + OSM attribution,
+    // so we do NOT pass customAttribution here (that duplicated the credit). Esri
+    // imagery credit is supplied via its source's `attribution` when enabled.
+    map.addControl(
+      new maplibregl.AttributionControl({ compact: true }),
+      'bottom-right'
+    );
+
+    map.addControl(
+      new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }),
+      'bottom-right'
+    );
+
+    map.addControl(
+      new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }),
+      'bottom-right'
+    );
+
+    var loadTimer = setTimeout(function () {
+      if (!state.styleReady) {
+        showError('地圖樣式載入逾時。請確認可連線至 OpenFreeMap，然後重新整理。');
+      }
+    }, 25000);
+
+    map.on('error', function (e) {
+      var err = e && e.error;
+      console.warn('[jiali_3d] map error', err);
+      var msg = (err && (err.message || String(err))) || '';
+      if (!state.styleReady && /style|fetch|network|ajax|load/i.test(msg)) {
+        clearTimeout(loadTimer);
+        showError('地圖樣式載入失敗：' + msg);
+      }
+    });
+
+    map.once('load', function () {
+      clearTimeout(loadTimer);
+      onStyleReady();
+    });
+
+    // A genuine user gesture must stop the autoplay flyover. MapLibre's
+    // dragstart `e.originalEvent` proved unreliable across versions (a real drag
+    // left it undefined, so the flyover never stopped), so instead we listen for
+    // raw pointer / touch / wheel input directly on the map canvas. The orbit
+    // loop drives the camera with map.jumpTo(), which never dispatches these DOM
+    // input events — so it will not stop itself (env: 環景只跑一幀 已修好且不回歸).
+    var canvasEl = map.getCanvasContainer();
+    ['pointerdown', 'touchstart', 'wheel'].forEach(function (ev) {
+      canvasEl.addEventListener(ev, function () {
+        if (state.flying) stopFlyover();
+      }, { passive: true });
+    });
+  }
+
+  function wireUi() {
+    btnBasemap.addEventListener('click', function () {
+      setBasemap(state.basemap === 'satellite' ? 'vector' : 'satellite');
+    });
+    btnCenter.addEventListener('click', goCityCenter);
+    btnDistrict.addEventListener('click', goDistrict);
+    btnNorth.addEventListener('click', goNorthReset);
+    btnFly.addEventListener('click', toggleFlyover);
+    btnBuildings.addEventListener('click', function () {
+      setBuildingsVisible(!state.buildingsOn);
+    });
+    btnRetry.addEventListener('click', function () {
+      window.location.reload();
+    });
+
+    // Keyboard: 1–7 quick actions when not typing in inputs
+    document.addEventListener('keydown', function (e) {
+      if (e.defaultPrevented) return;
+      var tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) {
+        return;
+      }
+      if (e.key === 'Escape' && state.flying) {
+        stopFlyover();
+        return;
+      }
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      switch (e.key) {
+        case '1':
+          e.preventDefault();
+          window.location.href = 'jialie_gis_v6.html';
+          break;
+        case '2':
+          e.preventDefault();
+          setBasemap(state.basemap === 'satellite' ? 'vector' : 'satellite');
+          break;
+        case '3':
+          e.preventDefault();
+          goCityCenter();
+          break;
+        case '4':
+          e.preventDefault();
+          goDistrict();
+          break;
+        case '5':
+          e.preventDefault();
+          goNorthReset();
+          break;
+        case '6':
+          e.preventDefault();
+          toggleFlyover();
+          break;
+        case '7':
+          e.preventDefault();
+          setBuildingsVisible(!state.buildingsOn);
+          break;
+        default:
+          break;
+      }
+    });
+
+    if (reduceMotion) {
+      btnFly.title = '已啟用減少動態：環景改為回到市中心靜態視角';
+    }
+  }
+
+  async function main() {
+    showLoading('正在準備地圖與佳里區邊界…');
+    wireUi();
+    var camera = readCameraFromQuery();
+
+    try {
+      // Load boundary in parallel with map style network; map init first for faster paint
+      initMap(camera);
+      await loadBoundary();
+      if (map) {
+        if (map.isStyleLoaded()) {
+          addBoundaryLayers();
+        } else {
+          map.once('load', function () {
+            addBoundaryLayers();
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[jiali_3d]', err);
+      // Map may still work without boundary; only hard-fail if map library missing
+      if (!map) {
+        showError((err && err.message) || '初始化失敗');
+        return;
+      }
+      // Soft warning in loading panel then hide if map already ready
+      if (state.styleReady) {
+        hideLoading();
+      }
+      var note = document.getElementById('source-note');
+      if (note) {
+        note.innerHTML +=
+          ' <span style="color:#ff8a80">邊界載入失敗：' +
+          String((err && err.message) || '未知錯誤').replace(/</g, '&lt;') +
+          '。</span>';
+      }
+    }
+  }
+
+  main();
+})();
+</script>
+</body>
+</html>

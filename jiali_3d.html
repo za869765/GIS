@@ -1225,11 +1225,12 @@
      取 map 讓錐形跟地圖座標系一起轉，不受地圖 bearing 影響方位正確性 */
   function makeSvMarkerEl() {
     var el = document.createElement('div');
-    el.style.cssText = 'width:48px;height:48px;pointer-events:none;';
+    el.style.cssText = 'width:68px;height:68px;pointer-events:none;';
     el.innerHTML =
-      '<svg width="48" height="48" viewBox="0 0 48 48">' +
-        '<path d="M24 24 L12 7 A21 21 0 0 1 36 7 Z" fill="rgba(61,184,255,.34)"/>' +
-        '<circle cx="24" cy="24" r="7" fill="#3db8ff" stroke="#fff" stroke-width="2.6"/>' +
+      '<svg width="68" height="68" viewBox="0 0 68 68">' +
+        '<path d="M34 34 L15.6 8.4 A32 32 0 0 1 52.4 8.4 Z"' +
+          ' fill="rgba(61,184,255,.5)" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/>' +
+        '<circle cx="34" cy="34" r="8.5" fill="#3db8ff" stroke="#fff" stroke-width="3"/>' +
       '</svg>';
     return el;
   }
@@ -1253,31 +1254,89 @@
   /* ── 街景內移動軌跡（暫存於記憶體，重新整理即消失） ── */
   var TRAIL_SRC = 'sv-trail';
   var TRAIL_LAYER = 'sv-trail-line';
+  var TRAIL_ARROWS = 'sv-trail-arrows';
+  var TRAIL_ENDS = 'sv-trail-ends';
   var trailSegs = []; // Array<Array<[lng,lat]>>，每次開燈箱新起一段
+
+  function ensureTrailArrowImage() {
+    if (map.hasImage('trail-arrow')) return;
+    // 以 canvas 畫箭頭圖示（不靠字型 glyph，離線/任何樣式都保證顯示）
+    var c = document.createElement('canvas');
+    c.width = 24; c.height = 24;
+    var ctx = c.getContext('2d');
+    ctx.beginPath();
+    ctx.moveTo(4, 5); ctx.lineTo(20, 12); ctx.lineTo(4, 19); ctx.closePath();
+    ctx.fillStyle = '#00e5ff';
+    ctx.strokeStyle = 'rgba(0,20,30,.85)';
+    ctx.lineWidth = 2;
+    ctx.fill(); ctx.stroke();
+    map.addImage('trail-arrow', ctx.getImageData(0, 0, 24, 24), { pixelRatio: 2 });
+  }
 
   function ensureTrailLayer() {
     if (!map.getSource(TRAIL_SRC)) {
       map.addSource(TRAIL_SRC, {
         type: 'geojson',
-        data: { type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: [] } }
+        data: { type: 'FeatureCollection', features: [] }
       });
     }
+    ensureTrailArrowImage();
     if (!map.getLayer(TRAIL_LAYER)) {
       map.addLayer({
         id: TRAIL_LAYER,
         type: 'line',
         source: TRAIL_SRC,
+        filter: ['==', '$type', 'LineString'],
         paint: { 'line-color': '#00e5ff', 'line-width': 3.5, 'line-opacity': 0.9, 'line-dasharray': [1, 1.3] }
+      });
+    }
+    if (!map.getLayer(TRAIL_ARROWS)) {
+      // 沿線方向箭頭（座標順序＝行進方向）
+      map.addLayer({
+        id: TRAIL_ARROWS,
+        type: 'symbol',
+        source: TRAIL_SRC,
+        filter: ['==', '$type', 'LineString'],
+        layout: {
+          'symbol-placement': 'line',
+          'symbol-spacing': 55,
+          'icon-image': 'trail-arrow',
+          'icon-size': 0.95,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'icon-rotation-alignment': 'map',
+          'icon-pitch-alignment': 'map'
+        }
+      });
+    }
+    if (!map.getLayer(TRAIL_ENDS)) {
+      // 每段起點綠、迄點紅
+      map.addLayer({
+        id: TRAIL_ENDS,
+        type: 'circle',
+        source: TRAIL_SRC,
+        filter: ['==', '$type', 'Point'],
+        paint: {
+          'circle-radius': 6,
+          'circle-color': ['match', ['get', 'kind'], 'start', '#2ecc71', '#ff5e57'],
+          'circle-stroke-color': '#fff',
+          'circle-stroke-width': 2
+        }
       });
     }
   }
 
   function updateTrail() {
     if (!map || !map.getSource(TRAIL_SRC)) return;
-    var coords = trailSegs.filter(function (s) { return s.length >= 2; });
-    map.getSource(TRAIL_SRC).setData({
-      type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: coords }
-    });
+    var feats = [];
+    for (var i = 0; i < trailSegs.length; i++) {
+      var s = trailSegs[i];
+      if (s.length < 2) continue;
+      feats.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: s } });
+      feats.push({ type: 'Feature', properties: { kind: 'start' }, geometry: { type: 'Point', coordinates: s[0] } });
+      feats.push({ type: 'Feature', properties: { kind: 'end' }, geometry: { type: 'Point', coordinates: s[s.length - 1] } });
+    }
+    map.getSource(TRAIL_SRC).setData({ type: 'FeatureCollection', features: feats });
   }
 
   function trailStart() {
@@ -1472,8 +1531,14 @@
     svLngLat = lngLat;
     elSvCoord.textContent = '📍 ' + lngLat.lat.toFixed(5) + ', ' + lngLat.lng.toFixed(5);
     if (bldg) {
-      var floors = Math.max(1, Math.round(bldg.h / 3)); // 每層約 3 m 估算
-      var txt = '🏢 高約 ' + Math.round(bldg.h) + ' m（≈' + floors + ' 樓）';
+      var txt;
+      if (bldg.h === 5) {
+        // OpenMapTiles 對 OSM 無 height/levels 標籤的建築一律給預設 5m，非真實資料
+        txt = '🏢 樓層未登錄（圖資預設 5m）';
+      } else {
+        var floors = Math.max(1, Math.round(bldg.h / 3)); // 每層約 3 m 估算
+        txt = '🏢 高約 ' + Math.round(bldg.h) + ' m（≈' + floors + ' 樓）';
+      }
       if (bldg.box && bldg.box.w > 1 && bldg.box.d > 1) {
         txt += '・佔地約 ' + Math.round(bldg.box.w) + '×' + Math.round(bldg.box.d) + ' m';
       }

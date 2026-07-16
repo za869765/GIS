@@ -224,6 +224,22 @@
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
   }
+  #sv-lightbox img[hidden] { display: none; }
+  #sv-lightbox iframe {
+    width: min(92vw, 1280px);
+    height: 86vh;
+    border: 0;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    background: #000;
+  }
+  #sv-lightbox iframe[hidden] { display: none; }
+  #sv-lightbox-close {
+    position: absolute;
+    top: calc(12px + var(--safe-t));
+    right: calc(12px + var(--safe-r));
+    z-index: 61;
+  }
 
   .status {
     position: absolute;
@@ -366,8 +382,11 @@
     </div>
   </div>
 
-  <!-- 街景縮圖放大檢視（點任意處或 Esc 關閉） -->
+  <!-- 街景放大檢視：有 SV_EMBED_KEY → 互動式街景 iframe（360° 拖曳）；沒有 → 靜態圖。
+       點背景、✕ 或 Esc 關閉（iframe 會吃掉滑鍵事件，故必留 ✕ 鈕） -->
   <div id="sv-lightbox" hidden>
+    <button type="button" class="btn" id="sv-lightbox-close" aria-label="關閉放大檢視">✕ 關閉</button>
+    <iframe id="sv-lightbox-frame" title="互動式街景（可拖曳環視）" allowfullscreen referrerpolicy="origin" hidden></iframe>
     <img id="sv-lightbox-img" alt="街景放大預覽">
   </div>
 
@@ -471,6 +490,8 @@
   var elSvNopano = document.getElementById('sv-nopano');
   var elSvLightbox = document.getElementById('sv-lightbox');
   var elSvLightboxImg = document.getElementById('sv-lightbox-img');
+  var elSvLightboxFrame = document.getElementById('sv-lightbox-frame');
+  var btnSvLightboxClose = document.getElementById('sv-lightbox-close');
   var elSvRot = document.getElementById('sv-rot');
   var btnSvLeft = document.getElementById('btn-sv-left');
   var btnSvRight = document.getElementById('btn-sv-right');
@@ -1161,7 +1182,41 @@
 
   function refreshSvImages() {
     if (!elSvThumb.hidden) elSvThumb.src = svImgUrl(300, 180);
-    if (!elSvLightbox.hidden) elSvLightboxImg.src = svImgUrl(640, 400);
+    if (!elSvLightbox.hidden && !elSvLightboxImg.hidden) elSvLightboxImg.src = svImgUrl(640, 400);
+  }
+
+  /* 互動式街景的 Embed key：向 /api/sv 取一次（''=未設定→退回靜態放大圖） */
+  var embedKey = null;
+  function getEmbedKey() {
+    if (embedKey !== null) return Promise.resolve(embedKey);
+    return fetch(SV_PROXY + '?mode=embedkey')
+      .then(function (r) { return r.json(); })
+      .then(function (d) { embedKey = (d && d.key) || ''; return embedKey; })
+      .catch(function () { embedKey = ''; return embedKey; });
+  }
+
+  function openSvLightbox() {
+    getEmbedKey().then(function (k) {
+      if (k) {
+        var src = 'https://www.google.com/maps/embed/v1/streetview?key=' + encodeURIComponent(k);
+        if (svPano) src += '&pano=' + encodeURIComponent(svPano);
+        else if (svLngLat) src += '&location=' + svLngLat.lat + ',' + svLngLat.lng;
+        if (svHeading != null) src += '&heading=' + svHeading;
+        elSvLightboxFrame.src = src;
+        elSvLightboxFrame.hidden = false;
+        elSvLightboxImg.hidden = true;
+      } else {
+        elSvLightboxImg.src = svImgUrl(640, 400);
+        elSvLightboxImg.hidden = false;
+        elSvLightboxFrame.hidden = true;
+      }
+      elSvLightbox.hidden = false;
+    });
+  }
+
+  function closeSvLightbox() {
+    elSvLightbox.hidden = true;
+    elSvLightboxFrame.src = 'about:blank'; // 停掉 iframe，避免背景繼續吃資源
   }
 
   function rotateSv(delta) {
@@ -1232,7 +1287,7 @@
 
   function hideSvCard() {
     elSvCard.hidden = true;
-    elSvLightbox.hidden = true;
+    closeSvLightbox();
     svLngLat = null;
     svPano = null;
     svHeading = null;
@@ -1268,13 +1323,13 @@
     btnSvClose.addEventListener('click', hideSvCard);
     elSvThumb.addEventListener('click', function () {
       if (!svLngLat) return;
-      elSvLightboxImg.src = svImgUrl(640, 400); // Static API 免費層最大 640
-      elSvLightbox.hidden = false;
+      openSvLightbox();
     });
     btnSvLeft.addEventListener('click', function () { rotateSv(-45); });
     btnSvRight.addEventListener('click', function () { rotateSv(45); });
-    elSvLightbox.addEventListener('click', function () {
-      elSvLightbox.hidden = true;
+    btnSvLightboxClose.addEventListener('click', closeSvLightbox);
+    elSvLightbox.addEventListener('click', function (e) {
+      if (e.target === elSvLightbox || e.target === elSvLightboxImg) closeSvLightbox();
     });
 
     // Keyboard: 1–7 quick actions when not typing in inputs
@@ -1285,7 +1340,7 @@
         return;
       }
       if (e.key === 'Escape' && !elSvLightbox.hidden) {
-        elSvLightbox.hidden = true;
+        closeSvLightbox();
         return;
       }
       if (e.key === 'Escape' && !elSvCard.hidden) {

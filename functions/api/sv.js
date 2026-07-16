@@ -29,6 +29,16 @@ export async function onRequestGet(context) {
   }
 
   const mode = u.searchParams.get('mode') || 'meta';
+
+  // 互動式街景（Maps Embed API，免費無限次）用的前端 key。
+  // 該 key 在 GCP 以 referrer 限制 gis-2bh.pages.dev + 僅允許 Embed API，公開無風險；
+  // 存 secret 只是避免進 repo 與方便輪替。未設定時回空字串，前端退回靜態放大圖。
+  if (mode === 'embedkey') {
+    return new Response(JSON.stringify({ key: env.SV_EMBED_KEY || '' }), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600' }
+    });
+  }
+
   const location = u.searchParams.get('location') || '';
   const pano = u.searchParams.get('pano') || '';
   const heading = u.searchParams.get('heading') || '';

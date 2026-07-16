@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.842</title>
+<title>佳里 GIS v6.843</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -152,6 +152,22 @@ input,select,textarea,button{font-family:inherit}
 }
 #aerial-3d-btn:hover{filter:brightness(1.08)}
 #aerial-3d-btn:active{transform:scale(.92)}
+
+/* ── 站內導航跟隨橫幅 ── */
+#follow-banner{
+  position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);
+  z-index:940;display:none;align-items:center;gap:14px;
+  background:rgba(16,94,54,.96);color:#fff;border-radius:14px;
+  padding:10px 12px 10px 16px;box-shadow:0 4px 20px rgba(0,0,0,.45);
+  max-width:min(92vw,480px);
+}
+#follow-banner.on{display:flex}
+#follow-banner.offroute{background:rgba(160,64,16,.96)}
+#follow-turn{display:flex;align-items:center;gap:10px;min-width:0}
+#follow-turn-icon{font-size:26px;line-height:1;flex:none}
+#follow-meta{display:flex;align-items:center;gap:8px;flex:none}
+#follow-stop{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);color:#fff;
+  border-radius:9px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer}
 
 /* ── 導航浮動列 ── */
 #nav-bar{
@@ -791,7 +807,7 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
   body>*{display:none!important}
   #map{display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;right:0!important}
   .leaflet-control-attribution,.leaflet-control-zoom{display:none!important}
-  #left-tools,#ctrl-panel,#topbar,#sheet,#sheet-toggle-btn,#print-btn-wrap,#roadbar,#fab,#gps-btn,#aerial-3d-btn,#nav-bar,#nav-panel,#nav-backdrop,#leg-drawer,#leg-backdrop,#legend-desktop{display:none!important}
+  #left-tools,#ctrl-panel,#topbar,#sheet,#sheet-toggle-btn,#print-btn-wrap,#roadbar,#fab,#gps-btn,#aerial-3d-btn,#nav-bar,#nav-panel,#nav-backdrop,#leg-drawer,#leg-backdrop,#legend-desktop,#follow-banner{display:none!important}
   .leaflet-popup,.leaflet-tooltip{display:none!important}
 }
 
@@ -1611,11 +1627,29 @@ body[data-theme="dark"] #sv-floating-card .sv-card-close:hover{background:rgba(2
       <div class="nav-info-row"><span class="nav-info-icon">🏍</span><span>預估時間：<b id="nav-time-val">—</b> <small style="color:var(--text3)">(15 km/h)</small></span></div>
       <div class="nav-info-row" id="nav-road-note" style="display:none"><span class="nav-info-icon">ℹ️</span><span id="nav-road-note-txt" style="font-size:11px;color:var(--text3)"></span></div>
     </div>
-    <button id="nav-launch-btn" onclick="launchNavApp()">📱 開啟手機導航 App</button>
+    <button id="nav-launch-btn" onclick="startFollowNav()">🧭 開始站內導航</button>
+    <div style="text-align:center;margin-top:4px">
+      <a href="javascript:void launchNavApp()" id="nav-google-link" style="display:none;font-size:11px;color:var(--text3)">📱 改用 Google/Apple 地圖 App（跨區用）</a>
+    </div>
     <div id="nav-steps-wrap" style="display:none;margin-top:10px">
       <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px">📍 轉彎指示</div>
       <div id="nav-steps"></div>
     </div>
+  </div>
+</div>
+
+<!-- ── 站內導航跟隨橫幅（GPS 即時跟隨 + 轉彎提示） ── -->
+<div id="follow-banner">
+  <div id="follow-turn">
+    <span id="follow-turn-icon">↑</span>
+    <div style="min-width:0">
+      <div id="follow-turn-txt" style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">直行</div>
+      <div id="follow-turn-dist" style="font-size:12px;opacity:.85">— m</div>
+    </div>
+  </div>
+  <div id="follow-meta">
+    <span id="follow-remain" style="font-size:12px;white-space:nowrap">—</span>
+    <button onclick="stopFollowNav()" id="follow-stop">結束</button>
   </div>
 </div>
 
@@ -7258,7 +7292,10 @@ function resetNavPanel(){
   const ti=document.getElementById('nav-to-inp');   if(ti) ti.value='';
   document.getElementById('nav-route-info')?.classList.remove('show');
   const lb=document.getElementById('nav-launch-btn'); if(lb) lb.style.display='none';
+  const gl=document.getElementById('nav-google-link'); if(gl) gl.style.display='none';
   const sw=document.getElementById('nav-steps-wrap'); if(sw) sw.style.display='none';
+  stopFollowNav();
+  _navRouteCoords=null; _navStepMarks=null; _navRouteTotalM=0;
   _updateNavBarQuery();
 }
 
@@ -7416,7 +7453,10 @@ function navClearPoints(){
   const ti=document.getElementById('nav-to-inp');   if(ti) ti.value='';
   document.getElementById('nav-route-info')?.classList.remove('show');
   const lb=document.getElementById('nav-launch-btn'); if(lb) lb.style.display='none';
+  const gl=document.getElementById('nav-google-link'); if(gl) gl.style.display='none';
   const sw=document.getElementById('nav-steps-wrap'); if(sw) sw.style.display='none';
+  stopFollowNav();
+  _navRouteCoords=null; _navStepMarks=null; _navRouteTotalM=0;
   _updateNavBarQuery();
 }
 
@@ -7479,6 +7519,246 @@ function _navHaversine(lat1,lng1,lat2,lng2){
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
+/* ══════════════════════════════════════════════════════════
+   站內離線路網算路（route_graph.js，OSM © ODbL）
+   佳里區 bbox 內起訖點優先用本地 A*，OSRM 降為備援；離線也能算路
+══════════════════════════════════════════════════════════ */
+const _RG_BBOX=[23.12,120.12,23.23,120.24]; /* 與 tools/build_route_graph.js 一致 */
+let _rgAdj=null;
+let _navRouteCoords=null;   /* 目前路線座標 [[lat,lng],...]（跟隨模式用） */
+let _navStepMarks=null;     /* [{atDist,icon,txt}]：各轉彎點在路線上的累積距離 */
+let _navRouteTotalM=0;
+
+function _rgReady(){ return typeof ROUTE_GRAPH!=='undefined' && ROUTE_GRAPH.v && ROUTE_GRAPH.v.length>0; }
+function _rgInBbox(lat,lng){ return lat>=_RG_BBOX[0]&&lat<=_RG_BBOX[2]&&lng>=_RG_BBOX[1]&&lng<=_RG_BBOX[3]; }
+function _rgHavM(a,b){ /* a/b:[lng,lat] */
+  const R=6371000,f1=a[1]*Math.PI/180,f2=b[1]*Math.PI/180,df=f2-f1,dl=(b[0]-a[0])*Math.PI/180;
+  const s=Math.sin(df/2)**2+Math.cos(f1)*Math.cos(f2)*Math.sin(dl/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+function _rgBearing(a,b){ /* [lng,lat] → 0-360 */
+  const f1=a[1]*Math.PI/180,f2=b[1]*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180;
+  const y=Math.sin(dl)*Math.cos(f2),x=Math.cos(f1)*Math.sin(f2)-Math.sin(f1)*Math.cos(f2)*Math.cos(dl);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+function _rgBuildAdj(){
+  if(_rgAdj) return;
+  _rgAdj=Array.from({length:ROUTE_GRAPH.v.length},()=>[]);
+  ROUTE_GRAPH.e.forEach((e,i)=>{
+    const ow=e[5];
+    if(ow!==2) _rgAdj[e[0]].push([i,e[1],1]); /* [邊,對向頂點,正向] */
+    if(ow!==1) _rgAdj[e[1]].push([i,e[0],0]);
+  });
+}
+function _rgEdgeCoords(i){ /* a→b 完整座標 [[lng,lat],...] */
+  const e=ROUTE_GRAPH.e[i], m=e[6], out=[ROUTE_GRAPH.v[e[0]]];
+  for(let j=0;j<m.length;j+=2) out.push([m[j],m[j+1]]);
+  out.push(ROUTE_GRAPH.v[e[1]]);
+  return out;
+}
+/* 依沿邊距離擷取子線段（d0<d1，公尺，a→b 方向） */
+function _rgSlice(i,d0,d1){
+  const cs=_rgEdgeCoords(i), out=[]; let acc=0;
+  function lerp(p,q,t){ return [p[0]+(q[0]-p[0])*t, p[1]+(q[1]-p[1])*t]; }
+  for(let j=1;j<cs.length;j++){
+    const L=_rgHavM(cs[j-1],cs[j]); if(L===0) continue;
+    const s=acc, e2=acc+L;
+    if(e2>d0&&s<d1){
+      const t0=Math.max(0,(d0-s)/L), t1=Math.min(1,(d1-s)/L);
+      const p0=lerp(cs[j-1],cs[j],t0), p1=lerp(cs[j-1],cs[j],t1);
+      if(!out.length) out.push(p0);
+      if(t1>t0) out.push(p1);
+    }
+    acc=e2;
+  }
+  return out;
+}
+/* 吸附最近路段：回 {e,pt:[lng,lat],dA,dB,off} */
+function _rgSnap(lat,lng){
+  const q=[lng,lat], kx=111320*Math.cos(lat*Math.PI/180), ky=111320;
+  let best=null;
+  for(let i=0;i<ROUTE_GRAPH.e.length;i++){
+    const cs=_rgEdgeCoords(i); let acc=0;
+    for(let j=1;j<cs.length;j++){
+      const ax=(cs[j-1][0]-q[0])*kx, ay=(cs[j-1][1]-q[1])*ky;
+      const bx=(cs[j][0]-q[0])*kx,  by=(cs[j][1]-q[1])*ky;
+      const dx=bx-ax, dy=by-ay, L2=dx*dx+dy*dy;
+      let t=L2? -(ax*dx+ay*dy)/L2 : 0; t=Math.max(0,Math.min(1,t));
+      const px=ax+dx*t, py=ay+dy*t, d2=px*px+py*py;
+      const segL=Math.sqrt(L2);
+      if(!best||d2<best.d2) best={d2,e:i,dA:acc+segL*t,
+        pt:[cs[j-1][0]+(cs[j][0]-cs[j-1][0])*t, cs[j-1][1]+(cs[j][1]-cs[j-1][1])*t]};
+      acc+=segL;
+    }
+  }
+  if(!best) return null;
+  const len=ROUTE_GRAPH.e[best.e][2];
+  return {e:best.e, pt:best.pt, dA:best.dA, dB:Math.max(0,len-best.dA), off:Math.sqrt(best.d2)};
+}
+/* A*：回 {coords:[[lng,lat],...], dist, legs:[{name,len,coords}]} 或 null */
+function _rgRoute(from,to){
+  _rgBuildAdj();
+  const E=ROUTE_GRAPH.e, V=ROUTE_GRAPH.v, NM=ROUTE_GRAPH.names;
+  const eName=i=>{ const n=E[i][4]; return n>=0?NM[n]:''; };
+  /* 同一條邊上：直接沿邊 */
+  if(from.e===to.e){
+    const ow=E[from.e][5];
+    const fwdOK=(ow!==2)&&from.dA<=to.dA, revOK=(ow!==1)&&from.dA>=to.dA;
+    if(fwdOK||revOK){
+      const d0=Math.min(from.dA,to.dA), d1=Math.max(from.dA,to.dA);
+      let cs=_rgSlice(from.e,d0,d1);
+      if(from.dA>to.dA) cs=cs.slice().reverse();
+      return {coords:cs, dist:Math.abs(to.dA-from.dA), legs:[{name:eName(from.e),len:Math.abs(to.dA-from.dA),coords:cs}]};
+    }
+  }
+  const goal=to.pt, se=E[from.e], te=E[to.e];
+  const goalEntry=new Map(); /* 頂點 → 進終點邊的殘段成本 */
+  if(te[5]!==2) goalEntry.set(te[0],to.dA);
+  if(te[5]!==1) goalEntry.set(te[1],to.dB);
+  const dist=new Map(), prev=new Map(), heap=[];
+  const push=(f,g,v)=>{heap.push([f,g,v]);let i=heap.length-1;while(i>0){const p=(i-1)>>1;if(heap[p][0]<=heap[i][0])break;[heap[p],heap[i]]=[heap[i],heap[p]];i=p;}};
+  const pop=()=>{const t=heap[0],l=heap.pop();if(heap.length){heap[0]=l;let i=0;for(;;){const a=2*i+1,b=a+1;let m=i;if(a<heap.length&&heap[a][0]<heap[m][0])m=a;if(b<heap.length&&heap[b][0]<heap[m][0])m=b;if(m===i)break;[heap[m],heap[i]]=[heap[i],heap[m]];i=m;}}return t;};
+  const h=v=>_rgHavM(V[v],goal);
+  if(se[5]!==2){ dist.set(se[1],from.dB); prev.set(se[1],[-1,from.e,1]); push(from.dB+h(se[1]),from.dB,se[1]); }
+  if(se[5]!==1 && (!dist.has(se[0])||from.dA<dist.get(se[0]))){ dist.set(se[0],from.dA); prev.set(se[0],[-1,from.e,0]); push(from.dA+h(se[0]),from.dA,se[0]); }
+  let bestTotal=Infinity, bestEntry=-1;
+  let guard=0;
+  while(heap.length){
+    if(++guard>400000) break;
+    const [f,g,v]=pop();
+    if(f>=bestTotal) break;
+    if(g!==dist.get(v)) continue;
+    if(goalEntry.has(v)){ const tot=g+goalEntry.get(v); if(tot<bestTotal){bestTotal=tot;bestEntry=v;} }
+    const nbrs=_rgAdj[v];
+    for(let k=0;k<nbrs.length;k++){
+      const [ei,u,fwd]=nbrs[k], ng=g+E[ei][2];
+      if(ng<(dist.get(u)??Infinity)){ dist.set(u,ng); prev.set(u,[v,ei,fwd]); push(ng+h(u),ng,u); }
+    }
+  }
+  if(bestEntry<0) return null;
+  /* 回溯：中段完整邊（正/反向），首尾邊取殘段 */
+  const chain=[]; let v=bestEntry;
+  while(v!==-1){ const p=prev.get(v); chain.unshift({v,e:p[1],fwd:p[2]}); v=p[0]; }
+  const legs=[]; const pushLeg=(name,len,cs)=>{ if(cs.length>=2) legs.push({name,len,coords:cs}); };
+  /* 首段：from.pt → chain[0].v（沿 from.e） */
+  const first=chain[0], fe=E[from.e];
+  if(first.v===fe[1]) pushLeg(eName(from.e),from.dB,_rgSlice(from.e,from.dA,fe[2]));
+  else pushLeg(eName(from.e),from.dA,_rgSlice(from.e,0,from.dA).reverse());
+  /* 中段 */
+  for(let i2=1;i2<chain.length;i2++){
+    const st=chain[i2];
+    let cs=_rgEdgeCoords(st.e); if(!st.fwd) cs=cs.slice().reverse();
+    pushLeg(eName(st.e),E[st.e][2],cs);
+  }
+  /* 末段：bestEntry → to.pt（沿 to.e） */
+  if(bestEntry===te[0]) pushLeg(eName(to.e),to.dA,_rgSlice(to.e,0,to.dA));
+  else pushLeg(eName(to.e),to.dB,_rgSlice(to.e,to.dA,te[2]).reverse());
+  const coords=[]; legs.forEach(l=>l.coords.forEach(c=>{ const last=coords[coords.length-1]; if(!last||last[0]!==c[0]||last[1]!==c[1]) coords.push(c); }));
+  return {coords, dist:bestTotal, legs};
+}
+/* 由 legs 產生 OSRM 相容 steps ＋ 跟隨模式的轉彎標記 */
+function _rgMakeSteps(route){
+  const steps=[], marks=[]; let cum=0;
+  const groups=[];
+  route.legs.forEach(l=>{
+    const g=groups[groups.length-1];
+    if(g&&g.name===l.name){ g.len+=l.len; g.coords=g.coords.concat(l.coords.slice(1)); }
+    else groups.push({name:l.name,len:l.len,coords:l.coords.slice()});
+  });
+  const turnOf=(a,b)=>{ const d=((b-a+540)%360)-180;
+    if(Math.abs(d)<=25) return ['straight','↑ 直行'];
+    if(d>25&&d<=60) return ['slight right','↗ 微右'];
+    if(d<-25&&d>=-60) return ['slight left','↖ 微左'];
+    if(d>60&&d<=135) return ['right','↱ 右轉'];
+    if(d<-60&&d>=-135) return ['left','↰ 左轉'];
+    return [d>0?'sharp right':'sharp left', d>0?'↱ 急右轉':'↰ 急左轉'];
+  };
+  groups.forEach((g,i)=>{
+    if(i===0){ steps.push({maneuver:{type:'depart'},name:g.name,distance:g.len}); }
+    else{
+      const pg=groups[i-1], pc=pg.coords, cc=g.coords;
+      const bIn=_rgBearing(pc[Math.max(0,pc.length-2)],pc[pc.length-1]);
+      const bOut=_rgBearing(cc[0],cc[1]);
+      const [mod,label]=turnOf(bIn,bOut);
+      steps.push({maneuver:{type:'turn',modifier:mod},name:g.name,distance:g.len});
+      marks.push({atDist:cum,icon:label.split(' ')[0],txt:label.split(' ').slice(1).join(' ')+(g.name?'：'+g.name:'')});
+    }
+    cum+=g.len;
+  });
+  steps.push({maneuver:{type:'arrive'},name:'',distance:0});
+  marks.push({atDist:cum,icon:'🏁',txt:'到達目的地'});
+  return {steps,marks};
+}
+
+/* ══════════ 站內導航（GPS 跟隨）══════════ */
+let _followWatch=null,_followMarker=null,_followLastRecalc=0;
+function _fmtDistM(m){ return m>=1000?(m/1000).toFixed(1)+' km':Math.round(m)+' m'; }
+function startFollowNav(){
+  if(!_navRouteCoords||_navRouteCoords.length<2){ alert('請先查詢路線'); return; }
+  if(!navigator.geolocation){ alert('此裝置不支援定位'); return; }
+  const b=document.getElementById('follow-banner');
+  b.classList.add('on'); b.classList.remove('offroute');
+  document.getElementById('follow-turn-txt').textContent='等待定位…';
+  document.getElementById('follow-turn-dist').textContent='—';
+  if(_followWatch!=null) navigator.geolocation.clearWatch(_followWatch);
+  _followWatch=navigator.geolocation.watchPosition(_followTick,
+    ()=>{ document.getElementById('follow-turn-txt').textContent='定位失敗'; },
+    {enableHighAccuracy:true,maximumAge:2000,timeout:15000});
+}
+function stopFollowNav(){
+  if(_followWatch!=null){ navigator.geolocation.clearWatch(_followWatch); _followWatch=null; }
+  if(_followMarker){ map.removeLayer(_followMarker); _followMarker=null; }
+  document.getElementById('follow-banner').classList.remove('on');
+}
+function _followTick(pos){
+  const lat=pos.coords.latitude, lng=pos.coords.longitude;
+  if(!_followMarker){
+    _followMarker=L.circleMarker([lat,lng],{radius:9,color:'#fff',weight:3,fillColor:'#1a73e8',fillOpacity:1}).addTo(map);
+  } else _followMarker.setLatLng([lat,lng]);
+  map.panTo([lat,lng],{animate:true});
+  /* 找路線上最近點與沿線累積距離 */
+  const q=[lng,lat], kx=111320*Math.cos(lat*Math.PI/180), ky=111320;
+  let best={d2:Infinity,along:0}, acc=0;
+  for(let i=1;i<_navRouteCoords.length;i++){
+    const A=_navRouteCoords[i-1], B=_navRouteCoords[i];
+    const ax=(A[1]-q[0])*kx, ay=(A[0]-q[1])*ky, bx=(B[1]-q[0])*kx, by=(B[0]-q[1])*ky;
+    const dx=bx-ax, dy=by-ay, L2=dx*dx+dy*dy;
+    let t=L2? -(ax*dx+ay*dy)/L2 : 0; t=Math.max(0,Math.min(1,t));
+    const px=ax+dx*t, py=ay+dy*t, d2=px*px+py*py, segL=Math.sqrt(L2);
+    if(d2<best.d2) best={d2,along:acc+segL*t};
+    acc+=segL;
+  }
+  const off=Math.sqrt(best.d2), remain=Math.max(0,_navRouteTotalM-best.along);
+  document.getElementById('follow-remain').textContent='剩 '+_fmtDistM(remain)+'・約 '+Math.max(1,Math.round(remain/1000/15*60))+' 分';
+  const banner=document.getElementById('follow-banner');
+  if(off>50){
+    banner.classList.add('offroute');
+    document.getElementById('follow-turn-icon').textContent='⚠️';
+    document.getElementById('follow-turn-txt').textContent='已偏離路線';
+    document.getElementById('follow-turn-dist').textContent='偏離約 '+Math.round(off)+' m，重新規劃中…';
+    /* 節流 12 秒自動從目前位置重算 */
+    if(Date.now()-_followLastRecalc>12000 && _rgReady() && _rgInBbox(lat,lng) && _navToLat){
+      _followLastRecalc=Date.now();
+      _navFromLat=lat; _navFromLng=lng; _navFromLabel='目前位置 📍';
+      calcNavRoute();
+    }
+    return;
+  }
+  banner.classList.remove('offroute');
+  /* 下一個轉彎 */
+  let nxt=null;
+  if(_navStepMarks) for(const m of _navStepMarks){ if(m.atDist>best.along-15){ nxt=m; break; } }
+  if(nxt){
+    document.getElementById('follow-turn-icon').textContent=nxt.icon;
+    document.getElementById('follow-turn-txt').textContent=nxt.txt;
+    document.getElementById('follow-turn-dist').textContent=_fmtDistM(Math.max(0,nxt.atDist-best.along));
+  } else {
+    document.getElementById('follow-turn-icon').textContent='🏁';
+    document.getElementById('follow-turn-txt').textContent='沿路線前進';
+    document.getElementById('follow-turn-dist').textContent='';
+  }
+}
+
 /* 查詢路線 */
 async function calcNavRoute(){
   const fi=document.getElementById('nav-from-inp')?.value.trim();
@@ -7493,30 +7773,63 @@ async function calcNavRoute(){
   const btn=document.getElementById('nav-calc-btn');
   btn.disabled=true; btn.textContent='查詢中…';
   if(_navRouteLayer){map.removeLayer(_navRouteLayer);_navRouteLayer=null;}
+  _navRouteCoords=null; _navStepMarks=null; _navRouteTotalM=0;
 
   let distKm, timeMin, note='';
-  try{
-    const url=`https://router.project-osrm.org/route/v1/driving/${_navFromLng},${_navFromLat};${_navToLng},${_navToLat}?overview=full&geometries=geojson&steps=true`;
-    const resp=await fetch(url,{signal:AbortSignal.timeout(8000)});
-    const data=await resp.json();
-    if(data.code==='Ok'&&data.routes?.[0]){
-      const route=data.routes[0];
-      distKm=(route.distance/1000).toFixed(1);
-      timeMin=Math.round(route.distance/1000/15*60); /* 重算：15km/h（機車市區速度） */
-      _navRouteLayer=L.geoJSON(route.geometry,{style:{color:'#e74c3c',weight:6,opacity:.9}}).addTo(map);
-      map.fitBounds(_navRouteLayer.getBounds(),{padding:[30,30],maxZoom:17});
-      /* 解析轉彎指示 */
-      const steps=(route.legs||[]).flatMap(l=>l.steps||[]);
-      _renderNavSteps(steps);
-    } else { throw new Error('no route'); }
-  } catch(e){
-    const straight=_navHaversine(_navFromLat,_navFromLng,_navToLat,_navToLng);
-    distKm=(straight*1.4).toFixed(1); timeMin=Math.round(straight*1.4/50*60);
-    note='（無法連線路線伺服器，採直線×1.4 估算）';
-    _navRouteLayer=L.polyline([[_navFromLat,_navFromLng],[_navToLat,_navToLng]],
-      {color:'#e74c3c',weight:5,opacity:.8,dashArray:'8,6'}).addTo(map);
-    map.fitBounds(_navRouteLayer.getBounds(),{padding:[30,30]});
-    const sw=document.getElementById('nav-steps-wrap'); if(sw) sw.style.display='none';
+  let done=false;
+
+  /* 1) 站內離線路網（佳里 bbox 內，離線可用、免外部服務） */
+  if(_rgReady() && _rgInBbox(_navFromLat,_navFromLng) && _rgInBbox(_navToLat,_navToLng)){
+    try{
+      const sFrom=_rgSnap(_navFromLat,_navFromLng), sTo=_rgSnap(_navToLat,_navToLng);
+      if(sFrom && sTo && sFrom.off<300 && sTo.off<300){
+        const route=_rgRoute(sFrom,sTo);
+        if(route && route.coords.length>=2){
+          const latlngs=route.coords.map(c=>[c[1],c[0]]);
+          distKm=(route.dist/1000).toFixed(1);
+          timeMin=Math.round(route.dist/1000/15*60);
+          _navRouteLayer=L.polyline(latlngs,{color:'#e74c3c',weight:6,opacity:.9}).addTo(map);
+          map.fitBounds(_navRouteLayer.getBounds(),{padding:[30,30],maxZoom:17});
+          const sm=_rgMakeSteps(route);
+          _renderNavSteps(sm.steps);
+          _navRouteCoords=latlngs; _navStepMarks=sm.marks; _navRouteTotalM=route.dist;
+          note='（站內離線路網）';
+          done=true;
+        }
+      }
+    }catch(e){ console.warn('[NAV] 站內算路失敗，改用 OSRM：',e); }
+  }
+
+  /* 2) OSRM 備援（跨區或本地失敗） */
+  if(!done){
+    try{
+      const url=`https://router.project-osrm.org/route/v1/driving/${_navFromLng},${_navFromLat};${_navToLng},${_navToLat}?overview=full&geometries=geojson&steps=true`;
+      const resp=await fetch(url,{signal:AbortSignal.timeout(8000)});
+      const data=await resp.json();
+      if(data.code==='Ok'&&data.routes?.[0]){
+        const route=data.routes[0];
+        distKm=(route.distance/1000).toFixed(1);
+        timeMin=Math.round(route.distance/1000/15*60); /* 15km/h（機車市區速度） */
+        _navRouteLayer=L.geoJSON(route.geometry,{style:{color:'#e74c3c',weight:6,opacity:.9}}).addTo(map);
+        map.fitBounds(_navRouteLayer.getBounds(),{padding:[30,30],maxZoom:17});
+        const steps=(route.legs||[]).flatMap(l=>l.steps||[]);
+        _renderNavSteps(steps);
+        /* 跟隨模式資料（OSRM 幾何 [lng,lat]→[lat,lng]；轉彎標記由累積距離建） */
+        _navRouteCoords=route.geometry.coordinates.map(c=>[c[1],c[0]]);
+        _navRouteTotalM=route.distance;
+        let cum=0; _navStepMarks=[];
+        steps.forEach(s=>{ if(s.maneuver&&s.maneuver.type!=='depart'){ _navStepMarks.push({atDist:cum,icon:s.maneuver.type==='arrive'?'🏁':'➡️',txt:(s.maneuver.type==='arrive'?'到達目的地':(s.name||'轉彎'))}); } cum+=s.distance||0; });
+        done=true;
+      } else { throw new Error('no route'); }
+    } catch(e){
+      const straight=_navHaversine(_navFromLat,_navFromLng,_navToLat,_navToLng);
+      distKm=(straight*1.4).toFixed(1); timeMin=Math.round(straight*1.4/50*60);
+      note='（離線路網與路線伺服器皆不可用，採直線×1.4 估算）';
+      _navRouteLayer=L.polyline([[_navFromLat,_navFromLng],[_navToLat,_navToLng]],
+        {color:'#e74c3c',weight:5,opacity:.8,dashArray:'8,6'}).addTo(map);
+      map.fitBounds(_navRouteLayer.getBounds(),{padding:[30,30]});
+      const sw=document.getElementById('nav-steps-wrap'); if(sw) sw.style.display='none';
+    }
   }
 
   const mins=timeMin<60?`${timeMin} 分鐘`:`${Math.floor(timeMin/60)} 小時 ${timeMin%60} 分`;
@@ -7526,7 +7839,9 @@ async function calcNavRoute(){
   const noteTxt=document.getElementById('nav-road-note-txt');
   if(noteEl&&noteTxt){noteEl.style.display=note?'':'none';noteTxt.textContent=note;}
   document.getElementById('nav-route-info').classList.add('show');
-  document.getElementById('nav-launch-btn').style.display='block';
+  /* 站內導航按鈕：有可跟隨的路線才開；Google App 連結恆備援 */
+  document.getElementById('nav-launch-btn').style.display=_navRouteCoords?'block':'none';
+  const gl=document.getElementById('nav-google-link'); if(gl) gl.style.display='inline';
   btn.disabled=false; btn.textContent='🔍 查詢路線';
 }
 
@@ -8842,6 +9157,7 @@ map.on('dblclick',function(e){
 <script src="land_db.js" charset="utf-8"></script>
 <script src="doornum_db.js" charset="utf-8"></script>
 <script src="old_addr_map.js" charset="utf-8"></script>
+<script src="route_graph.js" charset="utf-8"></script>
 
 <script>
 /* ═══ D1 OVERLAY (admin 編輯的資料覆寫到 static JS 之上) ═══

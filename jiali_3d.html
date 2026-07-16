@@ -1130,19 +1130,27 @@
   var ROADQ_NAME = 'roadq-name';
   var ROAD_CLASS_INFO = {
     motorway: { label: '國道/高速公路', w: 25 },
+    motorway_link: { label: '國道聯絡道', w: 12 },
     trunk: { label: '快速道路', w: 18 },
+    trunk_link: { label: '快速道路聯絡道', w: 10 },
     primary: { label: '主要道路', w: 15 },
+    primary_link: { label: '主要道路聯絡道', w: 10 },
     secondary: { label: '次要道路', w: 12 },
+    secondary_link: { label: '次要道路聯絡道', w: 10 },
     tertiary: { label: '一般道路', w: 10 },
+    tertiary_link: { label: '一般道路聯絡道', w: 8 },
     minor: { label: '街道', w: 8 },
     residential: { label: '住宅街道', w: 8 },
     unclassified: { label: '街道', w: 8 },
     living_street: { label: '生活街道', w: 6 },
+    busway: { label: '公車專用道', w: 8 },
     service: { label: '服務道路/巷弄', w: 5 },
     pedestrian: { label: '行人徒步區', w: 4 },
     track: { label: '產業道路', w: 4 },
     path: { label: '小徑', w: 2 }
   };
+  // 鐵軌/纜車/渡輪等非道路，命中時跳過不誤報路寬
+  var ROAD_CLASS_SKIP = { rail: 1, transit: 1, cable_car: 1, monorail: 1, funicular: 1, ferry: 1, aerialway: 1 };
 
   function ensureRoadQueryLayers() {
     if (!map.getSource('openmaptiles')) return;
@@ -1173,15 +1181,23 @@
       if (map.getLayer(ROADQ_NAME)) layers.push(ROADQ_NAME);
       if (map.getLayer(ROADQ_LINE)) layers.push(ROADQ_LINE);
       if (!layers.length) return null;
-      var fs = map.queryRenderedFeatures(point, { layers: layers });
-      if (!fs.length) return null;
-      var name = '', cls = '';
+      // 以點擊點 ±12px 方框查詢，容錯高（細路/南北向斜視角都點得到）
+      var box = [
+        [point.x - 12, point.y - 12],
+        [point.x + 12, point.y + 12]
+      ];
+      var fs = map.queryRenderedFeatures(box, { layers: layers });
+      var name = '', cls = '', anyRoad = false;
       for (var i = 0; i < fs.length; i++) {
         var p = fs[i].properties || {};
+        var c = p.class || '';
+        if (ROAD_CLASS_SKIP[c]) continue;
+        anyRoad = true;
         if (!name && (p['name:zh'] || p.name)) name = p['name:zh'] || p.name;
-        if (!cls && p.class && ROAD_CLASS_INFO[p.class]) cls = p.class;
+        if (!cls && ROAD_CLASS_INFO[c]) cls = c;
       }
-      if (!cls && !name) return null;
+      if (!anyRoad) return null;
+      // 等級不在對照表也至少給通用估算，不再整條沉默
       var info = ROAD_CLASS_INFO[cls] || { label: '道路', w: 8 };
       return { name: name, label: info.label, width: info.w };
     } catch (_) { return null; }

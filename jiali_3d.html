@@ -317,10 +317,10 @@
     filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.55));
   }
   .sv-billboard img {
-    width: 150px;
-    height: 90px;
-    border-radius: 10px;
-    border: 3px solid #fff;
+    width: 200px;
+    height: 120px;
+    border-radius: 12px;
+    border: 3.5px solid #fff;
     object-fit: cover;
     background: #1a2430;
   }
@@ -328,9 +328,9 @@
     margin-top: -2px;
     background: #fff;
     color: #16324a;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 800;
-    padding: 2px 9px;
+    padding: 3px 12px;
     border-radius: 999px;
     white-space: nowrap;
   }
@@ -338,6 +338,34 @@
     width: 3px;
     height: 30px;
     background: linear-gradient(rgba(255,255,255,.95), rgba(255,255,255,.35));
+  }
+
+  /* 飛行資訊層：東西南北方位字（沿螢幕邊緣隨 bearing 轉）與鄰區方向大字 */
+  #cardinals { position: fixed; inset: 0; pointer-events: none; z-index: 6; display: none; }
+  #cardinals.on { display: block; }
+  .cardinal {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-size: 28px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85), 0 0 3px rgba(0, 0, 0, 0.9);
+  }
+  .dir-sign {
+    pointer-events: none;
+    font-size: 32px;
+    font-weight: 900;
+    color: #ffd166;
+    white-space: nowrap;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.9);
+  }
+  .road-sign {
+    pointer-events: none;
+    font-size: 23px;
+    font-weight: 900;
+    color: #8fe3ff;
+    white-space: nowrap;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.9);
   }
 
   /* 騎行/飛行狀態列 */
@@ -470,6 +498,14 @@
         <button type="button" class="btn" id="btn-xiabu" title="下廍（市中心西邊）">下廍</button>
       </div>
     </div>
+  </div>
+
+  <!-- 飛行時的方位標示（東西南北，沿螢幕邊緣隨視角旋轉） -->
+  <div id="cardinals" aria-hidden="true">
+    <span class="cardinal" data-deg="0">北</span>
+    <span class="cardinal" data-deg="90">東</span>
+    <span class="cardinal" data-deg="180">南</span>
+    <span class="cardinal" data-deg="270">西</span>
   </div>
 
   <!-- 常駐指北針：紅針指北，隨地圖旋轉，點擊回正北 -->
@@ -1905,16 +1941,16 @@
   }
   function stopAnim() {
     if (anim) {
-      var prevBasemap = anim.prevBasemap, prevSvLines = anim.prevSvLines;
+      var wasFly = anim.mode === 'fly';
       clearInterval(anim.timer);
       if (anim.marker) anim.marker.remove();
       anim = null;
       setMapHandlers(true);
-      /* 還原動畫前的底圖與街景線（預設情境＝回衛星圖+開街景線） */
-      if (prevBasemap === 'satellite') setBasemap('satellite');
-      if (prevSvLines) setSvLinesVisible(true);
+      if (wasFly) showFlightOverlays(false);
+      showRouteOverlays(false);
     }
   }
+  var navPrevBasemap = null, navPrevSvLines = null;
   function exitNavMode() {
     if (arriveTimer) { clearTimeout(arriveTimer); arriveTimer = null; }
     stopAnim();
@@ -1926,6 +1962,12 @@
     btnRide.setAttribute('aria-pressed', 'false');
     btnPlane.setAttribute('aria-pressed', 'false');
     elRideNote.hidden = true;
+    /* 還原進入模式前的底圖與街景線（預設情境＝回衛星圖+開街景線） */
+    if (navPrevBasemap !== null) {
+      if (navPrevBasemap === 'satellite') setBasemap('satellite');
+      if (navPrevSvLines) setSvLinesVisible(true);
+      navPrevBasemap = null; navPrevSvLines = null;
+    }
   }
   function enterNavMode(mode) {
     var again = (navMode === mode);
@@ -1937,6 +1979,10 @@
     elRideNoteTxt.textContent = (mode === 'ride-pick' ? '🛵 騎行預覽：' : '✈️ 飛行檢視：') + '點地圖設定「起點」';
     hideSvCard();
     stopFlyover();
+    /* 效能模式：按下模式鈕當下即切向量圖＋關街景線（取消/結束自動還原） */
+    navPrevBasemap = state.basemap; navPrevSvLines = state.svLinesOn;
+    if (state.basemap !== 'vector') setBasemap('vector');
+    if (state.svLinesOn) setSvLinesVisible(false);
   }
   function handleNavPick(lngLat) {
     navPts.push([lngLat.lng, lngLat.lat]);
@@ -1990,11 +2036,7 @@
       .setLngLat(coords[0]).addTo(map);
     anim = { timer: null, coords: coords, cum: cum, total: total, pos: 0, speed: opts.speed,
              marker: marker, mode: opts.mode, zoom: opts.zoom, pitch: opts.pitch, lastSvAt: -999, seg: 1,
-             brg: brgArr(coords[0], coords[1] || coords[0]), lastT: performance.now(),
-             prevBasemap: state.basemap, prevSvLines: state.svLinesOn };
-    /* 效能模式：動畫期間強制向量圖＋關街景線（衛星磚+覆蓋線在貼地高速移動下太吃資源） */
-    if (state.basemap !== 'vector') setBasemap('vector');
-    if (state.svLinesOn) setSvLinesVisible(false);
+             brg: brgArr(coords[0], coords[1] || coords[0]), lastT: performance.now() };
     setMapHandlers(false); /* 託管：僅停止鈕/Esc 可中斷 */
     anim.timer = setInterval(animTick, 50);
   }
@@ -2020,6 +2062,7 @@
     anim.marker.setLngLat([lng, lat]).setRotation(0);
     map.jumpTo({ center: [lng, lat], bearing: anim.brg, pitch: anim.pitch, zoom: anim.zoom });
     updateCompass();
+    if (anim.mode === 'fly') updateCardinals();
     var remain = Math.max(0, anim.total - anim.pos);
     elRideNoteTxt.textContent = (anim.mode === 'ride' ? '🛵 騎行中' : '✈️ 飛行中') + '：剩 ' +
       (remain >= 1000 ? (remain / 1000).toFixed(1) + ' km' : Math.round(remain) + ' m');
@@ -2031,6 +2074,117 @@
       arriveTimer = setTimeout(exitNavMode, 2200); /* 抵達自動收尾，免手動按停止 */
     }
   }
+  /* ══════════ 飛行資訊層：方位字、里別區塊、鄰區方向大字 ══════════ */
+  var cardinalEls = null;
+  function updateCardinals() {
+    if (!cardinalEls) cardinalEls = document.querySelectorAll('#cardinals .cardinal');
+    var b = map.getBearing();
+    var cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+    var r = Math.min(cx, cy) - 70;
+    cardinalEls.forEach(function (el) {
+      var rad = ((+el.dataset.deg) - b) * Math.PI / 180; /* 螢幕上 0°=正上方 */
+      el.style.left = (cx + r * Math.sin(rad)) + 'px';
+      el.style.top = (cy - r * Math.cos(rad)) + 'px';
+    });
+  }
+
+  /* 里別區塊（taiwan-atlas villages，SW 已預快取）：飛行時顯示里界＋里名 */
+  var VIL_SRC = 'jiali-villages', VIL_LINE = 'vil-borders', VIL_LABEL = 'vil-labels';
+  var villagesLoading = null;
+  function loadVillagesOnce() {
+    if (villagesLoading) return villagesLoading;
+    villagesLoading = fetch('https://cdn.jsdelivr.net/npm/taiwan-atlas@latest/villages-10t.json')
+      .then(function (r) { return r.json(); })
+      .then(function (topo) {
+        var key = Object.keys(topo.objects)[0];
+        var fc = topojson.feature(topo, topo.objects[key]);
+        fc.features = fc.features.filter(function (f) {
+          var p = f.properties || {};
+          return String(p.TOWNNAME || '').indexOf('佳里') > -1 || String(p.TOWNCODE || '') === '67000120';
+        });
+        if (!map.getSource(VIL_SRC)) map.addSource(VIL_SRC, { type: 'geojson', data: fc });
+        if (!map.getLayer(VIL_LINE)) {
+          map.addLayer({ id: VIL_LINE, type: 'line', source: VIL_SRC,
+            layout: { visibility: 'none' },
+            paint: { 'line-color': '#ffffff', 'line-width': 1.6, 'line-dasharray': [2, 1.6], 'line-opacity': 0.85 } });
+        }
+        if (!map.getLayer(VIL_LABEL)) {
+          map.addLayer({ id: VIL_LABEL, type: 'symbol', source: VIL_SRC,
+            layout: { visibility: 'none', 'text-field': ['get', 'VILLNAME'], 'text-size': 15,
+                      'text-font': ['Noto Sans Bold'] },
+            paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(10,26,46,.95)', 'text-halo-width': 1.8 } });
+        }
+        return true;
+      }).catch(function () { villagesLoading = null; return false; });
+    return villagesLoading;
+  }
+
+  /* 鄰區方向大字：貼在佳里邊界外緣（bounds 推定） */
+  var dirSigns = [];
+  function ensureDirSigns() {
+    if (dirSigns.length || !state.boundaryBounds) return;
+    var b = state.boundaryBounds; /* [[minX,minY],[maxX,maxY]] */
+    var minX = b[0][0], minY = b[0][1], maxX = b[1][0], maxY = b[1][1];
+    var cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    var defs = [
+      ['往學甲 ↑', cx, maxY],
+      ['往麻豆 →', maxX, cy],
+      ['往西港 ↓', cx, minY],
+      ['往七股 ↙', minX + (cx - minX) * 0.25, minY + (cy - minY) * 0.35],
+      ['往將軍 ↖', minX, cy + (maxY - cy) * 0.45]
+    ];
+    defs.forEach(function (d) {
+      var el = document.createElement('div');
+      el.className = 'dir-sign';
+      el.textContent = d[0];
+      el.style.display = 'none';
+      var mk = new maplibregl.Marker({ element: el }).setLngLat([d[1], d[2]]).addTo(map);
+      dirSigns.push(mk);
+    });
+  }
+
+  /* 聯外主要幹道大字：從離線路網撈各路名最長路段的中點放字（騎行/飛行皆顯示） */
+  var ROAD_SIGN_DEFS = [
+    ['延平路', '延平路'], ['中山路', '中山路'], ['光復路', '光復路'],
+    ['新生路', '新生路'], ['成功路', '成功路'], ['仁愛路', '仁愛路（中央公路）'],
+    ['忠孝路', '忠孝路'], ['麻佳路三段', '麻佳路三段'], ['中央公路', '中央公路（佳里興）']
+  ];
+  var roadSigns = [];
+  function ensureRoadSigns() {
+    if (roadSigns.length || typeof ROUTE_GRAPH === 'undefined') return;
+    ROAD_SIGN_DEFS.forEach(function (def) {
+      var nameIdx = ROUTE_GRAPH.names.indexOf(def[0]);
+      if (nameIdx < 0) return;
+      var best = -1, bestLen = -1;
+      ROUTE_GRAPH.e.forEach(function (e, i) {
+        if (e[4] === nameIdx && e[2] > bestLen) { bestLen = e[2]; best = i; }
+      });
+      if (best < 0) return;
+      var cs = rgEdgeCoords(best);
+      var mid = cs[Math.floor(cs.length / 2)];
+      var el = document.createElement('div');
+      el.className = 'road-sign';
+      el.textContent = def[1];
+      el.style.display = 'none';
+      roadSigns.push(new maplibregl.Marker({ element: el }).setLngLat(mid).addTo(map));
+    });
+  }
+
+  /* 騎行/飛行共用資訊層：里別區塊＋幹道大字 */
+  function showRouteOverlays(on) {
+    roadSigns.forEach(function (m) { m.getElement().style.display = on ? '' : 'none'; });
+    [VIL_LINE, VIL_LABEL].forEach(function (id) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+    });
+  }
+
+  /* 飛行限定資訊層：方位字＋鄰區方向大字 */
+  function showFlightOverlays(on) {
+    document.getElementById('cardinals').classList.toggle('on', !!on);
+    dirSigns.forEach(function (m) { m.getElement().style.display = on ? '' : 'none'; });
+    if (on) updateCardinals();
+  }
+
   function startRide(route) {
     /* 先預載重點街景立牌（轉彎/目的地），全部就緒才出發 */
     elRideNote.hidden = false;
@@ -2041,24 +2195,38 @@
       elRideNoteTxt.textContent = '🛵 出發！全程 ' + (route.dist >= 1000 ? (route.dist / 1000).toFixed(1) + ' km' : Math.round(route.dist) + ' m');
       /* 貼地平視角度：地平線在畫面上方、3D 建築迎面流過；右駕：路徑右偏 3m */
       startAnimAlong(offsetRight(route.coords, 3), { emoji: '🛵', speed: RIDE_SPEED, zoom: 19.5, pitch: 82, mode: 'ride' });
+      /* 資訊層：里別區塊＋幹道大字（路網已就緒） */
+      ensureRoadSigns();
+      showRouteOverlays(true);
+      loadVillagesOnce().then(function () { if (anim && anim.mode === 'ride') showRouteOverlays(true); });
     });
   }
   function startFly(a, b) {
+    /* 飛行資訊層：僅衛生所立牌＋方位字＋鄰區大字＋里別區塊＋幹道大字 */
+    clearBillboards();
+    preloadBillboards([{ lng: 120.1777263, lat: 23.1638778, brg: 0, dest: false, label: '🏥 佳里區衛生所' }]);
+    loadVillagesOnce().then(function () { if (anim && anim.mode === 'fly') showRouteOverlays(true); });
+    ensureRouteGraph().then(function (ok) {
+      if (ok && anim && anim.mode === 'fly') { ensureRoadSigns(); showRouteOverlays(true); }
+    });
+    ensureDirSigns();
     /* 屋頂高度掠過；速度＝騎行 2 倍 */
     startAnimAlong([a, b], { emoji: '✈️', speed: RIDE_SPEED * 2, zoom: 18.0, pitch: 70, mode: 'fly' });
+    showFlightOverlays(true);
+    showRouteOverlays(true);
   }
   /* ── 沿途街景大立牌：只取「轉彎路口＋目的地」，出發前預載、立在地圖路口上 ── */
   var billboards = [];
   function clearBillboards() { billboards.forEach(function (m) { m.remove(); }); billboards = []; }
 
-  /* 挑重點：方位變化 ≥35° 的轉彎路口（相距 ≥80m，最多 5 個）＋目的地 */
+  /* 挑重點：方位變化 ≥28° 的轉彎路口都放（相距 ≥60m，上限 10 個）＋目的地 */
   function pickKeyPoints(coords) {
     var pts = [], lastAt = -1e9, acc = 0;
     for (var i = 1; i < coords.length - 1; i++) {
       acc += rgHavM(coords[i - 1], coords[i]);
       var b1 = brgArr(coords[i - 1], coords[i]), b2 = brgArr(coords[i], coords[i + 1]);
       var d = Math.abs(((b2 - b1 + 540) % 360) - 180);
-      if (d >= 35 && acc - lastAt >= 80 && pts.length < 5) {
+      if (d >= 28 && acc - lastAt >= 60 && pts.length < 10) {
         pts.push({ lng: coords[i][0], lat: coords[i][1], brg: b2, dest: false });
         lastAt = acc;
       }
@@ -2073,7 +2241,7 @@
     var el = document.createElement('div');
     el.className = 'sv-billboard';
     el.innerHTML = '<img src="' + url + '" alt="路口街景">' +
-      '<div class="sv-bb-tag">' + (pt.dest ? '🏁 目的地' : '↪ 轉彎路口') + '</div>' +
+      '<div class="sv-bb-tag">' + (pt.label || (pt.dest ? '🏁 目的地' : '↪ 轉彎路口')) + '</div>' +
       '<div class="sv-bb-stem"></div>';
     var mk = new maplibregl.Marker({ element: el, anchor: 'bottom' })
       .setLngLat([pt.lng, pt.lat]).addTo(map);

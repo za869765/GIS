@@ -215,9 +215,6 @@
     -webkit-user-drag: none;
   }
   #sv-thumb[hidden] { display: none; }
-  /* 騎行中：縮圖放大作沿途街景輔助畫面 */
-  #sv-card.riding #sv-thumb { width: 236px; height: 140px; }
-  #sv-card.riding { max-width: min(96vw, 560px); }
   #sv-info {
     display: flex;
     flex-direction: column;
@@ -310,6 +307,38 @@
   }
   #compass:hover { border-color: rgba(61, 184, 255, 0.55); }
   #compass svg { transition: transform 0.15s linear; }
+
+  /* 沿途街景大立牌（轉彎路口/目的地，立在地圖上） */
+  .sv-billboard {
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.55));
+  }
+  .sv-billboard img {
+    width: 150px;
+    height: 90px;
+    border-radius: 10px;
+    border: 3px solid #fff;
+    object-fit: cover;
+    background: #1a2430;
+  }
+  .sv-bb-tag {
+    margin-top: -2px;
+    background: #fff;
+    color: #16324a;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .sv-bb-stem {
+    width: 3px;
+    height: 30px;
+    background: linear-gradient(rgba(255,255,255,.95), rgba(255,255,255,.35));
+  }
 
   /* 騎行/飛行狀態列 */
   #ride-note { display: flex; align-items: center; gap: 10px; }
@@ -1842,10 +1871,10 @@
   var navPts = [];
   var arriveTimer = null;
   var navMarkers = [];
+
   var NAV3D_SRC = 'nav3d-route';
   var NAV3D_LINE = 'nav3d-route-line';
   var anim = null;
-  var rideSvPano = null;
 
   function ensureNavLine() {
     if (!map.getSource(NAV3D_SRC)) {
@@ -1881,7 +1910,6 @@
       if (anim.marker) anim.marker.remove();
       anim = null;
       setMapHandlers(true);
-      elSvCard.classList.remove('riding');
       /* 還原動畫前的底圖與街景線（預設情境＝回衛星圖+開街景線） */
       if (prevBasemap === 'satellite') setBasemap('satellite');
       if (prevSvLines) setSvLinesVisible(true);
@@ -1890,7 +1918,9 @@
   function exitNavMode() {
     if (arriveTimer) { clearTimeout(arriveTimer); arriveTimer = null; }
     stopAnim();
-    navMode = null; navPts = []; rideSvPano = null; rideSvBusy = false;
+    clearBillboards();
+    hideSvCard(); /* 連同任何殘留的街景卡（含「載入中」占位）一併收掉 */
+    navMode = null; navPts = [];
     clearNavMarkers();
     if (map && map.getSource(NAV3D_SRC)) setNavLine([]);
     btnRide.setAttribute('aria-pressed', 'false');
@@ -1993,12 +2023,6 @@
     var remain = Math.max(0, anim.total - anim.pos);
     elRideNoteTxt.textContent = (anim.mode === 'ride' ? '🛵 騎行中' : '✈️ 飛行中') + '：剩 ' +
       (remain >= 1000 ? (remain / 1000).toFixed(1) + ' km' : Math.round(remain) + ' m');
-    if (anim.mode === 'ride' && anim.pos - anim.lastSvAt >= 100) {
-      anim.lastSvAt = anim.pos;
-      /* 預載前方 130m 的街景（載入需 1~2 秒，抓「現在位置」永遠來不及） */
-      var look = animPointAt(Math.min(anim.total, anim.pos + 130));
-      updateRideSv(look.lat, look.lng, look.brg);
-    }
     if (done) {
       var endMode = anim.mode;
       stopAnim();
@@ -2008,66 +2032,74 @@
     }
   }
   function startRide(route) {
-    /* 沿途街景輔助畫面：卡片常駐 + 縮圖放大 */
-    elSvCard.hidden = false;
-    elSvCard.classList.add('riding');
-    elSvNopano.hidden = true;
-    elSvBldg.hidden = true;
-    elSvRoad.hidden = true;
-    elSvCoord.textContent = '📍 沿途街景載入中…';
-    elRideNoteTxt.textContent = '🛵 出發！全程 ' + (route.dist >= 1000 ? (route.dist / 1000).toFixed(1) + ' km' : Math.round(route.dist) + ' m');
-    /* 貼地平視角度：地平線在畫面上方、3D 建築迎面流過（搭配沿途街景卡）
-       右駕：路徑右偏 3m 騎在自己車道 */
-    startAnimAlong(offsetRight(route.coords, 3), { emoji: '🛵', speed: RIDE_SPEED, zoom: 19.5, pitch: 82, mode: 'ride' });
+    /* 先預載重點街景立牌（轉彎/目的地），全部就緒才出發 */
+    elRideNote.hidden = false;
+    elRideNoteTxt.textContent = '📸 沿途重點街景預載中…';
+    clearBillboards();
+    preloadBillboards(pickKeyPoints(route.coords)).then(function () {
+      if (!navPts.length) return; /* 預載期間被取消 */
+      elRideNoteTxt.textContent = '🛵 出發！全程 ' + (route.dist >= 1000 ? (route.dist / 1000).toFixed(1) + ' km' : Math.round(route.dist) + ' m');
+      /* 貼地平視角度：地平線在畫面上方、3D 建築迎面流過；右駕：路徑右偏 3m */
+      startAnimAlong(offsetRight(route.coords, 3), { emoji: '🛵', speed: RIDE_SPEED, zoom: 19.5, pitch: 82, mode: 'ride' });
+    });
   }
   function startFly(a, b) {
-    /* 屋頂高度掠過：略高於 3D 建築、看得見屋頂與街廓；速度＝騎行 2 倍 */
-    startAnimAlong([a, b], { emoji: '✈️', speed: RIDE_SPEED * 2, zoom: 17.4, pitch: 72, mode: 'fly' });
+    /* 屋頂高度掠過；速度＝騎行 2 倍 */
+    startAnimAlong([a, b], { emoji: '✈️', speed: RIDE_SPEED * 2, zoom: 18.0, pitch: 70, mode: 'fly' });
   }
-  /* 沿路線距離 d（公尺）取樣位置與方位 */
-  function animPointAt(d) {
-    var cum = anim.cum, coords = anim.coords;
-    var i = 1;
-    while (i < cum.length - 1 && cum[i] < d) i++;
-    var segLen = (cum[i] - cum[i - 1]) || 1;
-    var t = Math.max(0, Math.min(1, (d - cum[i - 1]) / segLen));
-    var A = coords[i - 1], B = coords[i];
-    return { lng: A[0] + (B[0] - A[0]) * t, lat: A[1] + (B[1] - A[1]) * t, brg: brgArr(A, B) };
+  /* ── 沿途街景大立牌：只取「轉彎路口＋目的地」，出發前預載、立在地圖路口上 ── */
+  var billboards = [];
+  function clearBillboards() { billboards.forEach(function (m) { m.remove(); }); billboards = []; }
+
+  /* 挑重點：方位變化 ≥35° 的轉彎路口（相距 ≥80m，最多 5 個）＋目的地 */
+  function pickKeyPoints(coords) {
+    var pts = [], lastAt = -1e9, acc = 0;
+    for (var i = 1; i < coords.length - 1; i++) {
+      acc += rgHavM(coords[i - 1], coords[i]);
+      var b1 = brgArr(coords[i - 1], coords[i]), b2 = brgArr(coords[i], coords[i + 1]);
+      var d = Math.abs(((b2 - b1 + 540) % 360) - 180);
+      if (d >= 35 && acc - lastAt >= 80 && pts.length < 5) {
+        pts.push({ lng: coords[i][0], lat: coords[i][1], brg: b2, dest: false });
+        lastAt = acc;
+      }
+    }
+    var n = coords.length;
+    pts.push({ lng: coords[n - 1][0], lat: coords[n - 1][1],
+               brg: brgArr(coords[n - 2] || coords[n - 1], coords[n - 1]), dest: true });
+    return pts;
   }
 
-  /* 沿途街景（預載版）：metadata 免費查前方全景球 → 圖片在背景「完整載好」才換上，
-     畫面永遠是一張完整圖；上一張還在載就跳過本輪，不排隊堆積 */
-  var rideSvBusy = false;
-  function updateRideSv(lat, lng, heading) {
-    if (rideSvBusy) return;
-    rideSvBusy = true;
-    fetch(SV_PROXY + '?mode=meta&location=' + lat + ',' + lng)
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (!anim || anim.mode !== 'ride') { rideSvBusy = false; return; }
-        if (d && d.status === 'OK' && d.pano_id && d.pano_id !== rideSvPano) {
-          var pano = d.pano_id;
-          var h = Math.round(heading / 15) * 15 % 360;
-          var url = SV_PROXY + '?mode=img&size=300x180&pano=' + encodeURIComponent(pano) + '&heading=' + h;
-          var img = new Image();
-          img.onload = function () {
-            rideSvBusy = false;
-            if (!anim || anim.mode !== 'ride') return;
-            rideSvPano = pano;
-            svPano = pano; svHeading = h; svLngLat = { lat: lat, lng: lng };
-            elSvThumb.src = url;
-            elSvThumb.hidden = false;
-            elSvNopano.hidden = true;
-            elSvBldg.hidden = true;
-            elSvRoad.hidden = true;
-            elSvCoord.textContent = '📍 前方 ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
-          };
-          img.onerror = function () { rideSvBusy = false; };
-          img.src = url;
-        } else {
-          rideSvBusy = false;
-        }
-      }).catch(function () { rideSvBusy = false; });
+  function addBillboard(pt, url) {
+    var el = document.createElement('div');
+    el.className = 'sv-billboard';
+    el.innerHTML = '<img src="' + url + '" alt="路口街景">' +
+      '<div class="sv-bb-tag">' + (pt.dest ? '🏁 目的地' : '↪ 轉彎路口') + '</div>' +
+      '<div class="sv-bb-stem"></div>';
+    var mk = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([pt.lng, pt.lat]).addTo(map);
+    billboards.push(mk);
+  }
+
+  /* 每點：metadata（免費）→ 圖片完整預載 → 立牌；單點 6 秒逾時不擋出發；同全景球去重 */
+  function preloadBillboards(pts) {
+    var used = {};
+    return Promise.all(pts.map(function (pt) {
+      return new Promise(function (res) {
+        var to = setTimeout(res, 6000);
+        fetch(SV_PROXY + '?mode=meta&location=' + pt.lat + ',' + pt.lng)
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!(d && d.status === 'OK' && d.pano_id) || used[d.pano_id]) { clearTimeout(to); res(); return; }
+            used[d.pano_id] = 1;
+            var h = Math.round(pt.brg / 15) * 15 % 360;
+            var url = SV_PROXY + '?mode=img&size=300x180&pano=' + encodeURIComponent(d.pano_id) + '&heading=' + h;
+            var img = new Image();
+            img.onload = function () { clearTimeout(to); addBillboard(pt, url); res(); };
+            img.onerror = function () { clearTimeout(to); res(); };
+            img.src = url;
+          }).catch(function () { clearTimeout(to); res(); });
+      });
+    }));
   }
 
   function wireUi() {

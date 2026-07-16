@@ -333,18 +333,13 @@
     }
     .controls { max-width: 100%; }
     .note { font-size: 10.5px; max-width: 100%; }
-    /* On narrow phones the bottom-right cluster stacks (from the bottom up)
-       attribution → scale → nav. Raising the note by 64px clears attribution, but
-       the scale bar (ScaleControl maxWidth=120) reaches further left than nav, so a
-       58px right reserve still intersected it. Reserve 140px on the right (> scale's
-       120px max) AND keep the 64px lift. Probed on real page: at 320x568 and 390x844
-       the note's box has zero intersection with nav, scale, attribution and the top
-       control bar (320: note 170px wide, 106px clear of topbar; 390: 240px wide,
-       444px clear). */
+    /* 原 140px 右保留是給已移除的常駐免責 note 避讓比例尺用；街景卡是點擊才出現的
+       暫時 UI，允許蓋到比例尺，改回全寬避免卡片被擠成窄長條（實測 375px 曾壓到 225px 寬） */
     .bottom-panel {
-      right: calc(140px + var(--safe-r));
+      right: calc(10px + var(--safe-r));
       bottom: calc(var(--ui-bottom-gap) + 64px);
     }
+    #sv-card { flex-wrap: wrap; }
   }
 
   /* Visually hidden helper for screen readers if needed */
@@ -1377,7 +1372,10 @@
     panoAuthFailed = true;
     if (!elSvLightbox.hidden && !elSvPano.hidden) {
       elSvPano.hidden = true;
-      getEmbedKey().then(function (k) { if (k) showIframeLightbox(k); });
+      getEmbedKey().then(function (k) {
+        /* 回呼時燈箱可能已被關閉：不要在背景載入 iframe */
+        if (k && !elSvLightbox.hidden) showIframeLightbox(k);
+      });
     }
   };
 
@@ -1398,7 +1396,7 @@
   }
 
   function onPanoMove() {
-    if (!pano) return;
+    if (!pano || elSvLightbox.hidden) return; /* 燈箱已關：不再同步回地圖 */
     var p = pano.getPosition();
     if (!p) return;
     svLngLat = { lat: p.lat(), lng: p.lng() };
@@ -1408,7 +1406,7 @@
   }
 
   function onPanoPov() {
-    if (!pano) return;
+    if (!pano || elSvLightbox.hidden) return; /* 燈箱已關：不再同步回地圖 */
     var pov = pano.getPov();
     svHeading = Math.round(((pov.heading % 360) + 360) % 360);
     updateMarkerRotation();
@@ -1457,7 +1455,10 @@
     elSvLightboxFrame.hidden = true;
   }
 
+  var svLbSeq = 0; /* 開燈箱世代序號：關閉後作廢在途的 embedkey/loadMapsJs 回呼，防燈箱自己重開 */
+
   function openSvLightbox() {
+    var seq = ++svLbSeq;
     // 燈箱右上「Google 地圖 ↗」：目前位置/方向的完整街景
     var gUrl = 'https://www.google.com/maps/@?api=1&map_action=pano';
     if (svPano) gUrl += '&pano=' + encodeURIComponent(svPano);
@@ -1466,9 +1467,11 @@
     elSvLightboxOpen.href = gUrl;
 
     getEmbedKey().then(function (k) {
+      if (seq !== svLbSeq) return;
       elSvLightbox.hidden = false;
       if (!k) { showStaticLightbox(); return; }
       loadMapsJs(k).then(function (ok) {
+        if (seq !== svLbSeq) return;
         if (ok && !panoAuthFailed &&
             window.google && window.google.maps && window.google.maps.StreetViewPanorama) {
           showPanoLightbox();
@@ -1480,6 +1483,7 @@
   }
 
   function closeSvLightbox() {
+    svLbSeq++;
     var wasOpen = !elSvLightbox.hidden;
     elSvLightbox.hidden = true;
     elSvLightboxFrame.src = 'about:blank'; // 停掉 iframe，避免背景繼續吃資源

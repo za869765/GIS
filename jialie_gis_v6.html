@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.844</title>
+<title>佳里 GIS v6.845</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1492,29 +1492,20 @@ body[data-theme="dark"] #vil-info-panel .bar-female::before,body[data-theme="dar
 #sv-floating-card .sv-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 #sv-floating-card .sv-card-title{font-size:11px;color:#888;font-weight:600}
 #sv-floating-card .sv-card-coord{font-size:11px;color:#555;font-family:monospace;word-break:break-all}
-#sv-floating-card .sv-card-close{background:none;border:none;color:#999;cursor:pointer;font-size:16px;padding:0;line-height:1;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
-#sv-floating-card .sv-card-close:hover{background:rgba(0,0,0,.06);color:#333}
-#sv-floating-card .sv-card-action{background:#34495e;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s,transform .15s}
-#sv-floating-card .sv-card-action:hover{background:#2c3e50;transform:translateY(-1px)}
-#sv-floating-card .sv-card-action:active{transform:translateY(0)}
 /* 平板 768-1023 */
 @media(min-width:768px) and (max-width:1023px){
   #sv-floating-card{min-width:200px;max-width:280px;padding:11px 13px;left:16px;bottom:16px}
 }
-/* 手機 <768 — bottom sheet 風格，全寬，44px 觸控目標 */
+/* 手機 <768 — 常駐緊湊小卡，浮在底部抽屜之上 */
 @media(max-width:767px){
-  #sv-floating-card{left:12px;right:12px;bottom:12px;min-width:0;max-width:none;padding:14px 16px;border-radius:14px;gap:10px}
-  #sv-floating-card .sv-card-title{font-size:12px}
+  #sv-floating-card{left:12px;bottom:calc(var(--panel-h,0px) + 12px + env(safe-area-inset-bottom,0px));min-width:0;max-width:210px;padding:8px 11px;border-radius:12px;gap:5px}
+  #sv-floating-card .sv-card-title{font-size:11px}
   #sv-floating-card .sv-card-coord{font-size:12px}
-  #sv-floating-card .sv-card-action{font-size:15px;padding:13px 16px;min-height:46px;border-radius:10px}
-  #sv-floating-card .sv-card-close{width:36px;height:36px;font-size:22px}
 }
 /* 暗色模式 */
 body[data-theme="dark"] #sv-floating-card{background:rgba(20,28,40,.96);border-color:#2a3a4e;color:#e1e8ef}
 body[data-theme="dark"] #sv-floating-card .sv-card-title{color:#9eaab9}
 body[data-theme="dark"] #sv-floating-card .sv-card-coord{color:#a8b5c5}
-body[data-theme="dark"] #sv-floating-card .sv-card-close{color:#aab5c0}
-body[data-theme="dark"] #sv-floating-card .sv-card-close:hover{background:rgba(255,255,255,.08);color:#fff}
 /* 動畫:從下方滑入 */
 @keyframes sv-card-slide-in{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 #sv-floating-card[style*="flex"]{animation:sv-card-slide-in .25s cubic-bezier(.4,2,.6,1)}
@@ -1659,14 +1650,12 @@ body[data-theme="dark"] #sv-floating-card .sv-card-close:hover{background:rgba(2
   <button class="meas-btn" id="meas-btn-circle" onclick="setMeasureMode('circle')" title="圓形量測"><span class="meas-btn-icon" id="meas-icon-circle">◯</span><span id="meas-text-circle">畫圓</span></button>
 </div>
 
-<!-- ── v6.827/828 街景浮動 mini-card（B2：點地圖任一處出現，三端響應式） ── -->
+<!-- ── 常駐座標卡（v6.845：不再自動消失、移除街景按鈕→街景請至 3D 頁） ── -->
 <div id="sv-floating-card">
   <div class="sv-card-head">
     <span class="sv-card-title">📍 已選位置</span>
-    <button onclick="hideSvFloatingCard()" title="關閉" class="sv-card-close">✕</button>
   </div>
-  <div id="sv-card-coord" class="sv-card-coord"></div>
-  <button onclick="_svCardClick()" class="sv-card-action">🛣️ 查看街景</button>
+  <div id="sv-card-coord" class="sv-card-coord">點擊地圖顯示座標</div>
 </div>
 
 <!-- ── 機關圖層卡（可拖曳，點空白處移動） ── -->
@@ -3410,8 +3399,8 @@ function _openStreetviewWithCheck(lat,lng){
   }
   window.open('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+lat+','+lng,'_blank','noopener');
 }
-/* ── v6.827 B2 浮動 mini-card：點地圖任一處 → 左下角浮現街景按鈕 ── */
-var _svCardLat=null,_svCardLng=null,_svCardTimer=null;
+/* ── 常駐座標卡（v6.845）：點地圖即更新座標，不自動消失；街景一律至 3D 頁看 ── */
+var _svCardLat=null,_svCardLng=null;
 function showSvFloatingCard(lat,lng){
   _svCardLat=lat; _svCardLng=lng;
   var card=document.getElementById('sv-floating-card');
@@ -3419,18 +3408,10 @@ function showSvFloatingCard(lat,lng){
   var c=document.getElementById('sv-card-coord');
   if(c) c.textContent=lat.toFixed(5)+', '+lng.toFixed(5);
   card.style.display='flex';
-  if(_svCardTimer) clearTimeout(_svCardTimer);
-  _svCardTimer=setTimeout(hideSvFloatingCard, window.innerWidth<768 ? 12000 : 8000);
 }
-function hideSvFloatingCard(){
-  var card=document.getElementById('sv-floating-card');
-  if(card) card.style.display='none';
-  if(_svCardTimer){ clearTimeout(_svCardTimer); _svCardTimer=null; }
-}
-function _svCardClick(){
-  if(_svCardLat!=null && _svCardLng!=null) _openStreetviewWithCheck(_svCardLat,_svCardLng);
-  hideSvFloatingCard();
-}
+function hideSvFloatingCard(){ /* 常駐化後保留給既有呼叫點的空殼 */ }
+/* 開頁即顯示（佔位文字），第一次點擊後換成座標 */
+(function(){ var card=document.getElementById('sv-floating-card'); if(card) card.style.display='flex'; })();
 map.on('click',function(e){
   /* 各種 mode 啟用時不顯示 mini-card，避免干擾 */
   if(typeof addMode!=='undefined' && addMode) return;
@@ -7304,6 +7285,9 @@ function resetNavPanel(){
   const sw=document.getElementById('nav-steps-wrap'); if(sw) sw.style.display='none';
   stopFollowNav();
   _navRouteCoords=null; _navStepMarks=null; _navRouteTotalM=0;
+  /* 作廢在途路線查詢並還原查詢按鈕（防在途回應復活已清除的結果/按鈕卡在查詢中） */
+  _navCalcSeq++;
+  const cb=document.getElementById('nav-calc-btn'); if(cb){cb.disabled=false;cb.textContent='🔍 查詢路線';}
   _updateNavBarQuery();
 }
 
@@ -7465,6 +7449,9 @@ function navClearPoints(){
   const sw=document.getElementById('nav-steps-wrap'); if(sw) sw.style.display='none';
   stopFollowNav();
   _navRouteCoords=null; _navStepMarks=null; _navRouteTotalM=0;
+  /* 作廢在途路線查詢並還原查詢按鈕（防在途回應復活已清除的結果/按鈕卡在查詢中） */
+  _navCalcSeq++;
+  const cb=document.getElementById('nav-calc-btn'); if(cb){cb.disabled=false;cb.textContent='🔍 查詢路線';}
   _updateNavBarQuery();
 }
 
@@ -7711,7 +7698,10 @@ function startFollowNav(){
   document.getElementById('follow-turn-dist').textContent='—';
   if(_followWatch!=null) navigator.geolocation.clearWatch(_followWatch);
   _followWatch=navigator.geolocation.watchPosition(_followTick,
-    ()=>{ document.getElementById('follow-turn-txt').textContent='定位失敗'; },
+    (err)=>{
+      if(err&&err.code===1){ stopFollowNav(); alert('定位權限被拒絕，無法使用站內導航。請至瀏覽器設定開啟定位。'); return; }
+      document.getElementById('follow-turn-txt').textContent=(err&&err.code===3)?'定位逾時，重試中…':'定位失敗，重試中…';
+    },
     {enableHighAccuracy:true,maximumAge:2000,timeout:15000});
 }
 function stopFollowNav(){
@@ -7720,6 +7710,8 @@ function stopFollowNav(){
   document.getElementById('follow-banner').classList.remove('on');
 }
 function _followTick(pos){
+  /* 偏航重算期間 _navRouteCoords 暫為 null，跳過本次 tick 防拋錯 */
+  if(!_navRouteCoords||_navRouteCoords.length<2) return;
   const lat=pos.coords.latitude, lng=pos.coords.longitude;
   if(!_followMarker){
     _followMarker=L.circleMarker([lat,lng],{radius:9,color:'#fff',weight:3,fillColor:'#1a73e8',fillOpacity:1}).addTo(map);
@@ -7768,7 +7760,8 @@ function _followTick(pos){
   }
 }
 
-/* 查詢路線 */
+/* 查詢路線（_navCalcSeq：作廢過時的 OSRM 回應，防舊結果覆蓋新查詢/已清除狀態） */
+let _navCalcSeq=0;
 async function calcNavRoute(){
   const fi=document.getElementById('nav-from-inp')?.value.trim();
   const ti=document.getElementById('nav-to-inp')?.value.trim();
@@ -7779,6 +7772,7 @@ async function calcNavRoute(){
   /* 儲存 fitBounds 前的視角，供關閉導航時恢復 */
   _preNavView={center:map.getCenter(),zoom:map.getZoom()};
 
+  const _seq=++_navCalcSeq;
   const btn=document.getElementById('nav-calc-btn');
   btn.disabled=true; btn.textContent='查詢中…';
   if(_navRouteLayer){map.removeLayer(_navRouteLayer);_navRouteLayer=null;}
@@ -7815,6 +7809,7 @@ async function calcNavRoute(){
       const url=`https://router.project-osrm.org/route/v1/driving/${_navFromLng},${_navFromLat};${_navToLng},${_navToLat}?overview=full&geometries=geojson&steps=true`;
       const resp=await fetch(url,{signal:AbortSignal.timeout(8000)});
       const data=await resp.json();
+      if(_seq!==_navCalcSeq) return; /* 已被新查詢/清除取代 */
       if(data.code==='Ok'&&data.routes?.[0]){
         const route=data.routes[0];
         distKm=(route.distance/1000).toFixed(1);
@@ -7831,6 +7826,7 @@ async function calcNavRoute(){
         done=true;
       } else { throw new Error('no route'); }
     } catch(e){
+      if(_seq!==_navCalcSeq) return; /* 已被新查詢/清除取代 */
       const straight=_navHaversine(_navFromLat,_navFromLng,_navToLat,_navToLng);
       distKm=(straight*1.4).toFixed(1); timeMin=Math.round(straight*1.4/50*60);
       note='（離線路網與路線伺服器皆不可用，採直線×1.4 估算）';
@@ -7841,6 +7837,7 @@ async function calcNavRoute(){
     }
   }
 
+  if(_seq!==_navCalcSeq) return; /* 已被新查詢/清除取代 */
   const mins=timeMin<60?`${timeMin} 分鐘`:`${Math.floor(timeMin/60)} 小時 ${timeMin%60} 分`;
   document.getElementById('nav-dist-val').textContent=`${distKm} km`;
   document.getElementById('nav-time-val').textContent=mins;

@@ -215,6 +215,9 @@
     -webkit-user-drag: none;
   }
   #sv-thumb[hidden] { display: none; }
+  /* 騎行中：縮圖放大作沿途街景輔助畫面 */
+  #sv-card.riding #sv-thumb { width: 236px; height: 140px; }
+  #sv-card.riding { max-width: min(96vw, 560px); }
   #sv-info {
     display: flex;
     flex-direction: column;
@@ -1157,6 +1160,7 @@
     // 點地圖：騎行/飛行選點優先；一般模式浮現街景卡＋自動估算
     //（MapLibre 拖曳後不觸發 click，不會誤觸）
     map.on('click', function (e) {
+      if (anim) return; /* 騎行/飛行中忽略點擊：貼地視角誤點地平線會蓋掉沿途街景卡 */
       if (navMode === 'ride-pick' || navMode === 'fly-pick') { handleNavPick(e.lngLat); return; }
       showSvCard(e.lngLat, queryBuildingInfo(e.point), queryRoadInfo(e.point));
     });
@@ -1829,8 +1833,10 @@
   }
 
   /* —— 模式、標記與動畫 —— */
+  var RIDE_SPEED = 18;  /* 騎行 m/s；飛行固定為 2 倍 */
   var navMode = null;   /* 'ride-pick' | 'fly-pick' */
   var navPts = [];
+  var arriveTimer = null;
   var navMarkers = [];
   var NAV3D_SRC = 'nav3d-route';
   var NAV3D_LINE = 'nav3d-route-line';
@@ -1870,9 +1876,11 @@
       if (anim.marker) anim.marker.remove();
       anim = null;
       setMapHandlers(true);
+      elSvCard.classList.remove('riding');
     }
   }
   function exitNavMode() {
+    if (arriveTimer) { clearTimeout(arriveTimer); arriveTimer = null; }
     stopAnim();
     navMode = null; navPts = []; rideSvPano = null;
     clearNavMarkers();
@@ -1919,6 +1927,22 @@
     });
   }
 
+  /* 台灣右駕：整條路徑往行進方向右側垂直偏移（OSM 路線是道路中心線） */
+  function offsetRight(coords, meters) {
+    if (coords.length < 2) return coords;
+    var out = [];
+    for (var i = 0; i < coords.length; i++) {
+      var brgIn = i > 0 ? brgArr(coords[i - 1], coords[i]) : brgArr(coords[i], coords[i + 1]);
+      var brgOut = i < coords.length - 1 ? brgArr(coords[i], coords[i + 1]) : brgIn;
+      var d = ((brgOut - brgIn + 540) % 360) - 180;
+      var perp = ((brgIn + d / 2) + 90 + 360) % 360; /* 行進方位 +90° = 右側 */
+      var rad = perp * Math.PI / 180;
+      var kx = 111320 * Math.cos(coords[i][1] * Math.PI / 180), ky = 111320;
+      out.push([coords[i][0] + Math.sin(rad) * meters / kx, coords[i][1] + Math.cos(rad) * meters / ky]);
+    }
+    return out;
+  }
+
   function startAnimAlong(coords, opts) {
     stopAnim();
     var cum = [0];
@@ -1928,13 +1952,17 @@
       .setLngLat(coords[0]).addTo(map);
     anim = { timer: null, coords: coords, cum: cum, total: total, pos: 0, speed: opts.speed,
              marker: marker, mode: opts.mode, zoom: opts.zoom, pitch: opts.pitch, lastSvAt: -999, seg: 1,
-             brg: brgArr(coords[0], coords[1] || coords[0]) };
+             brg: brgArr(coords[0], coords[1] || coords[0]), lastT: performance.now() };
     setMapHandlers(false); /* 託管：僅停止鈕/Esc 可中斷 */
     anim.timer = setInterval(animTick, 50);
   }
   function animTick() {
     if (!anim) return;
-    anim.pos += anim.speed * 0.05;
+    /* 依實際經過時間推進（interval 被瀏覽器節流時速度依然正確），單次上限 1.5s 防瞬移 */
+    var nowT = performance.now();
+    var dt = Math.min(1.5, (nowT - anim.lastT) / 1000);
+    anim.lastT = nowT;
+    anim.pos += anim.speed * dt;
     var done = anim.pos >= anim.total;
     var p = Math.min(anim.pos, anim.total);
     while (anim.seg < anim.cum.length - 1 && anim.cum[anim.seg] < p) anim.seg++;
@@ -1958,18 +1986,26 @@
       var endMode = anim.mode;
       stopAnim();
       elRideNoteTxt.textContent = (endMode === 'ride' ? '🛵' : '✈️') + ' 已抵達目的地';
-      if (endMode === 'fly') map.easeTo({ zoom: 16.5, pitch: 58, duration: 1200 });
+      if (endMode === 'fly') map.easeTo({ pitch: 62, duration: 1000 });
+      arriveTimer = setTimeout(exitNavMode, 2200); /* 抵達自動收尾，免手動按停止 */
     }
   }
   function startRide(route) {
-    elSvCard.hidden = false; /* 沿途街景卡 */
+    /* 沿途街景輔助畫面：卡片常駐 + 縮圖放大 */
+    elSvCard.hidden = false;
+    elSvCard.classList.add('riding');
+    elSvNopano.hidden = true;
+    elSvBldg.hidden = true;
+    elSvRoad.hidden = true;
+    elSvCoord.textContent = '📍 沿途街景載入中…';
     elRideNoteTxt.textContent = '🛵 出發！全程 ' + (route.dist >= 1000 ? (route.dist / 1000).toFixed(1) + ' km' : Math.round(route.dist) + ' m');
-    /* 貼地平視角度：地平線在畫面上方、3D 建築迎面流過（搭配沿途街景卡） */
-    startAnimAlong(route.coords, { emoji: '🛵', speed: 13, zoom: 19.5, pitch: 82, mode: 'ride' });
+    /* 貼地平視角度：地平線在畫面上方、3D 建築迎面流過（搭配沿途街景卡）
+       右駕：路徑右偏 3m 騎在自己車道 */
+    startAnimAlong(offsetRight(route.coords, 3), { emoji: '🛵', speed: RIDE_SPEED, zoom: 19.5, pitch: 82, mode: 'ride' });
   }
   function startFly(a, b) {
-    /* 高空掠過視角 */
-    startAnimAlong([a, b], { emoji: '✈️', speed: 70, zoom: 14.6, pitch: 60, mode: 'fly' });
+    /* 屋頂高度掠過：略高於 3D 建築、看得見屋頂與街廓；速度＝騎行 2 倍 */
+    startAnimAlong([a, b], { emoji: '✈️', speed: RIDE_SPEED * 2, zoom: 17.4, pitch: 72, mode: 'fly' });
   }
   /* 沿途街景：每 ~110m 查一次 metadata（免費），換到新全景球才載縮圖（有 30 天邊緣快取） */
   function updateRideSv(lat, lng, heading) {

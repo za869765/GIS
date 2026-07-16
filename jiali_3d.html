@@ -406,6 +406,14 @@
   .pt-chip.sel { background: rgba(255, 209, 102, 0.28); border-color: #ffd166; }
   .pt-chip .x { opacity: 0.75; font-size: 18px; padding: 0 3px; }
   .pt-chip .x:hover { opacity: 1; color: #ff8a80; }
+  /* 途經點地圖徽章：橘底白框數字，與紅色終點針區分 */
+  .wp-marker {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: #ffb020; border: 3px solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 900; color: #4a2c00;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  }
 
   .status {
     position: absolute;
@@ -1963,8 +1971,17 @@
   function rebuildNavMarkers() {
     clearNavMarkers();
     navPts.forEach(function (p, i) {
-      var mk = new maplibregl.Marker({ color: i === 0 ? '#2ecc71' : '#ff5e57' })
-        .setLngLat(p).addTo(map);
+      var mk;
+      if (i > 0 && i < navPts.length - 1) {
+        /* 途經點：橘色數字徽章，與紅色終點針明確區分，編號對應籌碼「途經N」 */
+        var el = document.createElement('div');
+        el.className = 'wp-marker';
+        el.textContent = i;
+        mk = new maplibregl.Marker({ element: el }).setLngLat(p).addTo(map);
+      } else {
+        mk = new maplibregl.Marker({ color: i === 0 ? '#2ecc71' : '#ff5e57' })
+          .setLngLat(p).addTo(map);
+      }
       navMarkers.push(mk);
     });
   }
@@ -1974,7 +1991,7 @@
       var chip = document.createElement('span');
       chip.className = 'pt-chip' + (i === navSelIdx ? ' sel' : '');
       var name = i === 0 ? '🟢 起點' :
-        (i === navPts.length - 1 ? '🔴 終點' : '📍 途經' + i);
+        (i === navPts.length - 1 ? '🔴 終點' : '🟠 途經' + i);
       chip.innerHTML = '<span>' + name + '</span><span class="x" title="刪除此點">✕</span>';
       chip.querySelector('.x').addEventListener('click', function (ev) {
         ev.stopPropagation();
@@ -2070,6 +2087,11 @@
     if (nowT - (anim.lastSignT || 0) > 400) {
       anim.lastSignT = nowT;
       var pos = [lng, lat];
+      /* 已經過的轉彎立牌收掉（過點 30m）；無 at 的（衛生所/目的地）保留 */
+      billboards = billboards.filter(function (b) {
+        if (b.at != null && anim.pos > b.at + 30) { b.mk.remove(); return false; }
+        return true;
+      });
       roadSigns.forEach(function (s) {
         if (!s.near) return;
         s.mk.getElement().style.display = rgHavM(pos, s.ll) < 550 ? '' : 'none';
@@ -2223,7 +2245,7 @@
     elRideNoteTxt.textContent = '📸 沿途重點街景預載中…';
     clearBillboards();
     var pts = pickKeyPoints(route.coords);
-    pts.push({ lng: 120.1777263, lat: 23.1638778, brg: 0, dest: false, label: '🏥 佳里區衛生所' });
+    pts.push({ lng: 120.1777263, lat: 23.1638778, brg: 0, dest: false, label: '🏥 佳里區衛生所', face: true });
     preloadBillboards(pts).then(function () {
       if (pendingCancelled()) return; /* 預載期間被取消 */
       elRideNoteTxt.textContent = '🛵 出發！全程 ' + (route.dist >= 1000 ? (route.dist / 1000).toFixed(1) + ' km' : Math.round(route.dist) + ' m');
@@ -2240,7 +2262,7 @@
   function startFly(path) {
     /* 飛行資訊層：僅衛生所立牌＋鄰區大字＋里別區塊＋幹道大字（就近浮現） */
     clearBillboards();
-    preloadBillboards([{ lng: 120.1777263, lat: 23.1638778, brg: 0, dest: false, label: '🏥 佳里區衛生所' }]);
+    preloadBillboards([{ lng: 120.1777263, lat: 23.1638778, brg: 0, dest: false, label: '🏥 佳里區衛生所', face: true }]);
     ensureDirSigns();
     /* 屋頂高度掠過；速度＝騎行 2 倍 */
     startAnimAlong(path, { emoji: '✈️', speed: RIDE_SPEED * 2, zoom: 18.0, pitch: 70, mode: 'fly', iconRot: -45 });
@@ -2294,9 +2316,10 @@
       } catch (e) { elRideNoteTxt.textContent = '算路失敗：' + e.message; }
     });
   }
-  /* ── 沿途街景大立牌：只取「轉彎路口＋目的地」，出發前預載、立在地圖路口上 ── */
+  /* ── 沿途街景大立牌：只取「轉彎路口＋目的地」，出發前預載、立在地圖路口上；
+     轉彎立牌帶 at（沿線里程），騎過即收掉 ── */
   var billboards = [];
-  function clearBillboards() { billboards.forEach(function (m) { m.remove(); }); billboards = []; }
+  function clearBillboards() { billboards.forEach(function (b) { b.mk.remove(); }); billboards = []; }
 
   /* 路網頂點度數表（座標字串 → 相交邊數），供匯流/路口判定 */
   var rgDegreeMap = null;
@@ -2337,7 +2360,7 @@
         var arrow = turn ? (sd > 0 ? '↱' : '↰') : (sd > 0 ? '⬈' : '⬉');
         var nm = rgNameNear(coords[i], coords[i + 1]);
         pts.push({ lng: coords[i][0], lat: coords[i][1], brg: b2, dest: false,
-                   label: (nm ? nm + ' ' : '') + dir, arrow: arrow });
+                   label: (nm ? nm + ' ' : '') + dir, arrow: arrow, at: acc });
         lastAt = acc;
       }
     }
@@ -2356,7 +2379,7 @@
       '<div class="sv-bb-stem"></div>';
     var mk = new maplibregl.Marker({ element: el, anchor: 'bottom' })
       .setLngLat([pt.lng, pt.lat]).addTo(map);
-    billboards.push(mk);
+    billboards.push({ mk: mk, at: pt.at });
   }
 
   /* 每點：metadata（免費）→ 圖片完整預載 → 立牌；單點 6 秒逾時不擋出發；同全景球去重 */
@@ -2370,7 +2393,10 @@
           .then(function (d) {
             if (!(d && d.status === 'OK' && d.pano_id) || used[d.pano_id]) { clearTimeout(to); res(); return; }
             used[d.pano_id] = 1;
-            var h = Math.round(pt.brg / 15) * 15 % 360;
+            /* face：從全景點「朝目標建築」取景（如衛生所正面照）；其餘用行進方位 */
+            var h = (pt.face && d.location)
+              ? Math.round(bearingDeg(d.location, { lat: pt.lat, lng: pt.lng }) / 15) * 15 % 360
+              : Math.round(pt.brg / 15) * 15 % 360;
             var url = SV_PROXY + '?mode=img&size=300x180&pano=' + encodeURIComponent(d.pano_id) + '&heading=' + h;
             var img = new Image();
             img.onload = function () { clearTimeout(to); addBillboard(pt, url); res(); };

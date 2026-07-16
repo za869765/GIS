@@ -671,6 +671,7 @@
 
   function startFlyover() {
     if (!map || !state.styleReady) return;
+    if (state.basemap !== 'satellite') return; /* 環景只在衛星圖可用 */
     if (reduceMotion) {
       // Gentle static reframe instead of continuous motion
       goCityCenter();
@@ -884,6 +885,9 @@
     /* 兩顆獨立按鈕：作用中的那顆亮藍邊（aria-pressed 樣式） */
     btnVector.setAttribute('aria-pressed', satelliteOn ? 'false' : 'true');
     btnSatellite.setAttribute('aria-pressed', satelliteOn ? 'true' : 'false');
+    /* 環景只在衛星圖可用 */
+    btnFly.disabled = !satelliteOn;
+    if (!satelliteOn && state.flying) stopFlyover();
     if (!map || !state.styleReady) return;
 
     if (state.basemap === 'satellite') {
@@ -1872,11 +1876,15 @@
   }
   function stopAnim() {
     if (anim) {
+      var prevBasemap = anim.prevBasemap, prevSvLines = anim.prevSvLines;
       clearInterval(anim.timer);
       if (anim.marker) anim.marker.remove();
       anim = null;
       setMapHandlers(true);
       elSvCard.classList.remove('riding');
+      /* 還原動畫前的底圖與街景線（預設情境＝回衛星圖+開街景線） */
+      if (prevBasemap === 'satellite') setBasemap('satellite');
+      if (prevSvLines) setSvLinesVisible(true);
     }
   }
   function exitNavMode() {
@@ -1952,7 +1960,11 @@
       .setLngLat(coords[0]).addTo(map);
     anim = { timer: null, coords: coords, cum: cum, total: total, pos: 0, speed: opts.speed,
              marker: marker, mode: opts.mode, zoom: opts.zoom, pitch: opts.pitch, lastSvAt: -999, seg: 1,
-             brg: brgArr(coords[0], coords[1] || coords[0]), lastT: performance.now() };
+             brg: brgArr(coords[0], coords[1] || coords[0]), lastT: performance.now(),
+             prevBasemap: state.basemap, prevSvLines: state.svLinesOn };
+    /* 效能模式：動畫期間強制向量圖＋關街景線（衛星磚+覆蓋線在貼地高速移動下太吃資源） */
+    if (state.basemap !== 'vector') setBasemap('vector');
+    if (state.svLinesOn) setSvLinesVisible(false);
     setMapHandlers(false); /* 託管：僅停止鈕/Esc 可中斷 */
     anim.timer = setInterval(animTick, 50);
   }

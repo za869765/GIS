@@ -203,6 +203,8 @@
   #sv-rot { display: flex; flex-direction: column; gap: 4px; }
   #sv-rot[hidden] { display: none; }
   #sv-rot .btn { min-height: 28px; min-width: 34px; padding: 0 8px; font-size: 14px; }
+  #sv-bldg { color: var(--accent-2); font-weight: 600; }
+  #sv-road { color: #ffc57a; font-weight: 600; }
   #sv-lightbox {
     position: fixed;
     inset: 0;
@@ -357,6 +359,8 @@
       </span>
       <span id="sv-nopano" hidden>此處無街景覆蓋</span>
       <span id="sv-coord"><strong>📍</strong></span>
+      <span id="sv-bldg" hidden></span>
+      <span id="sv-road" hidden></span>
       <button type="button" class="btn btn-primary" id="btn-sv">🛣️ 查看街景</button>
       <button type="button" class="btn" id="btn-sv-close" aria-label="關閉街景卡">✕</button>
     </div>
@@ -470,6 +474,8 @@
   var elSvRot = document.getElementById('sv-rot');
   var btnSvLeft = document.getElementById('btn-sv-left');
   var btnSvRight = document.getElementById('btn-sv-right');
+  var elSvBldg = document.getElementById('sv-bldg');
+  var elSvRoad = document.getElementById('sv-road');
 
   function clamp(n, min, max) {
     return Math.min(max, Math.max(min, n));
@@ -797,6 +803,7 @@
 
     setBuildingsVisible(state.buildingsOn);
     setSvLinesVisible(state.svLinesOn);
+    ensureRoadQueryLayers(); // 路寬估算的查詢專用透明線（衛星模式也可點）
     // Ensure boundary stays on top of basemap fills
     raiseBoundary();
   }
@@ -1012,10 +1019,114 @@
       }, { passive: true });
     });
 
-    // 點地圖任一處 → 底部浮現街景卡（MapLibre 拖曳後不觸發 click，不會誤開）
+    // 點地圖 → 街景卡＋自動估算（建築高度/佔地、路寬）
+    //（MapLibre 拖曳後不觸發 click，不會誤觸）
     map.on('click', function (e) {
-      showSvCard(e.lngLat);
+      showSvCard(e.lngLat, queryBuildingInfo(e.point), queryRoadInfo(e.point));
     });
+  }
+
+  /* ── 建築估算：render_height（OSM/AI 推算）＋足跡外框約略寬深 ── */
+  function bboxMeters(geom, lat) {
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    function walk(c) {
+      if (!c) return;
+      if (typeof c[0] === 'number') {
+        if (c[0] < minX) minX = c[0];
+        if (c[0] > maxX) maxX = c[0];
+        if (c[1] < minY) minY = c[1];
+        if (c[1] > maxY) maxY = c[1];
+        return;
+      }
+      for (var i = 0; i < c.length; i++) walk(c[i]);
+    }
+    walk(geom && geom.coordinates);
+    if (minX === Infinity) return null;
+    return {
+      w: (maxX - minX) * 111320 * Math.cos(lat * Math.PI / 180),
+      d: (maxY - minY) * 111320
+    };
+  }
+
+  function queryBuildingInfo(point) {
+    if (!map || !state.styleReady || !map.getLayer(BUILDING_LAYER_ID)) return null;
+    try {
+      var fs = map.queryRenderedFeatures(point, { layers: [BUILDING_LAYER_ID] });
+      var best = null, h = null;
+      for (var i = 0; i < fs.length; i++) {
+        var rh = fs[i].properties && +fs[i].properties.render_height;
+        if (rh && (h == null || rh > h)) { h = rh; best = fs[i]; }
+      }
+      if (h == null) return null;
+      // 圖磚邊緣的建築足跡可能被切到，寬深僅供參考
+      var lat = map.unproject(point).lat;
+      var box = best.geometry ? bboxMeters(best.geometry, lat) : null;
+      return { h: h, box: box };
+    } catch (_) { return null; }
+  }
+
+  /* ── 路寬估算：從向量圖磚道路等級推估（非實測）。
+     衛星模式會隱藏樣式內建道路線，因此鋪兩層幾乎透明的查詢專用線
+     （加在影像之上，opacity 0.01 肉眼不可見但可被 queryRenderedFeatures 命中） ── */
+  var ROADQ_LINE = 'roadq-line';
+  var ROADQ_NAME = 'roadq-name';
+  var ROAD_CLASS_INFO = {
+    motorway: { label: '國道/高速公路', w: 25 },
+    trunk: { label: '快速道路', w: 18 },
+    primary: { label: '主要道路', w: 15 },
+    secondary: { label: '次要道路', w: 12 },
+    tertiary: { label: '一般道路', w: 10 },
+    minor: { label: '街道', w: 8 },
+    residential: { label: '住宅街道', w: 8 },
+    unclassified: { label: '街道', w: 8 },
+    living_street: { label: '生活街道', w: 6 },
+    service: { label: '服務道路/巷弄', w: 5 },
+    pedestrian: { label: '行人徒步區', w: 4 },
+    track: { label: '產業道路', w: 4 },
+    path: { label: '小徑', w: 2 }
+  };
+
+  function ensureRoadQueryLayers() {
+    if (!map.getSource('openmaptiles')) return;
+    if (!map.getLayer(ROADQ_LINE)) {
+      map.addLayer({
+        id: ROADQ_LINE,
+        type: 'line',
+        source: 'openmaptiles',
+        'source-layer': 'transportation',
+        paint: { 'line-opacity': 0.01, 'line-width': 12, 'line-color': '#000' }
+      });
+    }
+    if (!map.getLayer(ROADQ_NAME)) {
+      map.addLayer({
+        id: ROADQ_NAME,
+        type: 'line',
+        source: 'openmaptiles',
+        'source-layer': 'transportation_name',
+        paint: { 'line-opacity': 0.01, 'line-width': 12, 'line-color': '#000' }
+      });
+    }
+  }
+
+  function queryRoadInfo(point) {
+    if (!map || !state.styleReady) return null;
+    try {
+      var layers = [];
+      if (map.getLayer(ROADQ_NAME)) layers.push(ROADQ_NAME);
+      if (map.getLayer(ROADQ_LINE)) layers.push(ROADQ_LINE);
+      if (!layers.length) return null;
+      var fs = map.queryRenderedFeatures(point, { layers: layers });
+      if (!fs.length) return null;
+      var name = '', cls = '';
+      for (var i = 0; i < fs.length; i++) {
+        var p = fs[i].properties || {};
+        if (!name && (p['name:zh'] || p.name)) name = p['name:zh'] || p.name;
+        if (!cls && p.class && ROAD_CLASS_INFO[p.class]) cls = p.class;
+      }
+      if (!cls && !name) return null;
+      var info = ROAD_CLASS_INFO[cls] || { label: '道路', w: 8 };
+      return { name: name, label: info.label, width: info.w };
+    } catch (_) { return null; }
   }
 
   /* ── 街景卡：點選處放標記＋縮圖預覽（點縮圖放大、⟲⟳ 轉向），按鈕開 Google 街景 ──
@@ -1059,9 +1170,27 @@
     refreshSvImages();
   }
 
-  function showSvCard(lngLat) {
+  function showSvCard(lngLat, bldg, road) {
     svLngLat = lngLat;
     elSvCoord.innerHTML = '<strong>📍 ' + lngLat.lat.toFixed(5) + ', ' + lngLat.lng.toFixed(5) + '</strong>';
+    if (bldg) {
+      var floors = Math.max(1, Math.round(bldg.h / 3)); // 每層約 3 m 估算
+      var txt = '🏢 高約 ' + Math.round(bldg.h) + ' m（≈' + floors + ' 樓）';
+      if (bldg.box && bldg.box.w > 1 && bldg.box.d > 1) {
+        txt += '・佔地約 ' + Math.round(bldg.box.w) + '×' + Math.round(bldg.box.d) + ' m';
+      }
+      elSvBldg.textContent = txt;
+      elSvBldg.hidden = false;
+    } else {
+      elSvBldg.hidden = true;
+    }
+    if (road) {
+      elSvRoad.textContent = '🛣️ ' + (road.name ? road.name + '（' + road.label + '）' : road.label) +
+        ' 路寬約 ' + road.width + ' m（依道路等級估算）';
+      elSvRoad.hidden = false;
+    } else {
+      elSvRoad.hidden = true;
+    }
     elSvCard.hidden = false;
     if (!svMarker) {
       svMarker = new maplibregl.Marker({ color: '#3db8ff' });

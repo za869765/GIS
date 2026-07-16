@@ -1,5 +1,5 @@
 // 對 /api/* 做 PIN 驗證；以下 path 不需要驗證
-const PUBLIC = new Set(['/api/login', '/api/logout', '/api/me', '/api/overlay']);
+const PUBLIC = new Set(['/api/login', '/api/logout', '/api/me', '/api/overlay', '/api/sv']);
 
 export async function onRequest(context) {
   const { request, env, next } = context;

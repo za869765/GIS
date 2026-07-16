@@ -189,6 +189,36 @@
   #sv-card { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   #sv-card[hidden] { display: none; }
   #sv-card .btn { min-height: 34px; }
+  #sv-thumb {
+    display: block;
+    width: 150px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: zoom-in;
+  }
+  #sv-thumb[hidden] { display: none; }
+  #sv-nopano { color: var(--muted); }
+  #sv-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(4, 10, 18, 0.78);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    backdrop-filter: blur(4px);
+  }
+  #sv-lightbox[hidden] { display: none; }
+  #sv-lightbox img {
+    max-width: 92vw;
+    max-height: 86vh;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
 
   .status {
     position: absolute;
@@ -312,12 +342,19 @@
   </div>
 
   <div class="ui-layer bottom-panel">
-    <!-- 點地圖任一處浮現街景卡：開 Google 街景新分頁，免 API key（同主頁 v6.825 做法） -->
+    <!-- 點地圖任一處浮現街景卡：縮圖預覽（Static API）＋點縮圖放大＋開 Google 街景新分頁 -->
     <div class="note" id="sv-card" hidden>
+      <img id="sv-thumb" alt="街景預覽" title="點擊放大" hidden>
+      <span id="sv-nopano" hidden>此處無街景覆蓋</span>
       <span id="sv-coord"><strong>📍</strong></span>
       <button type="button" class="btn btn-primary" id="btn-sv">🛣️ 查看街景</button>
       <button type="button" class="btn" id="btn-sv-close" aria-label="關閉街景卡">✕</button>
     </div>
+  </div>
+
+  <!-- 街景縮圖放大檢視（點任意處或 Esc 關閉） -->
+  <div id="sv-lightbox" hidden>
+    <img id="sv-lightbox-img" alt="街景放大預覽">
   </div>
 
 <script>
@@ -332,6 +369,9 @@
   var TOWNS_URL = 'https://cdn.jsdelivr.net/npm/taiwan-atlas@latest/towns-10t.json';
   var LIBERTY_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
   var ESRI_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  /* 街景卡縮圖預覽走同源 Pages Function 代理（/api/sv），API key 存 Pages secret 不落前端。
+     mode=meta 查覆蓋（免費）、mode=img 取靜態圖（每月前 1 萬次免費） */
+  var SV_PROXY = '/api/sv';
   var ESRI_ATTR =
     'Tiles &copy; <a href="https://www.esri.com/" target="_blank" rel="noopener noreferrer">Esri</a> — ' +
     'Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community';
@@ -393,6 +433,10 @@
   var elSvCoord = document.getElementById('sv-coord');
   var btnSv = document.getElementById('btn-sv');
   var btnSvClose = document.getElementById('btn-sv-close');
+  var elSvThumb = document.getElementById('sv-thumb');
+  var elSvNopano = document.getElementById('sv-nopano');
+  var elSvLightbox = document.getElementById('sv-lightbox');
+  var elSvLightboxImg = document.getElementById('sv-lightbox-img');
 
   function clamp(n, min, max) {
     return Math.min(max, Math.max(min, n));
@@ -892,9 +936,16 @@
     });
   }
 
-  /* ── 街景卡：點選處放標記，按鈕開 Google 街景（免 API key，同主頁做法） ── */
+  /* ── 街景卡：點選處放標記＋縮圖預覽（點縮圖放大），按鈕開 Google 街景 ── */
   var svLngLat = null;
   var svMarker = null;
+  var svToken = 0; // 連點多處時只認最後一次的 metadata 回應
+
+  function svImgUrl(lngLat, w, h) {
+    // 傳 location（非 pano_id）→ Google 自動把鏡頭朝向點選處
+    return SV_PROXY + '?mode=img&size=' + w + 'x' + h +
+      '&location=' + lngLat.lat + ',' + lngLat.lng;
+  }
 
   function showSvCard(lngLat) {
     svLngLat = lngLat;
@@ -904,11 +955,36 @@
       svMarker = new maplibregl.Marker({ color: '#3db8ff' });
     }
     svMarker.setLngLat(lngLat).addTo(map);
+
+    // 縮圖：先查 metadata（免費）確認覆蓋，無街景就不發計費的圖片請求
+    var t = ++svToken;
+    elSvThumb.hidden = true;
+    elSvThumb.removeAttribute('src');
+    elSvNopano.hidden = true;
+    fetch(SV_PROXY + '?mode=meta&location=' + lngLat.lat + ',' + lngLat.lng)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (t !== svToken) return;
+        if (d && d.status === 'OK') {
+          elSvThumb.src = svImgUrl(lngLat, 300, 180); // 2x 尺寸縮至 150x90 顯示，高解析
+          elSvThumb.hidden = false;
+        } else {
+          elSvNopano.hidden = false;
+        }
+      })
+      .catch(function () {
+        // metadata 失敗（斷線等）→ 直接試載縮圖，無覆蓋時 Google 回灰底佔位圖
+        if (t !== svToken) return;
+        elSvThumb.src = svImgUrl(lngLat, 300, 180);
+        elSvThumb.hidden = false;
+      });
   }
 
   function hideSvCard() {
     elSvCard.hidden = true;
+    elSvLightbox.hidden = true;
     svLngLat = null;
+    svToken++;
     if (svMarker) svMarker.remove();
   }
 
@@ -935,12 +1011,24 @@
       );
     });
     btnSvClose.addEventListener('click', hideSvCard);
+    elSvThumb.addEventListener('click', function () {
+      if (!svLngLat) return;
+      elSvLightboxImg.src = svImgUrl(svLngLat, 640, 400); // Static API 免費層最大 640
+      elSvLightbox.hidden = false;
+    });
+    elSvLightbox.addEventListener('click', function () {
+      elSvLightbox.hidden = true;
+    });
 
     // Keyboard: 1–7 quick actions when not typing in inputs
     document.addEventListener('keydown', function (e) {
       if (e.defaultPrevented) return;
       var tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) {
+        return;
+      }
+      if (e.key === 'Escape' && !elSvLightbox.hidden) {
+        elSvLightbox.hidden = true;
         return;
       }
       if (e.key === 'Escape' && !elSvCard.hidden) {

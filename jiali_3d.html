@@ -291,7 +291,8 @@
   <div class="ui-layer top-bar">
     <div class="brand">
       <h1>佳里區 3D AI空照</h1>
-      <p>· 非真實測量</p>
+      <!-- 免責合併於此（原底部 note 太擋地圖）；id 保留給邊界載入失敗訊息 append -->
+      <p id="source-note">· 非真實測量・AI推算可能有誤，僅供參考。</p>
     </div>
     <div class="controls" role="toolbar" aria-label="地圖控制">
       <a class="btn btn-primary" href="jialie_gis_v6.html" id="btn-back" title="返回佳里 GIS">
@@ -316,10 +317,6 @@
       <span id="sv-coord"><strong>📍</strong></span>
       <button type="button" class="btn btn-primary" id="btn-sv">🛣️ 查看街景</button>
       <button type="button" class="btn" id="btn-sv-close" aria-label="關閉街景卡">✕</button>
-    </div>
-    <!-- 完整圖資出處由右下角 MapLibre attribution 列標示，此處僅留免責一句 -->
-    <div class="note" id="source-note">
-      AI推算可能有誤，僅供參考。
     </div>
   </div>
 

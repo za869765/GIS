@@ -53,6 +53,7 @@ export async function onRequestPost({ env, params, request }) {
   // 過濾 + 型別轉換 + 必填欄位檢查
   const cleaned = [];
   const errors = [];
+  const NUM_RANGES = { lat: [-90, 90], lng: [-180, 180] };
   rows.forEach((row, idx) => {
     const obj = {};
     for (const c of t.cols) {
@@ -63,9 +64,17 @@ export async function onRequestPost({ env, params, request }) {
     const missing = t.required.filter(c => !(c in obj));
     if (missing.length) {
       errors.push({ row: idx + 1, missing });
-    } else {
-      cleaned.push(obj);
+      return;
     }
+    // 數值欄驗證：NaN/Infinity 擋下、經緯度限範圍、人口/AB 數不得為負
+    for (const c of (t.numCols || [])) {
+      if (!(c in obj)) continue;
+      if (!Number.isFinite(obj[c])) { errors.push({ row: idx + 1, invalid: c }); return; }
+      const r = NUM_RANGES[c];
+      if (r && (obj[c] < r[0] || obj[c] > r[1])) { errors.push({ row: idx + 1, out_of_range: c }); return; }
+      if (/^(pop_|ab_)/.test(c) && obj[c] < 0) { errors.push({ row: idx + 1, negative: c }); return; }
+    }
+    cleaned.push(obj);
   });
 
   if (!cleaned.length) {
@@ -93,47 +102,50 @@ export async function onRequestPost({ env, params, request }) {
   }
 
   await audit(env, 'IMPORT', params.name, `${inserted}rows`, { mode, total: cleaned.length, inserted });
+  // 誠實回報：批次寫入全滅 → 500；部分失敗 → ok:false 讓前端顯示警告
+  const allOk = failed.length === 0;
   return json({
-    ok: true,
+    ok: allOk,
     total_in: rows.length,
     inserted,
     parse_errors: errors,
     batch_errors: failed
-  });
+  }, (!allOk && inserted === 0) ? 500 : 200);
 }
 
-// 簡易 CSV parser：支援雙引號內含逗號跟雙引號（""）；不支援多行 cell。
+// CSV parser：支援 quoted cell 內含逗號、雙引號（""）與換行（跨行維持 quote 狀態）
 function parseCsv(text) {
-  const lines = text.replace(/\r\n/g, '\n').split('\n').filter(l => l.length);
-  if (lines.length < 2) return [];
-  const headers = splitCsvLine(lines[0]);
-  return lines.slice(1).map(line => {
-    const cells = splitCsvLine(line);
+  const src = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const records = [];
+  let row = [], cur = '', inQ = false;
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (inQ) {
+      if (ch === '"') {
+        if (src[i + 1] === '"') { cur += '"'; i++; }
+        else inQ = false;
+      } else cur += ch;
+    } else if (ch === '"') {
+      inQ = true;
+    } else if (ch === ',') {
+      row.push(cur); cur = '';
+    } else if (ch === '\n') {
+      row.push(cur);
+      if (row.some(c => c.length)) records.push(row);
+      row = []; cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  row.push(cur);
+  if (row.some(c => c.length)) records.push(row);
+  if (records.length < 2) return [];
+  const headers = records[0];
+  return records.slice(1).map(cells => {
     const obj = {};
     headers.forEach((h, i) => { obj[h.trim()] = cells[i] !== undefined ? cells[i] : ''; });
     return obj;
   });
-}
-
-function splitCsvLine(line) {
-  const out = [];
-  let cur = '';
-  let inQuote = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuote) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') { cur += '"'; i++; }
-        else inQuote = false;
-      } else cur += ch;
-    } else {
-      if (ch === ',') { out.push(cur); cur = ''; }
-      else if (ch === '"' && cur === '') inQuote = true;
-      else cur += ch;
-    }
-  }
-  out.push(cur);
-  return out;
 }
 
 async function audit(env, action, table, key, detail) {

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.845</title>
+<title>佳里 GIS v6.846</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -166,7 +166,7 @@ input,select,textarea,button{font-family:inherit}
 #follow-turn{display:flex;align-items:center;gap:10px;min-width:0}
 #follow-turn-icon{font-size:26px;line-height:1;flex:none}
 #follow-meta{display:flex;align-items:center;gap:8px;flex:none}
-#follow-stop{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);color:#fff;
+#follow-stop,#follow-retry{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);color:#fff;
   border-radius:9px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer}
 
 /* ── 導航浮動列 ── */
@@ -1640,6 +1640,7 @@ body[data-theme="dark"] #sv-floating-card .sv-card-coord{color:#a8b5c5}
   </div>
   <div id="follow-meta">
     <span id="follow-remain" style="font-size:12px;white-space:nowrap">—</span>
+    <button onclick="startFollowNav()" id="follow-retry" style="display:none">↻ 重試</button>
     <button onclick="stopFollowNav()" id="follow-stop">結束</button>
   </div>
 </div>
@@ -3922,11 +3923,18 @@ function setFilter(el){
 }
 /* switchTab -> see switchMap below */
 
+/* 共用 CSV cell encoder：引號/逗號/換行正規跳脫 + Excel 公式注入防護（=+-@ 開頭前綴 '） */
+function _csvCell(v){
+  let s=(v==null?'':String(v));
+  if(/^\s*[=+\-@]/.test(s)) s="'"+s;
+  if(/[",\n]/.test(s)) s='"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
 function exportCSV(){
   if(!cases.length){alert('尚無個案');return;}
   const h=['姓名','所屬里','所屬地區','案件類型','狀態','路名','巷弄','號','之','樓','完整地址','電話','出生年次','負責人員','備註','緯度','經度','更新'];
-  const rows=cases.map(c=>[c.name,c.village||'',VIL_TO_DIST[c.village]||'',c.type,SL[c.status],c.road||'',c.lane||'',c.houseNum||'',c.houseNumExt||'',c.floor||'',c.addrFull||'',c.phone||'',c.birth||'',c.worker||'',(c.notes||'').replace(/,/g,'，'),c.lat||'',c.lng||'',c.updated||'']);
-  const csv='\uFEFF'+[h,...rows].map(r=>r.join(',')).join('\n');
+  const rows=cases.map(c=>[c.name,c.village||'',VIL_TO_DIST[c.village]||'',c.type,SL[c.status],c.road||'',c.lane||'',c.houseNum||'',c.houseNumExt||'',c.floor||'',c.addrFull||'',c.phone||'',c.birth||'',c.worker||'',c.notes||'',c.lat||'',c.lng||'',c.updated||'']);
+  const csv='﻿'+[h,...rows].map(r=>r.map(_csvCell).join(',')).join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download=`佳里個案_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'')}.csv`;a.click();
 }
@@ -3937,12 +3945,12 @@ function exportCSV(){
    Fallback: OSM Overpass API
 ═══════════════════════════════════════════ */
 
-// RIS API 年份（民國年），114 = 2025
-const RIS_YEAR = 115;
-// 快取 key & TTL（7天，路名不常變）
+// 快取 key & TTL（RIS 成功 7 天；OSM 備援 24 小時，讓 RIS 恢復後有機會重試）
 const CACHE_KEY  = 'jialie_roads_ris_v1';
 const CACHE_TIME = 'jialie_roads_ris_t';
+const CACHE_SRC  = 'jialie_roads_src';
 const CACHE_TTL  = 7 * 86400 * 1000;
+const CACHE_TTL_OSM = 24 * 3600 * 1000;
 
 function setRoadbar(msg, done=false){
   const bar     = document.getElementById('roadbar');
@@ -3967,7 +3975,9 @@ async function loadRoads(){
   try{
     const cached = localStorage.getItem(CACHE_KEY);
     const t      = parseInt(localStorage.getItem(CACHE_TIME)||'0');
-    if(cached && Date.now()-t < CACHE_TTL){
+    /* 依快取來源決定 TTL：舊快取無 src 標記視為 OSM（短 TTL，儘早重試 RIS） */
+    const src    = localStorage.getItem(CACHE_SRC)||'osm';
+    if(cached && Date.now()-t < (src==='ris'?CACHE_TTL:CACHE_TTL_OSM)){
       osm_roads = JSON.parse(cached);
       /* 快取命中 → 靜默載入，不顯示 toast */
       return;
@@ -3995,37 +4005,44 @@ async function loadRoads(){
 async function loadFromRIS(){
   setRoadbar('🔄 連接戶政司路名資料庫（ODRP049）…');
 
-  const BASE = `https://www.ris.gov.tw/rs-opendata/api/v1/datastore/ODRP049/${RIS_YEAR}`;
+  /* 年度資料集通常晚官方年度發布（實測 115 年「查無資料」、114 年才有 35,522 筆）：
+     從今年（民國）往回試最多三年，第一個有資料的年份為準 */
+  const rocNow = new Date().getFullYear() - 1911;
+  let d0 = null, BASE = null;
+  for(const y of [rocNow, rocNow-1, rocNow-2]){
+    const base = `https://www.ris.gov.tw/rs-opendata/api/v1/datastore/ODRP049/${y}`;
+    try{
+      const r0 = await fetch(`${base}?page=1`, {signal: AbortSignal.timeout(12000)});
+      if(!r0.ok) continue;
+      const d = await r0.json();
+      if(d && Array.isArray(d.responseData) && d.responseData.length){ d0=d; BASE=base; break; }
+    }catch(_){ /* 該年份失敗 → 試前一年 */ }
+  }
+  if(!d0) throw new Error('RIS 近三年資料集皆無資料');
+
   const seen = new Set(ROAD_DB.map(r=>r.r));
   const collected = [];
-  let page = 1;
-  let total = null;
 
-  // 先抓第一頁，取得 totalCount
-  const r0 = await fetch(`${BASE}?page=1`, {signal: AbortSignal.timeout(12000)});
-  if(!r0.ok) throw new Error(`RIS HTTP ${r0.status}`);
-  const d0 = await r0.json();
-
-  // 回應結構：{ responseData: [{city,site_id,road},...], totalCount, ... }
+  // 回應結構：{ responseData:[{city,site_id,road}], totalPage:"18", totalDataSize:"35522", pageDataSize:"2000" }
   const parseItems = d => {
     const arr = d.responseData || d.data || d || [];
     return Array.isArray(arr) ? arr : [];
   };
-  total = d0.totalCount || d0.total || 0;
+  const total = parseInt(d0.totalDataSize) || d0.totalCount || d0.total || 0;
 
-  // 篩選佳里區
+  // 篩選佳里區（site_id 是「臺南市佳里區」全稱，用 includes 比對）
   const filterJiali = items => items.filter(i=>{
     const city = (i.city||i.COUNTY||'').replace(/臺/g,'台');
-    const site = i.site_id || i.TOWN || '';
-    return (city.includes('台南')||city.includes('臺南')) && site === '佳里區';
+    const site = String(i.site_id || i.TOWN || '');
+    return city.includes('台南') && site.includes('佳里區');
   });
 
   let items0 = filterJiali(parseItems(d0));
   items0.forEach(i=>{ const n=(i.road||'').trim(); if(n&&!seen.has(n)){seen.add(n);collected.push({name:n,dist:'',note:'戶政司',_src:'ris'});} });
 
-  // 計算總頁數（每頁通常 200 筆）
-  const pageSize = parseItems(d0).length || 200;
-  const pages = total ? Math.ceil(total / pageSize) : 1;
+  // 總頁數：優先用 API 的 totalPage 欄位
+  const pageSize = parseItems(d0).length || 2000;
+  const pages = parseInt(d0.totalPage) || (total ? Math.ceil(total / pageSize) : 1);
 
   setRoadbar(`🔄 戶政司路名資料：第 1/${pages} 頁…`);
 
@@ -4054,6 +4071,7 @@ async function loadFromRIS(){
   osm_roads = collected;
   localStorage.setItem(CACHE_KEY, JSON.stringify(osm_roads));
   localStorage.setItem(CACHE_TIME, Date.now().toString());
+  localStorage.setItem(CACHE_SRC, 'ris');
   setRoadbar(`✅ 戶政司官方路名：${osm_roads.length} 條（佳里區）`, true);
 }
 
@@ -4078,6 +4096,7 @@ async function loadFromOSM(){
   osm_roads.sort((a,b)=>a.name.localeCompare(b.name,'zh-TW'));
   localStorage.setItem(CACHE_KEY, JSON.stringify(osm_roads));
   localStorage.setItem(CACHE_TIME, Date.now().toString());
+  localStorage.setItem(CACHE_SRC, 'osm'); /* 備援短 TTL，隔日自動重試 RIS */
   setRoadbar(`✅ OSM 路名：${osm_roads.length} 條（備援）`, true);
 }
 
@@ -4092,6 +4111,7 @@ function getRoads(){
 function clearRoadCache(){
   localStorage.removeItem(CACHE_KEY);
   localStorage.removeItem(CACHE_TIME);
+  localStorage.removeItem(CACHE_SRC);
   osm_roads=[];
   loadRoads();
 }
@@ -6218,7 +6238,7 @@ function exportRadiusList(){
     rows.push([vil, ..._parseAddrParts(addr)]);
   });
   const safeName = (_radiusLabel||'地點').replace(/[\\/:*?"<>|]/g,'');
-  const csv = '\uFEFF' + rows.map(r=>r.join(',')).join('\r\n');
+  const csv = '\uFEFF' + rows.map(r=>r.map(_csvCell).join(',')).join('\r\n');
   const fname = `${safeName}半徑${RADIUS_M}公尺清單.csv`;
   const a = document.createElement('a');
   if(window.innerWidth < 768){
@@ -6680,7 +6700,7 @@ function _showExportModal(rows, safeName){
   if(existing) existing.remove();
   const hdrs = rows[0], data = rows.slice(1);
   const trs = data.map(r=>`<tr>${r.map(c=>`<td style="padding:4px 8px;border:1px solid #ddd;white-space:nowrap">${c||''}</td>`).join('')}</tr>`).join('');
-  const csvText = rows.map(r=>r.join(',')).join('\n');
+  const csvText = rows.map(r=>r.map(_csvCell).join(',')).join('\n');
   const mo = document.createElement('div');
   mo.id = 'export-modal';
   mo.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:flex-end';
@@ -7696,17 +7716,21 @@ function startFollowNav(){
   b.classList.add('on'); b.classList.remove('offroute');
   document.getElementById('follow-turn-txt').textContent='等待定位…';
   document.getElementById('follow-turn-dist').textContent='—';
+  document.getElementById('follow-retry').style.display='none';
   if(_followWatch!=null) navigator.geolocation.clearWatch(_followWatch);
   _followWatch=navigator.geolocation.watchPosition(_followTick,
     (err)=>{
       if(err&&err.code===1){ stopFollowNav(); alert('定位權限被拒絕，無法使用站內導航。請至瀏覽器設定開啟定位。'); return; }
-      document.getElementById('follow-turn-txt').textContent=(err&&err.code===3)?'定位逾時，重試中…':'定位失敗，重試中…';
+      document.getElementById('follow-turn-txt').textContent=(err&&err.code===3)?'定位逾時':'定位失敗';
+      document.getElementById('follow-turn-dist').textContent='可按「↻ 重試」重新定位';
+      document.getElementById('follow-retry').style.display='inline-block';
     },
     {enableHighAccuracy:true,maximumAge:2000,timeout:15000});
 }
 function stopFollowNav(){
   if(_followWatch!=null){ navigator.geolocation.clearWatch(_followWatch); _followWatch=null; }
   if(_followMarker){ map.removeLayer(_followMarker); _followMarker=null; }
+  document.getElementById('follow-retry').style.display='none';
   document.getElementById('follow-banner').classList.remove('on');
 }
 function _followTick(pos){
@@ -9176,11 +9200,38 @@ map.on('dblclick',function(e){
   const LS_KEY = 'gis_overlay_v1';
   const TTL_MS = 5 * 60 * 1000;  // 5 分鐘內不重抓
 
+  /* 撤銷日誌：套新 overlay 前先還原上一份的變更。
+     否則 localStorage 舊快取先套用後，admin 已刪除的資料無法被較新的 fetch 結果移除，
+     本 session 會一直殘留（village_info 為覆蓋型 merge、刪整里極罕見，不納入還原範圍） */
+  let _undo = null;
+  function revertOverlay(){
+    if(!_undo) return;
+    if(typeof OLD_TO_NEW !== 'undefined'){
+      for(const [k, prev] of Object.entries(_undo.otn)){
+        if(prev === null) delete OLD_TO_NEW[k]; else OLD_TO_NEW[k] = prev;
+      }
+    }
+    if(typeof DOOR_DB !== 'undefined'){
+      for(const r of _undo.doorReplaced){
+        const i = DOOR_DB.findIndex(x => x[2] === r[2]);
+        if(i > -1) DOOR_DB[i] = r;
+      }
+      for(const addr of _undo.doorAdded){
+        const i = DOOR_DB.findIndex(x => x[2] === addr);
+        if(i > -1) DOOR_DB.splice(i, 1);
+      }
+    }
+    _undo = null;
+  }
+
   function applyOverlay(o){
     if(!o) return;
+    revertOverlay();
+    const undo = { otn: {}, doorAdded: [], doorReplaced: [] };
     if(o.old_to_new && typeof OLD_TO_NEW !== 'undefined'){
       let n = 0;
       for(const [k, v] of Object.entries(o.old_to_new)){
+        if(!(k in undo.otn)) undo.otn[k] = Object.prototype.hasOwnProperty.call(OLD_TO_NEW, k) ? OLD_TO_NEW[k] : null;
         OLD_TO_NEW[k] = v;
         n++;
       }
@@ -9192,16 +9243,19 @@ map.on('dblclick',function(e){
       for(const [lat, lng, addr] of o.door_db){
         if(existing.has(addr)){
           const idx = DOOR_DB.findIndex(r => r[2] === addr);
+          undo.doorReplaced.push(DOOR_DB[idx].slice());
           DOOR_DB[idx] = [lat, lng, addr];
           replaced++;
         } else {
           DOOR_DB.push([lat, lng, addr]);
+          undo.doorAdded.push(addr);
           existing.add(addr);
           added++;
         }
       }
       if(added || replaced) console.log('[GIS-overlay] door_db: +' + added + ' added, ' + replaced + ' replaced');
     }
+    _undo = undo;
     if(o.village_info && Array.isArray(o.village_info) && o.village_info.length){
       let n = 0;
       for(const row of o.village_info){

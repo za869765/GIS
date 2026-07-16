@@ -101,7 +101,9 @@ export async function onRequestGet({ env, params, request }) {
 
 function csvCell(v) {
   if (v === null || v === undefined) return '';
-  const s = String(v);
+  let s = String(v);
+  // Excel 公式注入防護：= + - @ 開頭前綴單引號（re-import 時 pk/數值欄不受影響——那些欄位不會以此開頭）
+  if (/^\s*[=+\-@]/.test(s)) s = "'" + s;
   if (s.includes(',') || s.includes('"') || s.includes('\n')) {
     return '"' + s.replace(/"/g, '""') + '"';
   }

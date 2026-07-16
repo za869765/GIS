@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>佳里 GIS — 資料管理 v1.0.1</title>
+<title>佳里 GIS — 資料管理 v1.0.2</title>
 <style>
 * { box-sizing: border-box; }
 :root {
@@ -104,7 +104,7 @@ td.actions button.del:hover { background:#fef0ee; border-color:var(--danger); co
 <div id="main">
   <header>
     <h1>佳里 GIS 資料管理</h1>
-    <span class="ver">v1.0.1</span>
+    <span class="ver">v1.0.2</span>
     <span class="spacer"></span>
     <button onclick="window.open('/','_blank')">前往 GIS 主頁</button>
     <button onclick="logout()">登出</button>
@@ -292,12 +292,23 @@ function renderTable(rows) {
     tbody.innerHTML = `<tr><td colspan="${t.cols.length + 3}" class="empty">查無資料</td></tr>`;
     return;
   }
-  tbody.innerHTML = rows.map(r => `<tr>${
+  /* 事件委派 + 索引取列：主鍵含引號等特殊字元不會壞（inline onclick 會被 HTML
+     解碼還原字元導致語法錯誤/注入） */
+  tbody.innerHTML = rows.map((r, i) => `<tr>${
     t.cols.map(c => `<td>${esc(r[c.key])}</td>`).join('')
   }<td><span class="badge ${r.source}">${r.source}</span></td><td>${esc(r.updated_at || '')}</td><td class="actions">
-    <button onclick='editRow(${JSON.stringify(r).replace(/'/g, "&#39;")})'>編輯</button>
-    <button class="del" onclick="delRow('${esc(r[t.pk])}')">刪除</button>
+    <button class="edit" data-i="${i}">編輯</button>
+    <button class="del" data-i="${i}">刪除</button>
   </td></tr>`).join('');
+  tbody._rows = rows;
+  tbody.onclick = (e) => {
+    const b = e.target.closest('button');
+    if (!b || b.dataset.i === undefined) return;
+    const row = (tbody._rows || [])[+b.dataset.i];
+    if (!row) return;
+    if (b.classList.contains('del')) delRow(row[TABLES[currentTable].pk]);
+    else if (b.classList.contains('edit')) editRow(row);
+  };
 }
 
 function esc(v) {
@@ -432,10 +443,16 @@ async function doImport() {
   const json = await res.json();
   if (res.ok) {
     closeModal();
-    toast(`匯入完成：${json.inserted} / ${json.total_in} 筆`, 'ok');
+    const pe = (json.parse_errors || []).length;
+    const be = (json.batch_errors || []).length;
+    if (pe || be) {
+      toast(`匯入部分成功：${json.inserted} / ${json.total_in} 筆（格式錯誤略過 ${pe} 筆${be ? '、寫入失敗 ' + be + ' 批' : ''}）`, 'err');
+    } else {
+      toast(`匯入完成：${json.inserted} / ${json.total_in} 筆`, 'ok');
+    }
     loadRows();
   } else {
-    toast('錯誤: ' + (json.error || res.status), 'err');
+    toast('錯誤: ' + (json.error || (json.batch_errors && json.batch_errors[0] && json.batch_errors[0].error) || res.status), 'err');
   }
 }
 

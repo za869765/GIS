@@ -3,6 +3,7 @@
 // 故意只回 source='admin' 的 row，避免回傳整批 seed 資料（24,788 筆 DOOR_DB）。
 
 export async function onRequestGet({ env }) {
+  try {
   const db = env.DB;
   const [otn, dd, vi, kv] = await Promise.all([
     db.prepare(
@@ -43,4 +44,11 @@ export async function onRequestGet({ env }) {
       'Cache-Control': 'public, max-age=60'
     }
   });
+  } catch (e) {
+    // D1 故障時回穩定 JSON（不暴露內部錯誤細節），主頁 fallback localStorage 快取
+    return new Response(JSON.stringify({ error: 'db unavailable' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+    });
+  }
 }

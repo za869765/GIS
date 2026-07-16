@@ -16,7 +16,7 @@
    本地資源用 new URL('檔名', self.location.href) 相對 sw.js 位置解析，
    因此同時支援 GitHub Pages 子路徑（/GIS/）與 Cloudflare Pages 根目錄（/）。 */
 /* jiali_3d.html 是 cache-first 無回驗，改它必升 cache name 才會推到既有客戶端 */
-const ASSET='jialie-assets-v6-data-853';
+const ASSET='jialie-assets-v6-data-854';
 const TILES='jialie-tiles-v6';
 /* 只清理本專案前綴的舊 cache；github.io 為多 repo 共用 origin，
    絕不刪除其他名稱（其他 repo/app）的 cache。 */
@@ -29,23 +29,28 @@ async function unredirect(r){
   const b=await r.blob();
   return new Response(b,{status:r.status,statusText:r.statusText,headers:r.headers});
 }
-const PRECACHE=[
-  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
-  'https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js',
-  'https://cdn.jsdelivr.net/npm/taiwan-atlas@latest/villages-10t.json',
+/* 本地關鍵檔：任一失敗 → install 失敗 → 保留舊版完整快取（activate 才會刪舊 cache，
+   不能讓離線使用者從「完整舊版」升級成「缺檔新版」）。CDN 檔仍逐項容忍暫時性失敗。 */
+const PRECACHE_LOCAL=[
   local('doornum_db.js'),
   local('old_addr_map.js'),
   local('land_db.js'),
   local('route_graph.js'),
   local('jiali_3d.html'),
 ];
+const PRECACHE_CDN=[
+  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
+  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
+  'https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js',
+  'https://cdn.jsdelivr.net/npm/taiwan-atlas@latest/villages-10t.json',
+];
+const PRECACHE=[...PRECACHE_CDN,...PRECACHE_LOCAL];
 self.addEventListener('install',e=>{
   self.skipWaiting();
-  /* 逐項快取：任一項失敗（如 CDN 404）只記 warning，不讓整批 addAll 失敗、不阻塞 install。 */
-  e.waitUntil(caches.open(ASSET).then(c=>Promise.all(
-    PRECACHE.map(u=>c.add(u).catch(err=>console.warn('[GIS-SW] precache 失敗:',u,err)))
-  )));
+  e.waitUntil(caches.open(ASSET).then(async c=>{
+    await Promise.all(PRECACHE_LOCAL.map(u=>c.add(u))); /* 失敗即拋 → install 失敗 → 舊版續用 */
+    await Promise.all(PRECACHE_CDN.map(u=>c.add(u).catch(err=>console.warn('[GIS-SW] CDN precache 失敗:',u,err))));
+  }));
 });
 self.addEventListener('activate',e=>{
   e.waitUntil(caches.keys().then(ks=>Promise.all(

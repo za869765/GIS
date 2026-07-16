@@ -61,6 +61,13 @@ export async function onRequestGet({ env, params, request }) {
   return json({ rows: rowsRes.results, total: countRes.c, limit, offset });
 }
 
+const NUM_COLS = {
+  door_db: ['lat', 'lng'],
+  village_info: ['pop_total', 'pop_male', 'pop_female', 'pop_young', 'pop_adult', 'pop_old',
+                 'ab_total', 'ab_plain', 'ab_mountain']
+};
+const NUM_RANGES = { lat: [-90, 90], lng: [-180, 180] };
+
 export async function onRequestPost({ env, params, request }) {
   const t = TABLES[params.name];
   if (!t) return json({ error: 'unknown table' }, 404);
@@ -68,6 +75,18 @@ export async function onRequestPost({ env, params, request }) {
 
   const cols = t.cols.filter(c => c in body && body[c] !== undefined && body[c] !== null);
   if (!cols.length) return json({ error: 'no fields supplied' }, 400);
+  // 自然主鍵表必須帶 pk，否則 INSERT OR REPLACE 會寫入 NULL 主鍵列
+  if (t.pk !== 'id' && !cols.includes(t.pk)) return json({ error: `missing ${t.pk}` }, 400);
+  // 數值欄驗證：NaN/Infinity 擋下、經緯度限範圍、人口/AB 數不得為負
+  for (const c of (NUM_COLS[params.name] || [])) {
+    if (!cols.includes(c)) continue;
+    const v = Number(body[c]);
+    if (!Number.isFinite(v)) return json({ error: `invalid number: ${c}` }, 400);
+    const r = NUM_RANGES[c];
+    if (r && (v < r[0] || v > r[1])) return json({ error: `out of range: ${c}` }, 400);
+    if (/^(pop_|ab_)/.test(c) && v < 0) return json({ error: `negative: ${c}` }, 400);
+    body[c] = v;
+  }
 
   const sql = `INSERT OR REPLACE INTO ${params.name} (${cols.join(',')}, source, updated_at)
                VALUES (${cols.map(() => '?').join(',')}, 'admin', datetime('now'))`;

@@ -339,6 +339,15 @@
     height: 30px;
     background: linear-gradient(rgba(255,255,255,.95), rgba(255,255,255,.35));
   }
+  .sv-bb-arrow {
+    font-size: 46px;
+    line-height: 1;
+    font-weight: 900;
+    color: #f2231f;
+    -webkit-text-stroke: 2.5px #fff;
+    text-shadow: 0 3px 8px rgba(0, 0, 0, 0.65);
+    margin-bottom: -6px;
+  }
 
   /* 出發確認彈窗（防誤按） */
   #nav-confirm {
@@ -375,11 +384,28 @@
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.9);
   }
 
-  /* 騎行/飛行狀態列 */
-  #ride-note { display: flex; align-items: center; gap: 10px; }
+  /* 騎行/飛行狀態列（放大版：容器與按鈕約 3 倍，難按問題） */
+  #ride-note {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 18px 24px; border-radius: 20px; max-width: min(96vw, 900px);
+  }
   #ride-note[hidden] { display: none; }
-  #ride-note-txt { font-weight: 700; color: #7dd3a7; }
-  #btn-ride-stop, #btn-ride-go { min-height: 28px; padding: 0 10px; font-size: 12px; flex: none; }
+  #ride-note-txt { font-weight: 800; color: #7dd3a7; font-size: 24px; line-height: 1.3; }
+  #btn-ride-stop, #btn-ride-replay {
+    min-height: 62px; padding: 0 28px; font-size: 22px; font-weight: 800;
+    border-radius: 16px; flex: none;
+  }
+  /* 途經點籌碼列：點選→下一次點圖為「替換」該點；✕ 刪除 */
+  #ride-pts { display: flex; gap: 10px; flex-wrap: wrap; }
+  .pt-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(61, 184, 255, 0.16); border: 2px solid rgba(61, 184, 255, 0.55);
+    border-radius: 14px; padding: 8px 14px; font-size: 20px; font-weight: 800;
+    cursor: pointer; user-select: none; color: var(--text);
+  }
+  .pt-chip.sel { background: rgba(255, 209, 102, 0.28); border-color: #ffd166; }
+  .pt-chip .x { opacity: 0.75; font-size: 18px; padding: 0 3px; }
+  .pt-chip .x:hover { opacity: 1; color: #ff8a80; }
 
   .status {
     position: absolute;
@@ -528,10 +554,11 @@
   </button>
 
   <div class="ui-layer bottom-panel">
-    <!-- 騎行/飛行模式狀態列 -->
+    <!-- 騎行/飛行模式狀態列（含途經點籌碼編輯列） -->
     <div class="note" id="ride-note" hidden>
       <span id="ride-note-txt">點地圖設定起點</span>
-      <button type="button" class="btn btn-primary" id="btn-ride-go" style="display:none">▶ 出發</button>
+      <span id="ride-pts"></span>
+      <button type="button" class="btn btn-primary" id="btn-ride-replay" style="display:none">↻ 重播</button>
       <button type="button" class="btn" id="btn-ride-stop">■ 停止</button>
     </div>
     <!-- 點地圖任一處浮現街景卡（極簡版）：點縮圖 → 互動式街景放大檢視 -->
@@ -644,6 +671,7 @@
   var btnRideStop = document.getElementById('btn-ride-stop');
   var elRideNote = document.getElementById('ride-note');
   var elRideNoteTxt = document.getElementById('ride-note-txt');
+  var elRidePts = document.getElementById('ride-pts');
   var elCompass = document.getElementById('compass');
   var elCompassNeedle = document.getElementById('compass-needle');
   var btnCenter = document.getElementById('btn-center');
@@ -1836,6 +1864,8 @@
   var RIDE_SPEED = 18;  /* 騎行 m/s；飛行固定為 2 倍 */
   var navMode = null;   /* 'ride-pick' | 'fly-pick' */
   var navPts = [];
+  var navSelIdx = -1;   /* 被選取待替換的點位索引；-1＝無 */
+  var lastTrip = null;  /* 上一趟行程（供「↻ 重播」） */
   var arriveTimer = null;
   var navMarkers = [];
 
@@ -1855,12 +1885,15 @@
   function setNavLine(coords) {
     if (map.getSource(NAV3D_SRC)) map.getSource(NAV3D_SRC).setData({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords || [] } });
   }
-  /* 導航球樣式：白底圓徽章＋直立 emoji＋▲箭頭指行進方向（相機恆朝行進向，箭頭固定朝上）
+  /* 導航球樣式：航向牌（飛行）＋▲箭頭指行進方向＋白底圓徽章直立 emoji
      不旋轉 emoji——各平台 glyph 畫向不一，旋轉只會歪 */
-  function makeVehicleEl(emoji) {
+  function makeVehicleEl(emoji, withHeading) {
     var el = document.createElement('div');
     el.style.cssText = 'display:flex;flex-direction:column;align-items:center;pointer-events:none;';
     el.innerHTML =
+      (withHeading ? '<div class="veh-hdg" style="background:rgba(16,42,66,.94);color:#fff;font-size:16px;' +
+        'font-weight:800;padding:4px 12px;border-radius:11px;margin-bottom:3px;white-space:nowrap;' +
+        'border:1.5px solid rgba(255,255,255,.4);box-shadow:0 2px 8px rgba(0,0,0,.4)">—</div>' : '') +
       '<div style="color:#1a73e8;font-size:18px;line-height:1;margin-bottom:-3px;text-shadow:0 1px 3px rgba(0,0,0,.5)">▲</div>' +
       '<div style="width:46px;height:46px;border-radius:50%;background:#fff;border:3px solid #1a73e8;' +
         'display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1;' +
@@ -1895,7 +1928,9 @@
     hideSvCard(); /* 連同任何殘留的街景卡（含「載入中」占位）一併收掉 */
     pendingStart = null;
     document.getElementById('nav-confirm').hidden = true;
-    document.getElementById('btn-ride-go').style.display = 'none';
+    document.getElementById('btn-ride-replay').style.display = 'none';
+    lastTrip = null; navSelIdx = -1;
+    elRidePts.innerHTML = '';
     navMode = null; navPts = [];
     clearNavMarkers();
     if (map && map.getSource(NAV3D_SRC)) setNavLine([]);
@@ -1923,20 +1958,54 @@
     if (state.basemap !== 'vector') setBasemap('vector');
     if (state.svLinesOn) setSvLinesVisible(false);
   }
-  /* 多點選點：每點一下加一個途經點（起點綠、其餘紅），≥2 點出現「▶ 出發」 */
+  /* 多點選點：點地圖加點（起點綠、其餘紅）；點籌碼選取後，下一次點圖＝替換該點；
+     ≥2 點即自動彈出「取消 / 開始」確認窗（無出發鈕） */
+  function rebuildNavMarkers() {
+    clearNavMarkers();
+    navPts.forEach(function (p, i) {
+      var mk = new maplibregl.Marker({ color: i === 0 ? '#2ecc71' : '#ff5e57' })
+        .setLngLat(p).addTo(map);
+      navMarkers.push(mk);
+    });
+  }
+  function renderPtChips() {
+    elRidePts.innerHTML = '';
+    navPts.forEach(function (p, i) {
+      var chip = document.createElement('span');
+      chip.className = 'pt-chip' + (i === navSelIdx ? ' sel' : '');
+      var name = i === 0 ? '🟢 起點' :
+        (i === navPts.length - 1 ? '🔴 終點' : '📍 途經' + i);
+      chip.innerHTML = '<span>' + name + '</span><span class="x" title="刪除此點">✕</span>';
+      chip.querySelector('.x').addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        navPts.splice(i, 1);
+        if (navSelIdx === i) navSelIdx = -1;
+        else if (navSelIdx > i) navSelIdx--;
+        rebuildNavMarkers(); renderPtChips(); updatePickNote();
+      });
+      chip.addEventListener('click', function () {
+        navSelIdx = (navSelIdx === i) ? -1 : i; /* 再點一次取消選取 */
+        renderPtChips(); updatePickNote();
+      });
+      elRidePts.appendChild(chip);
+    });
+  }
+  function updatePickNote() {
+    if (navSelIdx >= 0) elRideNoteTxt.textContent = '點地圖「替換」選取的點';
+    else if (!navPts.length) elRideNoteTxt.textContent =
+      (navMode === 'ride-pick' ? '🛵 騎行預覽：' : '✈️ 飛行檢視：') + '點地圖設定「起點」';
+    else if (navPts.length === 1) elRideNoteTxt.textContent = '已設起點，點地圖加下一點';
+    else elRideNoteTxt.textContent = '已設 ' + navPts.length + ' 點｜點籌碼替換/刪除，點地圖加途經點';
+  }
   function handleNavPick(lngLat) {
-    navPts.push([lngLat.lng, lngLat.lat]);
-    var mk = new maplibregl.Marker({ color: navPts.length === 1 ? '#2ecc71' : '#ff5e57' })
-      .setLngLat(navPts[navPts.length - 1]).addTo(map);
-    navMarkers.push(mk);
-    var go = document.getElementById('btn-ride-go');
-    if (navPts.length === 1) {
-      elRideNoteTxt.textContent = '已設起點，點地圖加下一點';
-      go.style.display = 'none';
+    if (navSelIdx >= 0) {
+      navPts[navSelIdx] = [lngLat.lng, lngLat.lat]; /* 替換模式 */
+      navSelIdx = -1;
     } else {
-      elRideNoteTxt.textContent = '已設 ' + navPts.length + ' 點｜可繼續加途經點，或按「▶ 出發」';
-      go.style.display = '';
+      navPts.push([lngLat.lng, lngLat.lat]);
     }
+    rebuildNavMarkers(); renderPtChips(); updatePickNote();
+    if (navPts.length >= 2) prepareTrip(); /* 兩點以上：直接彈確認窗 */
   }
 
   /* 台灣右駕：整條路徑往行進方向右側垂直偏移（OSM 路線是道路中心線） */
@@ -1960,13 +2029,14 @@
     var cum = [0];
     for (var i = 1; i < coords.length; i++) cum.push(cum[i - 1] + rgHavM(coords[i - 1], coords[i]));
     var total = cum[cum.length - 1] || 1;
-    /* 圖示用螢幕對齊：相機永遠朝行進方向，只需補償 emoji 天生畫向（✈️≈東北、🛵≈朝左） */
-    var marker = new maplibregl.Marker({ element: makeVehicleEl(opts.emoji), rotationAlignment: 'viewport', pitchAlignment: 'viewport' })
+    /* 導航球螢幕對齊直立顯示；飛行版帶航向牌 */
+    var vehEl = makeVehicleEl(opts.emoji, opts.mode === 'fly');
+    var marker = new maplibregl.Marker({ element: vehEl, rotationAlignment: 'viewport', pitchAlignment: 'viewport' })
       .setLngLat(coords[0]).addTo(map);
-    marker.setRotation(opts.iconRot || 0);
     anim = { timer: null, coords: coords, cum: cum, total: total, pos: 0, speed: opts.speed,
              marker: marker, mode: opts.mode, zoom: opts.zoom, pitch: opts.pitch, lastSvAt: -999, seg: 1,
-             brg: brgArr(coords[0], coords[1] || coords[0]), lastT: performance.now() };
+             brg: brgArr(coords[0], coords[1] || coords[0]), lastT: performance.now(),
+             hdgEl: vehEl.querySelector('.veh-hdg') };
     setMapHandlers(false); /* 託管：僅停止鈕/Esc 可中斷 */
     anim.timer = setInterval(animTick, 50);
   }
@@ -1990,6 +2060,7 @@
     var diff = ((target - anim.brg + 540) % 360) - 180;
     anim.brg = (anim.brg + Math.max(-4.5, Math.min(4.5, diff)) + 360) % 360;
     anim.marker.setLngLat([lng, lat]);
+    if (anim.hdgEl) anim.hdgEl.textContent = wind16(anim.brg) + ' ' + Math.round(anim.brg) + '°';
     map.jumpTo({ center: [lng, lat], bearing: anim.brg, pitch: anim.pitch, zoom: anim.zoom });
     updateCompass();
     var remain = Math.max(0, anim.total - anim.pos);
@@ -2015,7 +2086,8 @@
       elRideNoteTxt.textContent = (endMode === 'ride' ? '🛵' : '✈️') + ' 已抵達目的地・旅程總計 ' +
         (totalM >= 1000 ? (totalM / 1000).toFixed(1) + ' 公里' : Math.round(totalM) + ' 公尺');
       if (endMode === 'fly') map.easeTo({ pitch: 62, duration: 1000 });
-      arriveTimer = setTimeout(exitNavMode, 3500); /* 抵達自動收尾，稍留時間看總計 */
+      /* 抵達後不自動收場：按「↻ 重播」同路線再跑一次，或按「■ 停止」結束 */
+      if (lastTrip) document.getElementById('btn-ride-replay').style.display = '';
     }
   }
   /* ══════════ 資訊層：航向讀數、里別區塊、鄰區/幹道大字 ══════════ */
@@ -2190,7 +2262,6 @@
   }
   function prepareTrip() {
     if (navPts.length < 2) return;
-    document.getElementById('btn-ride-go').style.display = 'none';
     if (navMode === 'fly-pick') {
       var path = navPts.slice(), dist = 0;
       for (var i = 1; i < path.length; i++) dist += rgHavM(path[i - 1], path[i]);
@@ -2238,19 +2309,35 @@
     return rgDegreeMap;
   }
 
+  /* 轉向後所接路段的路名：取外出段中點貼回路網、讀該邊路名 */
+  function rgNameNear(a, b) {
+    try {
+      var s = rgSnap((a[1] + b[1]) / 2, (a[0] + b[0]) / 2);
+      if (!s || s.off > 25) return '';
+      var ni = ROUTE_GRAPH.e[s.e][4];
+      return (ni >= 0 && ROUTE_GRAPH.names[ni]) || '';
+    } catch (_) { return ''; }
+  }
+
   /* 挑重點：轉彎（≥28°）或「匯流/岔路路口」（頂點度數≥3 且方位變化≥12°），
-     相距 ≥60m、上限 10 個，＋目的地 */
+     相距 ≥60m、上限 10 個，＋目的地；標語＝路名＋左轉/右轉/匯流靠左右 */
   function pickKeyPoints(coords) {
     var pts = [], lastAt = -1e9, acc = 0;
     var degMap = rgVertexDegree();
     for (var i = 1; i < coords.length - 1; i++) {
       acc += rgHavM(coords[i - 1], coords[i]);
       var b1 = brgArr(coords[i - 1], coords[i]), b2 = brgArr(coords[i], coords[i + 1]);
-      var d = Math.abs(((b2 - b1 + 540) % 360) - 180);
+      var sd = ((b2 - b1 + 540) % 360) - 180;
+      var d = Math.abs(sd);
       var deg = degMap ? (degMap.get(coords[i][0] + ',' + coords[i][1]) || 0) : 0;
       var key = d >= 28 || (deg >= 3 && d >= 12);
       if (key && acc - lastAt >= 60 && pts.length < 10) {
-        pts.push({ lng: coords[i][0], lat: coords[i][1], brg: b2, dest: false });
+        var turn = d >= 28;
+        var dir = turn ? (sd > 0 ? '右轉' : '左轉') : (sd > 0 ? '匯流靠右' : '匯流靠左');
+        var arrow = turn ? (sd > 0 ? '↱' : '↰') : (sd > 0 ? '⬈' : '⬉');
+        var nm = rgNameNear(coords[i], coords[i + 1]);
+        pts.push({ lng: coords[i][0], lat: coords[i][1], brg: b2, dest: false,
+                   label: (nm ? nm + ' ' : '') + dir, arrow: arrow });
         lastAt = acc;
       }
     }
@@ -2263,7 +2350,8 @@
   function addBillboard(pt, url) {
     var el = document.createElement('div');
     el.className = 'sv-billboard';
-    el.innerHTML = '<img src="' + url + '" alt="路口街景">' +
+    el.innerHTML = (pt.arrow ? '<div class="sv-bb-arrow">' + pt.arrow + '</div>' : '') +
+      '<img src="' + url + '" alt="路口街景">' +
       '<div class="sv-bb-tag">' + (pt.label || (pt.dest ? '🏁 目的地' : '↪ 轉彎路口')) + '</div>' +
       '<div class="sv-bb-stem"></div>';
     var mk = new maplibregl.Marker({ element: el, anchor: 'bottom' })
@@ -2310,18 +2398,25 @@
     btnRide.addEventListener('click', function () { enterNavMode('ride-pick'); });
     btnPlane.addEventListener('click', function () { enterNavMode('fly-pick'); });
     btnRideStop.addEventListener('click', exitNavMode);
-    document.getElementById('btn-ride-go').addEventListener('click', prepareTrip);
+    document.getElementById('btn-ride-replay').addEventListener('click', function () {
+      if (!lastTrip) return;
+      document.getElementById('btn-ride-replay').style.display = 'none';
+      if (lastTrip.mode === 'ride') startRide(lastTrip.route); else startFly(lastTrip.coords);
+    });
     document.getElementById('nav-confirm-ok').addEventListener('click', function () {
       document.getElementById('nav-confirm').hidden = true;
       var p = pendingStart; pendingStart = null;
       if (!p) return;
-      navMode = null; /* 出發後不再收點 */
+      navMode = null; navSelIdx = -1; /* 出發後不再收點 */
+      elRidePts.innerHTML = '';
+      lastTrip = p.mode === 'ride' ? { mode: 'ride', route: p.route } : { mode: 'fly', coords: p.coords };
       if (p.mode === 'ride') startRide(p.route); else startFly(p.coords);
     });
     document.getElementById('nav-confirm-cancel').addEventListener('click', function () {
       document.getElementById('nav-confirm').hidden = true;
       pendingStart = null;
-      exitNavMode();
+      /* 取消＝留在選點編輯：點籌碼替換/刪除，點地圖續加途經點 */
+      updatePickNote();
     });
     elCompass.addEventListener('click', function () {
       map.easeTo({ bearing: 0, duration: 600 });

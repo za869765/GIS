@@ -107,10 +107,16 @@
 
   .controls {
     display: flex;
+    flex-direction: column; /* 上排功能鍵、下排地區快捷 */
+    gap: 6px;
+    align-items: flex-end;
+    max-width: min(100%, 640px);
+  }
+  .ctrl-row {
+    display: flex;
     flex-wrap: wrap;
     gap: 6px;
     justify-content: flex-end;
-    max-width: min(100%, 560px);
   }
 
   .btn {
@@ -408,27 +414,29 @@
       <p id="source-note">· 非真實測量・AI推算可能有誤，僅供參考。</p>
     </div>
     <div class="controls" role="toolbar" aria-label="地圖控制">
-      <a class="btn btn-primary" href="jialie_gis_v6.html" id="btn-back" title="返回一般地圖模式">
-        <span class="ico" aria-hidden="true">←</span>返回一般地圖模式
-      </a>
-      <button type="button" class="btn" id="btn-vector" aria-pressed="false" title="OpenFreeMap 向量底圖">向量圖</button>
-      <button type="button" class="btn" id="btn-satellite" aria-pressed="true" title="Esri 衛星影像底圖">衛星圖</button>
-      <button type="button" class="btn" id="btn-center" title="佳里市中心視角">佳里市中心</button>
-      <button type="button" class="btn" id="btn-zilong" title="子龍（市中心東邊）">子龍</button>
-      <button type="button" class="btn" id="btn-jialixing" title="佳里興（市中心北邊）">佳里興</button>
-      <button type="button" class="btn" id="btn-wennei" title="塭內（市中心南邊）">塭內</button>
-      <button type="button" class="btn" id="btn-xiabu" title="下廍（市中心西邊）">下廍</button>
-      <button type="button" class="btn" id="btn-district" title="全區俯視範圍">全區</button>
-      <button type="button" class="btn" id="btn-north" title="正北並重設視角">正北</button>
-      <button type="button" class="btn" id="btn-fly" aria-pressed="false" title="自動環景巡覽">環景</button>
-      <button type="button" class="btn" id="btn-buildings" aria-pressed="true" title="顯示或隱藏 3D 建築">
-        3D 建築
-      </button>
-      <button type="button" class="btn" id="btn-svlines" aria-pressed="true" title="顯示或隱藏街景覆蓋藍線（有藍線的路才有街景）">
-        街景線
-      </button>
-      <button type="button" class="btn" id="btn-ride" aria-pressed="false" title="機車騎行預覽：點地圖設定起訖點，沿路線騎行並顯示沿途街景">🛵 騎行</button>
-      <button type="button" class="btn" id="btn-plane" aria-pressed="false" title="飛行檢視：點地圖設定起訖點，飛行視角飛過去">✈️ 飛行</button>
+      <div class="ctrl-row">
+        <a class="btn btn-primary" href="jialie_gis_v6.html" id="btn-back" title="返回一般地圖模式">
+          <span class="ico" aria-hidden="true">←</span>返回一般地圖模式
+        </a>
+        <button type="button" class="btn" id="btn-vector" aria-pressed="false" title="OpenFreeMap 向量底圖">向量圖</button>
+        <button type="button" class="btn" id="btn-satellite" aria-pressed="true" title="Esri 衛星影像底圖">衛星圖</button>
+        <button type="button" class="btn" id="btn-fly" aria-pressed="false" title="自動環景巡覽">環景</button>
+        <button type="button" class="btn" id="btn-buildings" aria-pressed="true" title="顯示或隱藏 3D 建築">
+          3D 建築
+        </button>
+        <button type="button" class="btn" id="btn-svlines" aria-pressed="true" title="顯示或隱藏街景覆蓋藍線（有藍線的路才有街景）">
+          街景線
+        </button>
+        <button type="button" class="btn" id="btn-ride" aria-pressed="false" title="機車騎行預覽：點地圖設定起訖點，沿路線騎行並顯示沿途街景">🛵 騎行</button>
+        <button type="button" class="btn" id="btn-plane" aria-pressed="false" title="飛行檢視：點地圖設定起訖點，飛行視角飛過去">✈️ 飛行</button>
+      </div>
+      <div class="ctrl-row">
+        <button type="button" class="btn" id="btn-center" title="佳里市中心視角">佳里市中心</button>
+        <button type="button" class="btn" id="btn-zilong" title="子龍（市中心東邊）">子龍</button>
+        <button type="button" class="btn" id="btn-jialixing" title="佳里興（市中心北邊）">佳里興</button>
+        <button type="button" class="btn" id="btn-wennei" title="塭內（市中心南邊）">塭內</button>
+        <button type="button" class="btn" id="btn-xiabu" title="下廍（市中心西邊）">下廍</button>
+      </div>
     </div>
   </div>
 
@@ -522,17 +530,6 @@
     xiabu:     [120.15140, 23.17197]  /* 下廍（西） */
   };
 
-  var DISTRICT_VIEW = {
-    zoom: 12.4,
-    bearing: 0,
-    pitch: 42
-  };
-
-  var NORTH_VIEW = {
-    bearing: 0,
-    pitch: 0
-  };
-
   var BUILDING_LAYER_ID = 'building-3d';
   var BOUNDARY_SRC = 'jiali-boundary';
   var BOUNDARY_FILL = 'jiali-boundary-fill';
@@ -574,8 +571,6 @@
   var elCompass = document.getElementById('compass');
   var elCompassNeedle = document.getElementById('compass-needle');
   var btnCenter = document.getElementById('btn-center');
-  var btnDistrict = document.getElementById('btn-district');
-  var btnNorth = document.getElementById('btn-north');
   var btnFly = document.getElementById('btn-fly');
   var btnBuildings = document.getElementById('btn-buildings');
   var btnSvlines = document.getElementById('btn-svlines');
@@ -746,38 +741,6 @@
     if (elCompassNeedle && map) {
       elCompassNeedle.style.transform = 'rotate(' + (-map.getBearing()) + 'deg)';
     }
-  }
-
-  function goDistrict() {
-    stopFlyover();
-    if (!map) return;
-    if (state.boundaryBounds) {
-      map.fitBounds(state.boundaryBounds, {
-        padding: { top: 80, bottom: 120, left: 40, right: 40 },
-        pitch: DISTRICT_VIEW.pitch,
-        bearing: DISTRICT_VIEW.bearing,
-        duration: easeDuration(1400),
-        maxZoom: 13.2
-      });
-      return;
-    }
-    map.easeTo({
-      center: CENTER.slice(),
-      zoom: DISTRICT_VIEW.zoom,
-      bearing: DISTRICT_VIEW.bearing,
-      pitch: DISTRICT_VIEW.pitch,
-      duration: easeDuration(1200)
-    });
-  }
-
-  function goNorthReset() {
-    stopFlyover();
-    if (!map) return;
-    map.easeTo({
-      bearing: NORTH_VIEW.bearing,
-      pitch: NORTH_VIEW.pitch,
-      duration: easeDuration(900)
-    });
   }
 
   function setBuildingsVisible(on) {
@@ -1187,7 +1150,7 @@
     ['pointerdown', 'touchstart', 'wheel'].forEach(function (ev) {
       canvasEl.addEventListener(ev, function () {
         if (state.flying) stopFlyover();
-        if (anim) { stopAnim(); elRideNoteTxt.textContent = '已手動中斷（按 ✕ 或再按模式鈕關閉）'; }
+        /* 騎行/飛行不因誤觸中斷：動畫期間地圖操作已鎖定，僅「停止」鈕與 Esc 能結束 */
       }, { passive: true });
     });
 
@@ -1894,8 +1857,20 @@
   }
   function clearNavMarkers() { navMarkers.forEach(function (m) { m.remove(); }); navMarkers = []; }
 
+  /* 動畫期間暫時託管：鎖定地圖手勢，結束時恢復（避免誤觸中斷/搶鏡頭） */
+  function setMapHandlers(on) {
+    if (!map) return;
+    ['dragPan', 'scrollZoom', 'dragRotate', 'touchZoomRotate', 'doubleClickZoom', 'keyboard'].forEach(function (h) {
+      try { on ? map[h].enable() : map[h].disable(); } catch (_) {}
+    });
+  }
   function stopAnim() {
-    if (anim) { clearInterval(anim.timer); if (anim.marker) anim.marker.remove(); anim = null; }
+    if (anim) {
+      clearInterval(anim.timer);
+      if (anim.marker) anim.marker.remove();
+      anim = null;
+      setMapHandlers(true);
+    }
   }
   function exitNavMode() {
     stopAnim();
@@ -1952,7 +1927,9 @@
     var marker = new maplibregl.Marker({ element: makeVehicleEl(opts.emoji), rotationAlignment: 'map', pitchAlignment: 'map' })
       .setLngLat(coords[0]).addTo(map);
     anim = { timer: null, coords: coords, cum: cum, total: total, pos: 0, speed: opts.speed,
-             marker: marker, mode: opts.mode, zoom: opts.zoom, pitch: opts.pitch, lastSvAt: -999, seg: 1 };
+             marker: marker, mode: opts.mode, zoom: opts.zoom, pitch: opts.pitch, lastSvAt: -999, seg: 1,
+             brg: brgArr(coords[0], coords[1] || coords[0]) };
+    setMapHandlers(false); /* 託管：僅停止鈕/Esc 可中斷 */
     anim.timer = setInterval(animTick, 50);
   }
   function animTick() {
@@ -1966,9 +1943,12 @@
     var t = (p - anim.cum[i - 1]) / segLen;
     var A = anim.coords[i - 1], B = anim.coords[i];
     var lng = A[0] + (B[0] - A[0]) * t, lat = A[1] + (B[1] - A[1]) * t;
-    var brg = brgArr(A, B);
+    /* 轉彎平滑：鏡頭方位以每 tick 最多 4.5° 轉向路段方位，避免路口瞬間甩頭 */
+    var target = brgArr(A, B);
+    var diff = ((target - anim.brg + 540) % 360) - 180;
+    anim.brg = (anim.brg + Math.max(-4.5, Math.min(4.5, diff)) + 360) % 360;
     anim.marker.setLngLat([lng, lat]).setRotation(0);
-    map.jumpTo({ center: [lng, lat], bearing: brg, pitch: anim.pitch, zoom: anim.zoom });
+    map.jumpTo({ center: [lng, lat], bearing: anim.brg, pitch: anim.pitch, zoom: anim.zoom });
     updateCompass();
     var remain = Math.max(0, anim.total - anim.pos);
     elRideNoteTxt.textContent = (anim.mode === 'ride' ? '🛵 騎行中' : '✈️ 飛行中') + '：剩 ' +
@@ -1984,10 +1964,12 @@
   function startRide(route) {
     elSvCard.hidden = false; /* 沿途街景卡 */
     elRideNoteTxt.textContent = '🛵 出發！全程 ' + (route.dist >= 1000 ? (route.dist / 1000).toFixed(1) + ' km' : Math.round(route.dist) + ' m');
-    startAnimAlong(route.coords, { emoji: '🛵', speed: 15, zoom: 17.6, pitch: 64, mode: 'ride' });
+    /* 貼地平視角度：地平線在畫面上方、3D 建築迎面流過（搭配沿途街景卡） */
+    startAnimAlong(route.coords, { emoji: '🛵', speed: 13, zoom: 19.5, pitch: 82, mode: 'ride' });
   }
   function startFly(a, b) {
-    startAnimAlong([a, b], { emoji: '✈️', speed: 70, zoom: 14.3, pitch: 52, mode: 'fly' });
+    /* 高空掠過視角 */
+    startAnimAlong([a, b], { emoji: '✈️', speed: 70, zoom: 14.6, pitch: 60, mode: 'fly' });
   }
   /* 沿途街景：每 ~110m 查一次 metadata（免費），換到新全景球才載縮圖（有 30 天邊緣快取） */
   function updateRideSv(lat, lng, heading) {
@@ -2014,8 +1996,6 @@
     btnVector.addEventListener('click', function () { setBasemap('vector'); });
     btnSatellite.addEventListener('click', function () { setBasemap('satellite'); });
     btnCenter.addEventListener('click', goCityCenter);
-    btnDistrict.addEventListener('click', goDistrict);
-    btnNorth.addEventListener('click', goNorthReset);
     btnFly.addEventListener('click', toggleFlyover);
     btnBuildings.addEventListener('click', function () {
       setBuildingsVisible(!state.buildingsOn);
@@ -2087,14 +2067,6 @@
         case '3':
           e.preventDefault();
           goCityCenter();
-          break;
-        case '4':
-          e.preventDefault();
-          goDistrict();
-          break;
-        case '5':
-          e.preventDefault();
-          goNorthReset();
           break;
         case '6':
           e.preventDefault();

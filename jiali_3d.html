@@ -200,6 +200,9 @@
   }
   #sv-thumb[hidden] { display: none; }
   #sv-nopano { color: var(--muted); }
+  #sv-rot { display: flex; flex-direction: column; gap: 4px; }
+  #sv-rot[hidden] { display: none; }
+  #sv-rot .btn { min-height: 28px; min-width: 34px; padding: 0 8px; font-size: 14px; }
   #sv-lightbox {
     position: fixed;
     inset: 0;
@@ -348,6 +351,10 @@
     <!-- 點地圖任一處浮現街景卡：縮圖預覽（Static API）＋點縮圖放大＋開 Google 街景新分頁 -->
     <div class="note" id="sv-card" hidden>
       <img id="sv-thumb" alt="街景預覽" title="點擊放大" hidden>
+      <span id="sv-rot" hidden>
+        <button type="button" class="btn" id="btn-sv-left" title="視角左轉 45°" aria-label="街景視角左轉 45 度">⟲</button>
+        <button type="button" class="btn" id="btn-sv-right" title="視角右轉 45°" aria-label="街景視角右轉 45 度">⟳</button>
+      </span>
       <span id="sv-nopano" hidden>此處無街景覆蓋</span>
       <span id="sv-coord"><strong>📍</strong></span>
       <button type="button" class="btn btn-primary" id="btn-sv">🛣️ 查看街景</button>
@@ -363,6 +370,17 @@
 <script>
 (function () {
   'use strict';
+
+  /* 僅允許從主頁 GIS 轉入（主頁 openJiali3D() 會先種 sessionStorage 交棒旗標；
+     同分頁導航旗標跟著走、F5 重整也在）。直接開網址（無旗標、無同源 referrer）
+     → 導回主頁。副作用：直接分享 3D 深連結的人會被帶回主頁重進。 */
+  var fromGis = false;
+  try { fromGis = sessionStorage.getItem('gis-3d-ok') === '1'; } catch (_) {}
+  if (!fromGis && document.referrer.indexOf(location.origin + '/') !== 0) {
+    location.replace('jialie_gis_v6.html');
+    return;
+  }
+  try { sessionStorage.setItem('gis-3d-ok', '1'); } catch (_) {}
 
   /** @type {const} */
   var CENTER = [120.1777263, 23.1638778];
@@ -449,6 +467,9 @@
   var elSvNopano = document.getElementById('sv-nopano');
   var elSvLightbox = document.getElementById('sv-lightbox');
   var elSvLightboxImg = document.getElementById('sv-lightbox-img');
+  var elSvRot = document.getElementById('sv-rot');
+  var btnSvLeft = document.getElementById('btn-sv-left');
+  var btnSvRight = document.getElementById('btn-sv-right');
 
   function clamp(n, min, max) {
     return Math.min(max, Math.max(min, n));
@@ -997,15 +1018,45 @@
     });
   }
 
-  /* ── 街景卡：點選處放標記＋縮圖預覽（點縮圖放大），按鈕開 Google 街景 ── */
+  /* ── 街景卡：點選處放標記＋縮圖預覽（點縮圖放大、⟲⟳ 轉向），按鈕開 Google 街景 ──
+     省 API 訣竅：圖片一律用 metadata（免費）回的 pano_id 請求，附近點擊共用同一顆
+     全景球 → URL 相同 → 瀏覽器/CF 邊緣快取直接命中，不重複計費 */
   var svLngLat = null;
   var svMarker = null;
   var svToken = 0; // 連點多處時只認最後一次的 metadata 回應
+  var svPano = null;
+  var svHeading = null; // 0-359；初始 = 從全景球拍攝點指向點選處的方位角
 
-  function svImgUrl(lngLat, w, h) {
-    // 傳 location（非 pano_id）→ Google 自動把鏡頭朝向點選處
-    return SV_PROXY + '?mode=img&size=' + w + 'x' + h +
-      '&location=' + lngLat.lat + ',' + lngLat.lng;
+  function bearingDeg(from, to) { // from/to: {lat,lng}
+    var f1 = from.lat * Math.PI / 180;
+    var f2 = to.lat * Math.PI / 180;
+    var dl = (to.lng - from.lng) * Math.PI / 180;
+    var y = Math.sin(dl) * Math.cos(f2);
+    var x = Math.cos(f1) * Math.sin(f2) - Math.sin(f1) * Math.cos(f2) * Math.cos(dl);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+
+  function svImgUrl(w, h) {
+    var q = SV_PROXY + '?mode=img&size=' + w + 'x' + h;
+    if (svPano) {
+      q += '&pano=' + encodeURIComponent(svPano);
+      if (svHeading != null) q += '&heading=' + svHeading;
+    } else if (svLngLat) {
+      // fallback（metadata 失敗時）：傳 location，Google 自動把鏡頭朝向點選處
+      q += '&location=' + svLngLat.lat + ',' + svLngLat.lng;
+    }
+    return q;
+  }
+
+  function refreshSvImages() {
+    if (!elSvThumb.hidden) elSvThumb.src = svImgUrl(300, 180);
+    if (!elSvLightbox.hidden) elSvLightboxImg.src = svImgUrl(640, 400);
+  }
+
+  function rotateSv(delta) {
+    if (svHeading == null) svHeading = 0;
+    svHeading = (svHeading + delta + 360) % 360;
+    refreshSvImages();
   }
 
   function showSvCard(lngLat) {
@@ -1022,13 +1073,22 @@
     elSvThumb.hidden = true;
     elSvThumb.removeAttribute('src');
     elSvNopano.hidden = true;
+    elSvRot.hidden = true;
+    svPano = null;
+    svHeading = null;
     fetch(SV_PROXY + '?mode=meta&location=' + lngLat.lat + ',' + lngLat.lng)
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (t !== svToken) return;
         if (d && d.status === 'OK') {
-          elSvThumb.src = svImgUrl(lngLat, 300, 180); // 2x 尺寸縮至 150x90 顯示，高解析
+          svPano = d.pano_id || null;
+          if (svPano && d.location) {
+            // 方位量化到 15° 一格：轉向手感不變，快取命中率大增
+            svHeading = Math.round(bearingDeg(d.location, lngLat) / 15) * 15 % 360;
+          }
+          elSvThumb.src = svImgUrl(300, 180); // 2x 尺寸縮至 150x90 顯示，高解析
           elSvThumb.hidden = false;
+          elSvRot.hidden = !svPano;
         } else {
           elSvNopano.hidden = false;
         }
@@ -1036,7 +1096,7 @@
       .catch(function () {
         // metadata 失敗（斷線等）→ 直接試載縮圖，無覆蓋時 Google 回灰底佔位圖
         if (t !== svToken) return;
-        elSvThumb.src = svImgUrl(lngLat, 300, 180);
+        elSvThumb.src = svImgUrl(300, 180);
         elSvThumb.hidden = false;
       });
   }
@@ -1045,6 +1105,8 @@
     elSvCard.hidden = true;
     elSvLightbox.hidden = true;
     svLngLat = null;
+    svPano = null;
+    svHeading = null;
     svToken++;
     if (svMarker) svMarker.remove();
   }
@@ -1077,9 +1139,11 @@
     btnSvClose.addEventListener('click', hideSvCard);
     elSvThumb.addEventListener('click', function () {
       if (!svLngLat) return;
-      elSvLightboxImg.src = svImgUrl(svLngLat, 640, 400); // Static API 免費層最大 640
+      elSvLightboxImg.src = svImgUrl(640, 400); // Static API 免費層最大 640
       elSvLightbox.hidden = false;
     });
+    btnSvLeft.addEventListener('click', function () { rotateSv(-45); });
+    btnSvRight.addEventListener('click', function () { rotateSv(45); });
     elSvLightbox.addEventListener('click', function () {
       elSvLightbox.hidden = true;
     });

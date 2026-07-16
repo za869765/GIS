@@ -2093,7 +2093,13 @@
         return true;
       });
       roadSigns.forEach(function (s) {
-        if (!s.near) return;
+        if (!s.near || s.done) return;
+        if (anim.pos > s.atM + 60) {
+          /* 已騎過它的最近點 60m＝經過/遠離中（含一開始就在後方的）→ 本趟不再顯示 */
+          s.done = true;
+          s.mk.getElement().style.display = 'none';
+          return;
+        }
         s.mk.getElement().style.display = rgHavM(pos, s.ll) < 550 ? '' : 'none';
       });
       if (anim.mode === 'fly') {
@@ -2211,17 +2217,20 @@
     });
   }
 
-  /* 幹道大字「是否在行程沿線」預判：距路線 <300m（飛行 <900m）才有資格就近浮現 */
+  /* 幹道大字「是否在行程沿線」預判：距路線 <300m（飛行 <900m）才有資格就近浮現；
+     同時記下「最近點的沿線里程 atM」——騎過該里程即收掉，不再回頭顯示 */
   function computeSignNear() {
     if (!anim) return;
     var thresh = anim.mode === 'fly' ? 900 : 300;
     roadSigns.forEach(function (s) {
-      var min = Infinity;
+      var min = Infinity, minAt = 0;
       for (var i = 0; i < anim.coords.length; i += 3) {
         var d = rgHavM(anim.coords[i], s.ll);
-        if (d < min) min = d;
+        if (d < min) { min = d; minAt = i; }
       }
       s.near = min < thresh;
+      s.atM = anim.cum[minAt] || 0;
+      s.done = false;
       s.mk.getElement().style.display = 'none';
     });
   }

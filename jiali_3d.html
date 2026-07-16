@@ -280,6 +280,34 @@
     z-index: 61;
   }
 
+  /* 常駐指北針：MapLibre 縮放鈕上方 */
+  #compass {
+    position: fixed;
+    right: calc(9px + var(--safe-r));
+    bottom: calc(178px + var(--safe-b));
+    z-index: 7;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  #compass:hover { border-color: rgba(61, 184, 255, 0.55); }
+  #compass svg { transition: transform 0.15s linear; }
+
+  /* 騎行/飛行狀態列 */
+  #ride-note { display: flex; align-items: center; gap: 10px; }
+  #ride-note[hidden] { display: none; }
+  #ride-note-txt { font-weight: 700; color: #7dd3a7; }
+  #btn-ride-stop { min-height: 28px; padding: 0 10px; font-size: 12px; flex: none; }
+
   .status {
     position: absolute;
     z-index: 6;
@@ -380,13 +408,16 @@
       <p id="source-note">· 非真實測量・AI推算可能有誤，僅供參考。</p>
     </div>
     <div class="controls" role="toolbar" aria-label="地圖控制">
-      <a class="btn btn-primary" href="jialie_gis_v6.html" id="btn-back" title="返回佳里 GIS">
-        <span class="ico" aria-hidden="true">←</span>返回 GIS
+      <a class="btn btn-primary" href="jialie_gis_v6.html" id="btn-back" title="返回一般地圖模式">
+        <span class="ico" aria-hidden="true">←</span>返回一般地圖模式
       </a>
-      <button type="button" class="btn" id="btn-basemap" aria-pressed="true" aria-label="目前為衛星圖，點擊切換為向量圖" title="切換衛星／向量底圖">
-        向量圖
-      </button>
-      <button type="button" class="btn" id="btn-center" title="市區中心斜視">市中心</button>
+      <button type="button" class="btn" id="btn-vector" aria-pressed="false" title="OpenFreeMap 向量底圖">向量圖</button>
+      <button type="button" class="btn" id="btn-satellite" aria-pressed="true" title="Esri 衛星影像底圖">衛星圖</button>
+      <button type="button" class="btn" id="btn-center" title="佳里市中心視角">佳里市中心</button>
+      <button type="button" class="btn" id="btn-zilong" title="子龍（市中心東邊）">子龍</button>
+      <button type="button" class="btn" id="btn-jialixing" title="佳里興（市中心北邊）">佳里興</button>
+      <button type="button" class="btn" id="btn-wennei" title="塭內（市中心南邊）">塭內</button>
+      <button type="button" class="btn" id="btn-xiabu" title="下廍（市中心西邊）">下廍</button>
       <button type="button" class="btn" id="btn-district" title="全區俯視範圍">全區</button>
       <button type="button" class="btn" id="btn-north" title="正北並重設視角">正北</button>
       <button type="button" class="btn" id="btn-fly" aria-pressed="false" title="自動環景巡覽">環景</button>
@@ -396,10 +427,26 @@
       <button type="button" class="btn" id="btn-svlines" aria-pressed="true" title="顯示或隱藏街景覆蓋藍線（有藍線的路才有街景）">
         街景線
       </button>
+      <button type="button" class="btn" id="btn-ride" aria-pressed="false" title="機車騎行預覽：點地圖設定起訖點，沿路線騎行並顯示沿途街景">🛵 騎行</button>
+      <button type="button" class="btn" id="btn-plane" aria-pressed="false" title="飛行檢視：點地圖設定起訖點，飛行視角飛過去">✈️ 飛行</button>
     </div>
   </div>
 
+  <!-- 常駐指北針：紅針指北，隨地圖旋轉，點擊回正北 -->
+  <button type="button" id="compass" title="指北針：點擊回正北" aria-label="指北針，點擊回正北">
+    <svg id="compass-needle" width="30" height="30" viewBox="0 0 30 30">
+      <polygon points="15,3 19.5,15 10.5,15" fill="#e74c3c"/>
+      <polygon points="15,27 19.5,15 10.5,15" fill="#eef3f8"/>
+      <circle cx="15" cy="15" r="2.4" fill="#28394a" stroke="#fff" stroke-width="1"/>
+    </svg>
+  </button>
+
   <div class="ui-layer bottom-panel">
+    <!-- 騎行/飛行模式狀態列 -->
+    <div class="note" id="ride-note" hidden>
+      <span id="ride-note-txt">點地圖設定起點</span>
+      <button type="button" class="btn" id="btn-ride-stop">■ 停止</button>
+    </div>
     <!-- 點地圖任一處浮現街景卡（極簡版）：點縮圖 → 互動式街景放大檢視 -->
     <div class="note" id="sv-card" hidden>
       <img id="sv-thumb" alt="街景預覽" title="左右拖曳旋轉方向・點擊放大（360° 環視）" draggable="false" hidden>
@@ -467,6 +514,14 @@
     pitch: 58
   };
 
+  /* 聚落快捷視角（OSM place 節點；塭內以派出所/國小推定聚落中心） */
+  var PLACES = {
+    zilong:    [120.20762, 23.17319], /* 子龍（東） */
+    jialixing: [120.18981, 23.18981], /* 佳里興（北） */
+    wennei:    [120.16500, 23.12500], /* 塭內（南） */
+    xiabu:     [120.15140, 23.17197]  /* 下廍（西） */
+  };
+
   var DISTRICT_VIEW = {
     zoom: 12.4,
     bearing: 0,
@@ -482,6 +537,8 @@
   var BOUNDARY_SRC = 'jiali-boundary';
   var BOUNDARY_FILL = 'jiali-boundary-fill';
   var BOUNDARY_LINE = 'jiali-boundary-line';
+  var MASK_SRC = 'jiali-mask';
+  var MASK_LAYER = 'jiali-mask-fill';
   var ESRI_SRC = 'esri-world-imagery';
   var ESRI_LAYER = 'esri-world-imagery-layer';
 
@@ -507,7 +564,15 @@
   var elLoading = document.getElementById('loading');
   var elError = document.getElementById('error');
   var elErrorMsg = document.getElementById('error-msg');
-  var btnBasemap = document.getElementById('btn-basemap');
+  var btnVector = document.getElementById('btn-vector');
+  var btnSatellite = document.getElementById('btn-satellite');
+  var btnRide = document.getElementById('btn-ride');
+  var btnPlane = document.getElementById('btn-plane');
+  var btnRideStop = document.getElementById('btn-ride-stop');
+  var elRideNote = document.getElementById('ride-note');
+  var elRideNoteTxt = document.getElementById('ride-note-txt');
+  var elCompass = document.getElementById('compass');
+  var elCompassNeedle = document.getElementById('compass-needle');
   var btnCenter = document.getElementById('btn-center');
   var btnDistrict = document.getElementById('btn-district');
   var btnNorth = document.getElementById('btn-north');
@@ -661,6 +726,26 @@
       pitch: DEFAULTS.pitch,
       duration: easeDuration(1200)
     });
+  }
+
+  /* 聚落快捷視角（子龍/佳里興/塭內/下廍） */
+  function goPlace(key) {
+    stopFlyover();
+    if (!map || !PLACES[key]) return;
+    map.easeTo({
+      center: PLACES[key].slice(),
+      zoom: 15.8,
+      bearing: DEFAULTS.bearing,
+      pitch: DEFAULTS.pitch,
+      duration: easeDuration(1400)
+    });
+  }
+
+  /* 常駐指北針：紅針隨地圖 bearing 反向旋轉恆指北，點擊回正北 */
+  function updateCompass() {
+    if (elCompassNeedle && map) {
+      elCompassNeedle.style.transform = 'rotate(' + (-map.getBearing()) + 'deg)';
+    }
   }
 
   function goDistrict() {
@@ -830,14 +915,9 @@
   function setBasemap(mode) {
     state.basemap = mode === 'satellite' ? 'satellite' : 'vector';
     var satelliteOn = state.basemap === 'satellite';
-    // aria-pressed reflects the CURRENT state (satellite on/off). The visible label
-    // is the NEXT action, which contradicts aria-pressed for screen readers, so the
-    // accessible name is set explicitly to describe the current + next state.
-    btnBasemap.setAttribute('aria-pressed', satelliteOn ? 'true' : 'false');
-    btnBasemap.setAttribute('aria-label', satelliteOn
-      ? '目前為衛星圖，點擊切換為向量圖'
-      : '目前為向量圖，點擊切換為衛星圖');
-    btnBasemap.textContent = satelliteOn ? '向量圖' : '衛星圖';
+    /* 兩顆獨立按鈕：作用中的那顆亮藍邊（aria-pressed 樣式） */
+    btnVector.setAttribute('aria-pressed', satelliteOn ? 'false' : 'true');
+    btnSatellite.setAttribute('aria-pressed', satelliteOn ? 'true' : 'false');
     if (!map || !state.styleReady) return;
 
     if (state.basemap === 'satellite') {
@@ -863,13 +943,29 @@
 
   function raiseBoundary() {
     if (!map) return;
-    // Fill first, then line on top so the dashed outline stays visible
+    // 遮罩最先抬（蓋過衛星影像），fill 次之，line 最上讓虛線邊界清楚
+    if (map.getLayer(MASK_LAYER)) {
+      try { map.moveLayer(MASK_LAYER); } catch (_) {}
+    }
     if (map.getLayer(BOUNDARY_FILL)) {
       try { map.moveLayer(BOUNDARY_FILL); } catch (_) {}
     }
     if (map.getLayer(BOUNDARY_LINE)) {
       try { map.moveLayer(BOUNDARY_LINE); } catch (_) {}
     }
+  }
+
+  /* 區外遮罩：世界矩形挖掉佳里區邊界（洞），區外明顯壓暗一眼辨識轄區 */
+  function buildMaskFeature(f) {
+    var holes = [];
+    var g = f && f.geometry;
+    if (g && g.type === 'Polygon') holes.push(g.coordinates[0]);
+    else if (g && g.type === 'MultiPolygon') g.coordinates.forEach(function (p) { holes.push(p[0]); });
+    var world = [[-179.9, -85], [179.9, -85], [179.9, 85], [-179.9, 85], [-179.9, -85]];
+    return {
+      type: 'Feature', properties: {},
+      geometry: { type: 'Polygon', coordinates: [world].concat(holes) }
+    };
   }
 
   function addBoundaryLayers() {
@@ -881,6 +977,25 @@
       map.addSource(BOUNDARY_SRC, {
         type: 'geojson',
         data: state.boundaryFeature
+      });
+    }
+
+    /* 區外遮罩（深藍半透明，蓋在影像/向量之上、邊界線之下） */
+    var maskFeature = buildMaskFeature(state.boundaryFeature);
+    if (map.getSource(MASK_SRC)) {
+      map.getSource(MASK_SRC).setData(maskFeature);
+    } else {
+      map.addSource(MASK_SRC, { type: 'geojson', data: maskFeature });
+    }
+    if (!map.getLayer(MASK_LAYER)) {
+      map.addLayer({
+        id: MASK_LAYER,
+        type: 'fill',
+        source: MASK_SRC,
+        paint: {
+          'fill-color': '#0a1a2e',
+          'fill-opacity': 0.62
+        }
       });
     }
 
@@ -1028,10 +1143,13 @@
       'bottom-right'
     );
 
+    /* 內建小羅盤關閉：改用右側常駐大指北針（#compass） */
     map.addControl(
-      new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }),
+      new maplibregl.NavigationControl({ visualizePitch: true, showCompass: false }),
       'bottom-right'
     );
+    map.on('rotate', updateCompass);
+    updateCompass();
 
     map.addControl(
       new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }),
@@ -1069,12 +1187,14 @@
     ['pointerdown', 'touchstart', 'wheel'].forEach(function (ev) {
       canvasEl.addEventListener(ev, function () {
         if (state.flying) stopFlyover();
+        if (anim) { stopAnim(); elRideNoteTxt.textContent = '已手動中斷（按 ✕ 或再按模式鈕關閉）'; }
       }, { passive: true });
     });
 
-    // 點地圖 → 街景卡＋自動估算（建築高度/佔地、路寬）
+    // 點地圖：騎行/飛行選點優先；一般模式浮現街景卡＋自動估算
     //（MapLibre 拖曳後不觸發 click，不會誤觸）
     map.on('click', function (e) {
+      if (navMode === 'ride-pick' || navMode === 'fly-pick') { handleNavPick(e.lngLat); return; }
       showSvCard(e.lngLat, queryBuildingInfo(e.point), queryRoadInfo(e.point));
     });
   }
@@ -1612,10 +1732,287 @@
     // 軌跡保留（暫存參考，重新整理才消失）
   }
 
-  function wireUi() {
-    btnBasemap.addEventListener('click', function () {
-      setBasemap(state.basemap === 'satellite' ? 'vector' : 'satellite');
+  /* ══════════ 騎行/飛行預覽 ══════════
+     騎行：離線路網 A*（route_graph.js 懶載）→ 機車沿路線騎行、相機跟隨、沿途街景同步
+     飛行：兩點直線，小飛機高空視角飛越（動畫用 setInterval，背景分頁也能繼續） */
+  var routeGraphPromise = null;
+  function ensureRouteGraph() {
+    if (typeof ROUTE_GRAPH !== 'undefined') return Promise.resolve(true);
+    if (routeGraphPromise) return routeGraphPromise;
+    routeGraphPromise = new Promise(function (resolve) {
+      var s = document.createElement('script');
+      s.src = 'route_graph.js';
+      s.onload = function () { resolve(typeof ROUTE_GRAPH !== 'undefined'); };
+      s.onerror = function () { resolve(false); };
+      document.head.appendChild(s);
     });
+    return routeGraphPromise;
+  }
+
+  /* —— 離線路網 router（主頁 v6.843 引擎精簡移植：不需轉彎清單，只回座標與距離）—— */
+  var rgAdj = null;
+  function rgHavM(a, b) { /* a/b:[lng,lat] */
+    var R = 6371000, f1 = a[1] * Math.PI / 180, f2 = b[1] * Math.PI / 180;
+    var df = f2 - f1, dl = (b[0] - a[0]) * Math.PI / 180;
+    var s = Math.sin(df / 2) * Math.sin(df / 2) + Math.cos(f1) * Math.cos(f2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+  function brgArr(A, B) { return bearingDeg({ lat: A[1], lng: A[0] }, { lat: B[1], lng: B[0] }); }
+  function rgBuildAdj() {
+    if (rgAdj) return;
+    rgAdj = Array.from({ length: ROUTE_GRAPH.v.length }, function () { return []; });
+    ROUTE_GRAPH.e.forEach(function (e, i) {
+      var ow = e[5];
+      if (ow !== 2) rgAdj[e[0]].push([i, e[1], 1]);
+      if (ow !== 1) rgAdj[e[1]].push([i, e[0], 0]);
+    });
+  }
+  function rgEdgeCoords(i) {
+    var e = ROUTE_GRAPH.e[i], m = e[6], out = [ROUTE_GRAPH.v[e[0]]];
+    for (var j = 0; j < m.length; j += 2) out.push([m[j], m[j + 1]]);
+    out.push(ROUTE_GRAPH.v[e[1]]);
+    return out;
+  }
+  function rgSlice(i, d0, d1) {
+    var cs = rgEdgeCoords(i), out = [], acc = 0;
+    function lerp(p, q, t) { return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; }
+    for (var j = 1; j < cs.length; j++) {
+      var L = rgHavM(cs[j - 1], cs[j]); if (L === 0) continue;
+      var s = acc, e2 = acc + L;
+      if (e2 > d0 && s < d1) {
+        var t0 = Math.max(0, (d0 - s) / L), t1 = Math.min(1, (d1 - s) / L);
+        var p0 = lerp(cs[j - 1], cs[j], t0), p1 = lerp(cs[j - 1], cs[j], t1);
+        if (!out.length) out.push(p0);
+        if (t1 > t0) out.push(p1);
+      }
+      acc = e2;
+    }
+    return out;
+  }
+  function rgSnap(lat, lng) {
+    var q = [lng, lat], kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 111320;
+    var best = null;
+    for (var i = 0; i < ROUTE_GRAPH.e.length; i++) {
+      var cs = rgEdgeCoords(i), acc = 0;
+      for (var j = 1; j < cs.length; j++) {
+        var ax = (cs[j - 1][0] - q[0]) * kx, ay = (cs[j - 1][1] - q[1]) * ky;
+        var bx = (cs[j][0] - q[0]) * kx, by = (cs[j][1] - q[1]) * ky;
+        var dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+        var t = L2 ? -(ax * dx + ay * dy) / L2 : 0; t = Math.max(0, Math.min(1, t));
+        var px = ax + dx * t, py = ay + dy * t, d2 = px * px + py * py;
+        var segL = Math.sqrt(L2);
+        if (!best || d2 < best.d2) best = { d2: d2, e: i, dA: acc + segL * t,
+          pt: [cs[j - 1][0] + (cs[j][0] - cs[j - 1][0]) * t, cs[j - 1][1] + (cs[j][1] - cs[j - 1][1]) * t] };
+        acc += segL;
+      }
+    }
+    if (!best) return null;
+    var len = ROUTE_GRAPH.e[best.e][2];
+    return { e: best.e, pt: best.pt, dA: best.dA, dB: Math.max(0, len - best.dA), off: Math.sqrt(best.d2) };
+  }
+  function rgRoute(from, to) {
+    rgBuildAdj();
+    var E = ROUTE_GRAPH.e, V = ROUTE_GRAPH.v;
+    if (from.e === to.e) {
+      var ow0 = E[from.e][5];
+      if ((ow0 !== 2 && from.dA <= to.dA) || (ow0 !== 1 && from.dA >= to.dA)) {
+        var d0 = Math.min(from.dA, to.dA), d1 = Math.max(from.dA, to.dA);
+        var cs0 = rgSlice(from.e, d0, d1);
+        if (from.dA > to.dA) cs0 = cs0.slice().reverse();
+        return { coords: cs0, dist: Math.abs(to.dA - from.dA) };
+      }
+    }
+    var goal = to.pt, se = E[from.e], te = E[to.e];
+    var goalEntry = new Map();
+    if (te[5] !== 2) goalEntry.set(te[0], to.dA);
+    if (te[5] !== 1) goalEntry.set(te[1], to.dB);
+    var dist = new Map(), prev = new Map(), heap = [];
+    function push(f, g, v) { heap.push([f, g, v]); var i = heap.length - 1; while (i > 0) { var p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; var tmp = heap[p]; heap[p] = heap[i]; heap[i] = tmp; i = p; } }
+    function pop() { var t = heap[0], l = heap.pop(); if (heap.length) { heap[0] = l; var i = 0; for (;;) { var a = 2 * i + 1, b = a + 1, m = i; if (a < heap.length && heap[a][0] < heap[m][0]) m = a; if (b < heap.length && heap[b][0] < heap[m][0]) m = b; if (m === i) break; var tp = heap[m]; heap[m] = heap[i]; heap[i] = tp; i = m; } } return t; }
+    function h(v) { return rgHavM(V[v], goal); }
+    if (se[5] !== 2) { dist.set(se[1], from.dB); prev.set(se[1], [-1, from.e, 1]); push(from.dB + h(se[1]), from.dB, se[1]); }
+    if (se[5] !== 1 && (!dist.has(se[0]) || from.dA < dist.get(se[0]))) { dist.set(se[0], from.dA); prev.set(se[0], [-1, from.e, 0]); push(from.dA + h(se[0]), from.dA, se[0]); }
+    var bestTotal = Infinity, bestEntry = -1, guard = 0;
+    while (heap.length) {
+      if (++guard > 400000) break;
+      var top = pop(), f = top[0], g = top[1], v = top[2];
+      if (f >= bestTotal) break;
+      if (g !== dist.get(v)) continue;
+      if (goalEntry.has(v)) { var tot = g + goalEntry.get(v); if (tot < bestTotal) { bestTotal = tot; bestEntry = v; } }
+      var nb = rgAdj[v];
+      for (var k = 0; k < nb.length; k++) {
+        var ei = nb[k][0], u = nb[k][1], ng = g + E[ei][2];
+        var cur = dist.has(u) ? dist.get(u) : Infinity;
+        if (ng < cur) { dist.set(u, ng); prev.set(u, [v, ei, nb[k][2]]); push(ng + h(u), ng, u); }
+      }
+    }
+    if (bestEntry < 0) return null;
+    var chain = [], vv = bestEntry;
+    while (vv !== -1) { var pv = prev.get(vv); chain.unshift({ v: vv, e: pv[1], fwd: pv[2] }); vv = pv[0]; }
+    var parts = [];
+    var fe = E[from.e];
+    if (chain[0].v === fe[1]) parts.push(rgSlice(from.e, from.dA, fe[2]));
+    else parts.push(rgSlice(from.e, 0, from.dA).reverse());
+    for (var i2 = 1; i2 < chain.length; i2++) {
+      var st = chain[i2], cs2 = rgEdgeCoords(st.e);
+      if (!st.fwd) cs2 = cs2.slice().reverse();
+      parts.push(cs2);
+    }
+    if (bestEntry === te[0]) parts.push(rgSlice(to.e, 0, to.dA));
+    else parts.push(rgSlice(to.e, to.dA, te[2]).reverse());
+    var coords = [];
+    parts.forEach(function (seg) { seg.forEach(function (c) { var last = coords[coords.length - 1]; if (!last || last[0] !== c[0] || last[1] !== c[1]) coords.push(c); }); });
+    return { coords: coords, dist: bestTotal };
+  }
+
+  /* —— 模式、標記與動畫 —— */
+  var navMode = null;   /* 'ride-pick' | 'fly-pick' */
+  var navPts = [];
+  var navMarkers = [];
+  var NAV3D_SRC = 'nav3d-route';
+  var NAV3D_LINE = 'nav3d-route-line';
+  var anim = null;
+  var rideSvPano = null;
+
+  function ensureNavLine() {
+    if (!map.getSource(NAV3D_SRC)) {
+      map.addSource(NAV3D_SRC, { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } } });
+    }
+    if (!map.getLayer(NAV3D_LINE)) {
+      map.addLayer({ id: NAV3D_LINE, type: 'line', source: NAV3D_SRC,
+        paint: { 'line-color': '#2ecc71', 'line-width': 5, 'line-opacity': 0.95 } });
+    }
+  }
+  function setNavLine(coords) {
+    if (map.getSource(NAV3D_SRC)) map.getSource(NAV3D_SRC).setData({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords || [] } });
+  }
+  function makeVehicleEl(emoji) {
+    var el = document.createElement('div');
+    el.style.cssText = 'font-size:34px;line-height:1;pointer-events:none;text-shadow:0 2px 6px rgba(0,0,0,.65);';
+    el.textContent = emoji;
+    return el;
+  }
+  function clearNavMarkers() { navMarkers.forEach(function (m) { m.remove(); }); navMarkers = []; }
+
+  function stopAnim() {
+    if (anim) { clearInterval(anim.timer); if (anim.marker) anim.marker.remove(); anim = null; }
+  }
+  function exitNavMode() {
+    stopAnim();
+    navMode = null; navPts = []; rideSvPano = null;
+    clearNavMarkers();
+    if (map && map.getSource(NAV3D_SRC)) setNavLine([]);
+    btnRide.setAttribute('aria-pressed', 'false');
+    btnPlane.setAttribute('aria-pressed', 'false');
+    elRideNote.hidden = true;
+  }
+  function enterNavMode(mode) {
+    var again = (navMode === mode);
+    exitNavMode();
+    if (again) return; /* 再按一次 = 關閉 */
+    navMode = mode; navPts = [];
+    (mode === 'ride-pick' ? btnRide : btnPlane).setAttribute('aria-pressed', 'true');
+    elRideNote.hidden = false;
+    elRideNoteTxt.textContent = (mode === 'ride-pick' ? '🛵 騎行預覽：' : '✈️ 飛行檢視：') + '點地圖設定「起點」';
+    hideSvCard();
+    stopFlyover();
+  }
+  function handleNavPick(lngLat) {
+    navPts.push([lngLat.lng, lngLat.lat]);
+    var mk = new maplibregl.Marker({ color: navPts.length === 1 ? '#2ecc71' : '#ff5e57' })
+      .setLngLat(navPts[navPts.length - 1]).addTo(map);
+    navMarkers.push(mk);
+    if (navPts.length === 1) {
+      elRideNoteTxt.textContent = '已設起點，點地圖設定「迄點」';
+      return;
+    }
+    if (navMode === 'fly-pick') { navMode = null; startFly(navPts[0], navPts[1]); return; }
+    navMode = null;
+    elRideNoteTxt.textContent = '路線計算中…';
+    ensureRouteGraph().then(function (ok) {
+      if (!anim && navPts.length === 2) {
+        if (!ok) { elRideNoteTxt.textContent = '路網載入失敗，無法騎行預覽'; return; }
+        try {
+          var s1 = rgSnap(navPts[0][1], navPts[0][0]), s2 = rgSnap(navPts[1][1], navPts[1][0]);
+          if (!s1 || !s2 || s1.off > 300 || s2.off > 300) throw new Error('離道路太遠');
+          var route = rgRoute(s1, s2);
+          if (!route || route.coords.length < 2) throw new Error('找不到路線');
+          try { ensureNavLine(); setNavLine(route.coords); } catch (_) { /* 樣式未就緒仍可騎 */ }
+          startRide(route);
+        } catch (e) { elRideNoteTxt.textContent = '算路失敗：' + e.message; }
+      }
+    });
+  }
+
+  function startAnimAlong(coords, opts) {
+    stopAnim();
+    var cum = [0];
+    for (var i = 1; i < coords.length; i++) cum.push(cum[i - 1] + rgHavM(coords[i - 1], coords[i]));
+    var total = cum[cum.length - 1] || 1;
+    var marker = new maplibregl.Marker({ element: makeVehicleEl(opts.emoji), rotationAlignment: 'map', pitchAlignment: 'map' })
+      .setLngLat(coords[0]).addTo(map);
+    anim = { timer: null, coords: coords, cum: cum, total: total, pos: 0, speed: opts.speed,
+             marker: marker, mode: opts.mode, zoom: opts.zoom, pitch: opts.pitch, lastSvAt: -999, seg: 1 };
+    anim.timer = setInterval(animTick, 50);
+  }
+  function animTick() {
+    if (!anim) return;
+    anim.pos += anim.speed * 0.05;
+    var done = anim.pos >= anim.total;
+    var p = Math.min(anim.pos, anim.total);
+    while (anim.seg < anim.cum.length - 1 && anim.cum[anim.seg] < p) anim.seg++;
+    var i = anim.seg;
+    var segLen = (anim.cum[i] - anim.cum[i - 1]) || 1;
+    var t = (p - anim.cum[i - 1]) / segLen;
+    var A = anim.coords[i - 1], B = anim.coords[i];
+    var lng = A[0] + (B[0] - A[0]) * t, lat = A[1] + (B[1] - A[1]) * t;
+    var brg = brgArr(A, B);
+    anim.marker.setLngLat([lng, lat]).setRotation(0);
+    map.jumpTo({ center: [lng, lat], bearing: brg, pitch: anim.pitch, zoom: anim.zoom });
+    updateCompass();
+    var remain = Math.max(0, anim.total - anim.pos);
+    elRideNoteTxt.textContent = (anim.mode === 'ride' ? '🛵 騎行中' : '✈️ 飛行中') + '：剩 ' +
+      (remain >= 1000 ? (remain / 1000).toFixed(1) + ' km' : Math.round(remain) + ' m');
+    if (anim.mode === 'ride' && anim.pos - anim.lastSvAt >= 110) { anim.lastSvAt = anim.pos; updateRideSv(lat, lng, brg); }
+    if (done) {
+      var endMode = anim.mode;
+      stopAnim();
+      elRideNoteTxt.textContent = (endMode === 'ride' ? '🛵' : '✈️') + ' 已抵達目的地';
+      if (endMode === 'fly') map.easeTo({ zoom: 16.5, pitch: 58, duration: 1200 });
+    }
+  }
+  function startRide(route) {
+    elSvCard.hidden = false; /* 沿途街景卡 */
+    elRideNoteTxt.textContent = '🛵 出發！全程 ' + (route.dist >= 1000 ? (route.dist / 1000).toFixed(1) + ' km' : Math.round(route.dist) + ' m');
+    startAnimAlong(route.coords, { emoji: '🛵', speed: 15, zoom: 17.6, pitch: 64, mode: 'ride' });
+  }
+  function startFly(a, b) {
+    startAnimAlong([a, b], { emoji: '✈️', speed: 70, zoom: 14.3, pitch: 52, mode: 'fly' });
+  }
+  /* 沿途街景：每 ~110m 查一次 metadata（免費），換到新全景球才載縮圖（有 30 天邊緣快取） */
+  function updateRideSv(lat, lng, heading) {
+    fetch(SV_PROXY + '?mode=meta&location=' + lat + ',' + lng)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!anim || anim.mode !== 'ride') return;
+        if (d && d.status === 'OK' && d.pano_id && d.pano_id !== rideSvPano) {
+          rideSvPano = d.pano_id;
+          svPano = d.pano_id;
+          svLngLat = { lat: lat, lng: lng };
+          svHeading = Math.round(heading / 15) * 15 % 360;
+          elSvCoord.textContent = '📍 ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+          elSvThumb.src = svImgUrl(300, 180);
+          elSvThumb.hidden = false;
+          elSvNopano.hidden = true;
+          elSvBldg.hidden = true;
+          elSvRoad.hidden = true;
+        }
+      }).catch(function () {});
+  }
+
+  function wireUi() {
+    btnVector.addEventListener('click', function () { setBasemap('vector'); });
+    btnSatellite.addEventListener('click', function () { setBasemap('satellite'); });
     btnCenter.addEventListener('click', goCityCenter);
     btnDistrict.addEventListener('click', goDistrict);
     btnNorth.addEventListener('click', goNorthReset);
@@ -1625,6 +2022,16 @@
     });
     btnSvlines.addEventListener('click', function () {
       setSvLinesVisible(!state.svLinesOn);
+    });
+    document.getElementById('btn-zilong').addEventListener('click', function () { goPlace('zilong'); });
+    document.getElementById('btn-jialixing').addEventListener('click', function () { goPlace('jialixing'); });
+    document.getElementById('btn-wennei').addEventListener('click', function () { goPlace('wennei'); });
+    document.getElementById('btn-xiabu').addEventListener('click', function () { goPlace('xiabu'); });
+    btnRide.addEventListener('click', function () { enterNavMode('ride-pick'); });
+    btnPlane.addEventListener('click', function () { enterNavMode('fly-pick'); });
+    btnRideStop.addEventListener('click', exitNavMode);
+    elCompass.addEventListener('click', function () {
+      map.easeTo({ bearing: 0, duration: 600 });
     });
     btnRetry.addEventListener('click', function () {
       window.location.reload();
@@ -1653,6 +2060,10 @@
       }
       if (e.key === 'Escape' && !elSvLightbox.hidden) {
         closeSvLightbox();
+        return;
+      }
+      if (e.key === 'Escape' && (navMode || anim || !elRideNote.hidden)) {
+        exitNavMode();
         return;
       }
       if (e.key === 'Escape' && !elSvCard.hidden) {

@@ -1890,7 +1890,7 @@
   function exitNavMode() {
     if (arriveTimer) { clearTimeout(arriveTimer); arriveTimer = null; }
     stopAnim();
-    navMode = null; navPts = []; rideSvPano = null;
+    navMode = null; navPts = []; rideSvPano = null; rideSvBusy = false;
     clearNavMarkers();
     if (map && map.getSource(NAV3D_SRC)) setNavLine([]);
     btnRide.setAttribute('aria-pressed', 'false');
@@ -1993,7 +1993,12 @@
     var remain = Math.max(0, anim.total - anim.pos);
     elRideNoteTxt.textContent = (anim.mode === 'ride' ? '🛵 騎行中' : '✈️ 飛行中') + '：剩 ' +
       (remain >= 1000 ? (remain / 1000).toFixed(1) + ' km' : Math.round(remain) + ' m');
-    if (anim.mode === 'ride' && anim.pos - anim.lastSvAt >= 110) { anim.lastSvAt = anim.pos; updateRideSv(lat, lng, brg); }
+    if (anim.mode === 'ride' && anim.pos - anim.lastSvAt >= 100) {
+      anim.lastSvAt = anim.pos;
+      /* 預載前方 130m 的街景（載入需 1~2 秒，抓「現在位置」永遠來不及） */
+      var look = animPointAt(Math.min(anim.total, anim.pos + 130));
+      updateRideSv(look.lat, look.lng, look.brg);
+    }
     if (done) {
       var endMode = anim.mode;
       stopAnim();
@@ -2019,25 +2024,50 @@
     /* 屋頂高度掠過：略高於 3D 建築、看得見屋頂與街廓；速度＝騎行 2 倍 */
     startAnimAlong([a, b], { emoji: '✈️', speed: RIDE_SPEED * 2, zoom: 17.4, pitch: 72, mode: 'fly' });
   }
-  /* 沿途街景：每 ~110m 查一次 metadata（免費），換到新全景球才載縮圖（有 30 天邊緣快取） */
+  /* 沿路線距離 d（公尺）取樣位置與方位 */
+  function animPointAt(d) {
+    var cum = anim.cum, coords = anim.coords;
+    var i = 1;
+    while (i < cum.length - 1 && cum[i] < d) i++;
+    var segLen = (cum[i] - cum[i - 1]) || 1;
+    var t = Math.max(0, Math.min(1, (d - cum[i - 1]) / segLen));
+    var A = coords[i - 1], B = coords[i];
+    return { lng: A[0] + (B[0] - A[0]) * t, lat: A[1] + (B[1] - A[1]) * t, brg: brgArr(A, B) };
+  }
+
+  /* 沿途街景（預載版）：metadata 免費查前方全景球 → 圖片在背景「完整載好」才換上，
+     畫面永遠是一張完整圖；上一張還在載就跳過本輪，不排隊堆積 */
+  var rideSvBusy = false;
   function updateRideSv(lat, lng, heading) {
+    if (rideSvBusy) return;
+    rideSvBusy = true;
     fetch(SV_PROXY + '?mode=meta&location=' + lat + ',' + lng)
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        if (!anim || anim.mode !== 'ride') return;
+        if (!anim || anim.mode !== 'ride') { rideSvBusy = false; return; }
         if (d && d.status === 'OK' && d.pano_id && d.pano_id !== rideSvPano) {
-          rideSvPano = d.pano_id;
-          svPano = d.pano_id;
-          svLngLat = { lat: lat, lng: lng };
-          svHeading = Math.round(heading / 15) * 15 % 360;
-          elSvCoord.textContent = '📍 ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
-          elSvThumb.src = svImgUrl(300, 180);
-          elSvThumb.hidden = false;
-          elSvNopano.hidden = true;
-          elSvBldg.hidden = true;
-          elSvRoad.hidden = true;
+          var pano = d.pano_id;
+          var h = Math.round(heading / 15) * 15 % 360;
+          var url = SV_PROXY + '?mode=img&size=300x180&pano=' + encodeURIComponent(pano) + '&heading=' + h;
+          var img = new Image();
+          img.onload = function () {
+            rideSvBusy = false;
+            if (!anim || anim.mode !== 'ride') return;
+            rideSvPano = pano;
+            svPano = pano; svHeading = h; svLngLat = { lat: lat, lng: lng };
+            elSvThumb.src = url;
+            elSvThumb.hidden = false;
+            elSvNopano.hidden = true;
+            elSvBldg.hidden = true;
+            elSvRoad.hidden = true;
+            elSvCoord.textContent = '📍 前方 ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+          };
+          img.onerror = function () { rideSvBusy = false; };
+          img.src = url;
+        } else {
+          rideSvBusy = false;
         }
-      }).catch(function () {});
+      }).catch(function () { rideSvBusy = false; });
   }
 
   function wireUi() {

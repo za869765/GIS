@@ -185,6 +185,11 @@
   }
   .note strong { color: var(--text); font-weight: 700; }
 
+  /* 街景卡：display:flex 會蓋過 [hidden] 的 UA display:none，需明確補回 */
+  #sv-card { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #sv-card[hidden] { display: none; }
+  #sv-card .btn { min-height: 34px; }
+
   .status {
     position: absolute;
     z-index: 6;
@@ -306,6 +311,12 @@
   </div>
 
   <div class="ui-layer bottom-panel">
+    <!-- 點地圖任一處浮現街景卡：開 Google 街景新分頁，免 API key（同主頁 v6.825 做法） -->
+    <div class="note" id="sv-card" hidden>
+      <span id="sv-coord"><strong>📍</strong></span>
+      <button type="button" class="btn btn-primary" id="btn-sv">🛣️ 查看街景</button>
+      <button type="button" class="btn" id="btn-sv-close" aria-label="關閉街景卡">✕</button>
+    </div>
     <!-- 完整圖資出處由右下角 MapLibre attribution 列標示，此處僅留免責一句 -->
     <div class="note" id="source-note">
       AI推算可能有誤，僅供參考。
@@ -381,6 +392,10 @@
   var btnFly = document.getElementById('btn-fly');
   var btnBuildings = document.getElementById('btn-buildings');
   var btnRetry = document.getElementById('btn-retry');
+  var elSvCard = document.getElementById('sv-card');
+  var elSvCoord = document.getElementById('sv-coord');
+  var btnSv = document.getElementById('btn-sv');
+  var btnSvClose = document.getElementById('btn-sv-close');
 
   function clamp(n, min, max) {
     return Math.min(max, Math.max(min, n));
@@ -873,6 +888,31 @@
         if (state.flying) stopFlyover();
       }, { passive: true });
     });
+
+    // 點地圖任一處 → 底部浮現街景卡（MapLibre 拖曳後不觸發 click，不會誤開）
+    map.on('click', function (e) {
+      showSvCard(e.lngLat);
+    });
+  }
+
+  /* ── 街景卡：點選處放標記，按鈕開 Google 街景（免 API key，同主頁做法） ── */
+  var svLngLat = null;
+  var svMarker = null;
+
+  function showSvCard(lngLat) {
+    svLngLat = lngLat;
+    elSvCoord.innerHTML = '<strong>📍 ' + lngLat.lat.toFixed(5) + ', ' + lngLat.lng.toFixed(5) + '</strong>';
+    elSvCard.hidden = false;
+    if (!svMarker) {
+      svMarker = new maplibregl.Marker({ color: '#3db8ff' });
+    }
+    svMarker.setLngLat(lngLat).addTo(map);
+  }
+
+  function hideSvCard() {
+    elSvCard.hidden = true;
+    svLngLat = null;
+    if (svMarker) svMarker.remove();
   }
 
   function wireUi() {
@@ -889,12 +929,25 @@
     btnRetry.addEventListener('click', function () {
       window.location.reload();
     });
+    btnSv.addEventListener('click', function () {
+      if (!svLngLat) return;
+      window.open(
+        'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + svLngLat.lat + ',' + svLngLat.lng,
+        '_blank',
+        'noopener'
+      );
+    });
+    btnSvClose.addEventListener('click', hideSvCard);
 
     // Keyboard: 1–7 quick actions when not typing in inputs
     document.addEventListener('keydown', function (e) {
       if (e.defaultPrevented) return;
       var tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) {
+        return;
+      }
+      if (e.key === 'Escape' && !elSvCard.hidden) {
+        hideSvCard();
         return;
       }
       if (e.key === 'Escape' && state.flying) {

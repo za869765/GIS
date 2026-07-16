@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.843</title>
+<title>佳里 GIS v6.844</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -7238,14 +7238,22 @@ async function navFacTo(lat, lng, label){
 function openNavPanel(expanded=false){
   /* 里別統計模式下不開放導航 */
   if(_vilBoundaryOn){ alert('請先關閉「里別統計」模式，再使用導航功能。'); return; }
-  /* GPS 精度好（< 200m）且在佳里區內 → 自動填起點（僅當起點尚未設定時） */
-  if(_gpsMarker && _gpsAccuracy < 200 && !_navFromLat){
+  /* 手機：GPS 精度好（< 200m）且在佳里區內 → 自動填起點（僅當起點尚未設定時）
+     桌機：一律不用 GPS（IP 定位常飄十幾公里），改預設進學路159號（衛生所），可改 */
+  if(window.innerWidth<768 && _gpsMarker && _gpsAccuracy < 200 && !_navFromLat){
     const gll=_gpsMarker.getLatLng();
     if(_isInJiali(gll.lat, gll.lng)){
       _navFromLat=gll.lat; _navFromLng=gll.lng; _navFromLabel='目前位置 📍';
       const fi=document.getElementById('nav-from-inp');
       if(fi) fi.value=_navFromLabel;
     }
+  } else if(window.innerWidth>=768 && !_navFromLat){
+    _getDefaultNavStart().then(r=>{
+      if(_navFromLat) return; /* 期間使用者已自行設定就不覆蓋 */
+      _navFromLat=r.lat; _navFromLng=r.lng; _navFromLabel=r.label;
+      const fi=document.getElementById('nav-from-inp'); if(fi) fi.value=r.label;
+      _placeNavFromMarker(r.lat, r.lng, r.label);
+    });
   }
   /* 收起側欄，避免與導航面板重疊 */
   if(window.innerWidth<768){
@@ -7694,6 +7702,7 @@ function _rgMakeSteps(route){
 let _followWatch=null,_followMarker=null,_followLastRecalc=0;
 function _fmtDistM(m){ return m>=1000?(m/1000).toFixed(1)+' km':Math.round(m)+' m'; }
 function startFollowNav(){
+  if(window.innerWidth>=768){ alert('站內導航（GPS 跟隨）僅限手機使用；桌機請參考路線與轉彎指示。'); return; }
   if(!_navRouteCoords||_navRouteCoords.length<2){ alert('請先查詢路線'); return; }
   if(!navigator.geolocation){ alert('此裝置不支援定位'); return; }
   const b=document.getElementById('follow-banner');
@@ -7839,8 +7848,8 @@ async function calcNavRoute(){
   const noteTxt=document.getElementById('nav-road-note-txt');
   if(noteEl&&noteTxt){noteEl.style.display=note?'':'none';noteTxt.textContent=note;}
   document.getElementById('nav-route-info').classList.add('show');
-  /* 站內導航按鈕：有可跟隨的路線才開；Google App 連結恆備援 */
-  document.getElementById('nav-launch-btn').style.display=_navRouteCoords?'block':'none';
+  /* 站內導航按鈕：手機且有可跟隨的路線才開（桌機無 GPS 意義）；Google App 連結恆備援 */
+  document.getElementById('nav-launch-btn').style.display=(_navRouteCoords&&window.innerWidth<768)?'block':'none';
   const gl=document.getElementById('nav-google-link'); if(gl) gl.style.display='inline';
   btn.disabled=false; btn.textContent='🔍 查詢路線';
 }

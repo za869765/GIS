@@ -338,6 +338,9 @@
       <button type="button" class="btn" id="btn-buildings" aria-pressed="true" title="顯示或隱藏 3D 建築">
         3D 建築
       </button>
+      <button type="button" class="btn" id="btn-svlines" aria-pressed="true" title="顯示或隱藏街景覆蓋藍線（有藍線的路才有街景）">
+        街景線
+      </button>
     </div>
   </div>
 
@@ -372,6 +375,13 @@
   /* 街景卡縮圖預覽走同源 Pages Function 代理（/api/sv），API key 存 Pages secret 不落前端。
      mode=meta 查覆蓋（免費）、mode=img 取靜態圖（每月前 1 萬次免費） */
   var SV_PROXY = '/api/sv';
+  /* 街景覆蓋藍線圖磚（Google 地圖自家 svv 圖層，透明 PNG、免 key、不計費；
+     非官方端點，若日後失效僅藍線消失、其餘功能不受影響） */
+  var SVV_SRC = 'sv-coverage';
+  var SVV_LAYER = 'sv-coverage-layer';
+  var SVV_TILES = [0, 1, 2, 3].map(function (i) {
+    return 'https://mts' + i + '.google.com/vt?hl=zh-TW&lyrs=svv|cb_client:apiv3&style=40,18&x={x}&y={y}&z={z}';
+  });
   var ESRI_ATTR =
     'Tiles &copy; <a href="https://www.esri.com/" target="_blank" rel="noopener noreferrer">Esri</a> — ' +
     'Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community';
@@ -409,6 +419,7 @@
   var state = {
     basemap: 'satellite', // 'vector' | 'satellite'
     buildingsOn: true,
+    svLinesOn: true,
     flying: false,
     boundaryFeature: null,
     boundaryBounds: null,
@@ -428,6 +439,7 @@
   var btnNorth = document.getElementById('btn-north');
   var btnFly = document.getElementById('btn-fly');
   var btnBuildings = document.getElementById('btn-buildings');
+  var btnSvlines = document.getElementById('btn-svlines');
   var btnRetry = document.getElementById('btn-retry');
   var elSvCard = document.getElementById('sv-card');
   var elSvCoord = document.getElementById('sv-coord');
@@ -654,6 +666,54 @@
     }
   }
 
+  function ensureSvvLayer() {
+    if (!map.getSource(SVV_SRC)) {
+      map.addSource(SVV_SRC, {
+        type: 'raster',
+        tiles: SVV_TILES,
+        tileSize: 256,
+        attribution: '街景覆蓋 &copy; Google',
+        maxzoom: 21
+      });
+    }
+    if (!map.getLayer(SVV_LAYER)) {
+      // 與 Esri 同錨點插入（building/symbol 之前）：位於衛星影像之上、建築與標籤之下
+      var beforeId = null;
+      var layers = map.getStyle().layers || [];
+      if (map.getLayer('building')) {
+        beforeId = 'building';
+      } else if (map.getLayer(BUILDING_LAYER_ID)) {
+        beforeId = BUILDING_LAYER_ID;
+      } else {
+        for (var i = 0; i < layers.length; i++) {
+          if (layers[i].type === 'symbol') {
+            beforeId = layers[i].id;
+            break;
+          }
+        }
+      }
+      map.addLayer(
+        {
+          id: SVV_LAYER,
+          type: 'raster',
+          source: SVV_SRC,
+          paint: { 'raster-opacity': 0.9 }
+        },
+        beforeId || undefined
+      );
+    }
+  }
+
+  function setSvLinesVisible(on) {
+    state.svLinesOn = !!on;
+    btnSvlines.setAttribute('aria-pressed', state.svLinesOn ? 'true' : 'false');
+    if (!map || !state.styleReady) return;
+    ensureSvvLayer();
+    if (map.getLayer(SVV_LAYER)) {
+      map.setLayoutProperty(SVV_LAYER, 'visibility', state.svLinesOn ? 'visible' : 'none');
+    }
+  }
+
   // Track vector base layers we hid while satellite imagery covers them, so we can
   // restore exactly those when switching back to the vector basemap.
   var hiddenForSatellite = [];
@@ -715,6 +775,7 @@
     }
 
     setBuildingsVisible(state.buildingsOn);
+    setSvLinesVisible(state.svLinesOn);
     // Ensure boundary stays on top of basemap fills
     raiseBoundary();
   }
@@ -999,6 +1060,9 @@
     btnBuildings.addEventListener('click', function () {
       setBuildingsVisible(!state.buildingsOn);
     });
+    btnSvlines.addEventListener('click', function () {
+      setSvLinesVisible(!state.svLinesOn);
+    });
     btnRetry.addEventListener('click', function () {
       window.location.reload();
     });
@@ -1068,6 +1132,10 @@
         case '7':
           e.preventDefault();
           setBuildingsVisible(!state.buildingsOn);
+          break;
+        case '8':
+          e.preventDefault();
+          setSvLinesVisible(!state.svLinesOn);
           break;
         default:
           break;

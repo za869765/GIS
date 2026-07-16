@@ -185,26 +185,50 @@
   }
   .note strong { color: var(--text); font-weight: 700; }
 
-  /* 街景卡：display:flex 會蓋過 [hidden] 的 UA display:none，需明確補回 */
-  #sv-card { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  /* 街景卡（極簡）：display:flex 會蓋過 [hidden] 的 UA display:none，需明確補回 */
+  #sv-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    padding: 6px 8px;
+    max-width: min(96vw, 460px);
+  }
   #sv-card[hidden] { display: none; }
-  #sv-card .btn { min-height: 34px; }
   #sv-thumb {
     display: block;
-    width: 150px;
-    height: 90px;
+    width: 118px;
+    height: 70px;
     object-fit: cover;
     border-radius: 8px;
     border: 1px solid var(--border);
     cursor: zoom-in;
+    flex: none;
+    touch-action: none; /* 讓 pointer 拖曳旋轉在觸控裝置可用 */
+    user-select: none;
+    -webkit-user-drag: none;
   }
   #sv-thumb[hidden] { display: none; }
+  #sv-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 10.5px;
+    line-height: 1.35;
+    min-width: 0;
+  }
+  #sv-coord { color: var(--muted); }
   #sv-nopano { color: var(--muted); }
-  #sv-rot { display: flex; flex-direction: column; gap: 4px; }
-  #sv-rot[hidden] { display: none; }
-  #sv-rot .btn { min-height: 28px; min-width: 34px; padding: 0 8px; font-size: 14px; }
   #sv-bldg { color: var(--accent-2); font-weight: 600; }
   #sv-road { color: #ffc57a; font-weight: 600; }
+  #btn-sv-close {
+    min-height: 26px;
+    min-width: 26px;
+    padding: 0 7px;
+    font-size: 12px;
+    flex: none;
+    align-self: flex-start;
+  }
   #sv-lightbox {
     position: fixed;
     inset: 0;
@@ -234,10 +258,25 @@
     background: #000;
   }
   #sv-lightbox iframe[hidden] { display: none; }
+  #sv-pano {
+    width: min(92vw, 1280px);
+    height: 86vh;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    background: #000;
+  }
+  #sv-pano[hidden] { display: none; }
   #sv-lightbox-close {
     position: absolute;
     top: calc(12px + var(--safe-t));
     right: calc(12px + var(--safe-r));
+    z-index: 61;
+  }
+  #sv-lightbox-open {
+    position: absolute;
+    top: calc(12px + var(--safe-t));
+    right: calc(112px + var(--safe-r));
     z-index: 61;
   }
 
@@ -366,18 +405,15 @@
   </div>
 
   <div class="ui-layer bottom-panel">
-    <!-- 點地圖任一處浮現街景卡：縮圖預覽（Static API）＋點縮圖放大＋開 Google 街景新分頁 -->
+    <!-- 點地圖任一處浮現街景卡（極簡版）：點縮圖 → 互動式街景放大檢視 -->
     <div class="note" id="sv-card" hidden>
-      <img id="sv-thumb" alt="街景預覽" title="點擊放大" hidden>
-      <span id="sv-rot" hidden>
-        <button type="button" class="btn" id="btn-sv-left" title="視角左轉 45°" aria-label="街景視角左轉 45 度">⟲</button>
-        <button type="button" class="btn" id="btn-sv-right" title="視角右轉 45°" aria-label="街景視角右轉 45 度">⟳</button>
-      </span>
-      <span id="sv-nopano" hidden>此處無街景覆蓋</span>
-      <span id="sv-coord"><strong>📍</strong></span>
-      <span id="sv-bldg" hidden></span>
-      <span id="sv-road" hidden></span>
-      <button type="button" class="btn btn-primary" id="btn-sv">🛣️ 查看街景</button>
+      <img id="sv-thumb" alt="街景預覽" title="左右拖曳旋轉方向・點擊放大（360° 環視）" draggable="false" hidden>
+      <div id="sv-info">
+        <span id="sv-coord">📍</span>
+        <span id="sv-nopano" hidden>此處無街景覆蓋</span>
+        <span id="sv-bldg" hidden></span>
+        <span id="sv-road" hidden></span>
+      </div>
       <button type="button" class="btn" id="btn-sv-close" aria-label="關閉街景卡">✕</button>
     </div>
   </div>
@@ -385,7 +421,9 @@
   <!-- 街景放大檢視：有 SV_EMBED_KEY → 互動式街景 iframe（360° 拖曳）；沒有 → 靜態圖。
        點背景、✕ 或 Esc 關閉（iframe 會吃掉滑鍵事件，故必留 ✕ 鈕） -->
   <div id="sv-lightbox" hidden>
+    <a class="btn" id="sv-lightbox-open" target="_blank" rel="noopener" title="在 Google 地圖開啟完整街景">Google 地圖 ↗</a>
     <button type="button" class="btn" id="sv-lightbox-close" aria-label="關閉放大檢視">✕ 關閉</button>
+    <div id="sv-pano" hidden></div>
     <iframe id="sv-lightbox-frame" title="互動式街景（可拖曳環視）" allowfullscreen referrerpolicy="origin" hidden></iframe>
     <img id="sv-lightbox-img" alt="街景放大預覽">
   </div>
@@ -484,7 +522,6 @@
   var btnRetry = document.getElementById('btn-retry');
   var elSvCard = document.getElementById('sv-card');
   var elSvCoord = document.getElementById('sv-coord');
-  var btnSv = document.getElementById('btn-sv');
   var btnSvClose = document.getElementById('btn-sv-close');
   var elSvThumb = document.getElementById('sv-thumb');
   var elSvNopano = document.getElementById('sv-nopano');
@@ -492,9 +529,8 @@
   var elSvLightboxImg = document.getElementById('sv-lightbox-img');
   var elSvLightboxFrame = document.getElementById('sv-lightbox-frame');
   var btnSvLightboxClose = document.getElementById('sv-lightbox-close');
-  var elSvRot = document.getElementById('sv-rot');
-  var btnSvLeft = document.getElementById('btn-sv-left');
-  var btnSvRight = document.getElementById('btn-sv-right');
+  var elSvLightboxOpen = document.getElementById('sv-lightbox-open');
+  var elSvPano = document.getElementById('sv-pano');
   var elSvBldg = document.getElementById('sv-bldg');
   var elSvRoad = document.getElementById('sv-road');
 
@@ -825,6 +861,7 @@
     setBuildingsVisible(state.buildingsOn);
     setSvLinesVisible(state.svLinesOn);
     ensureRoadQueryLayers(); // 路寬估算的查詢專用透明線（衛星模式也可點）
+    ensureTrailLayer();      // 街景移動軌跡（暫存）
     // Ensure boundary stays on top of basemap fills
     raiseBoundary();
   }
@@ -1150,7 +1187,7 @@
     } catch (_) { return null; }
   }
 
-  /* ── 街景卡：點選處放標記＋縮圖預覽（點縮圖放大、⟲⟳ 轉向），按鈕開 Google 街景 ──
+  /* ── 街景卡：帶方向錐的藍點標記＋縮圖（拖曳旋轉、點擊放大） ──
      省 API 訣竅：圖片一律用 metadata（免費）回的 pano_id 請求，附近點擊共用同一顆
      全景球 → URL 相同 → 瀏覽器/CF 邊緣快取直接命中，不重複計費 */
   var svLngLat = null;
@@ -1168,6 +1205,23 @@
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   }
 
+  /* 標記＝藍點＋視野錐（像 Google 小黃人）：rotation 隨 svHeading，rotationAlignment
+     取 map 讓錐形跟地圖座標系一起轉，不受地圖 bearing 影響方位正確性 */
+  function makeSvMarkerEl() {
+    var el = document.createElement('div');
+    el.style.cssText = 'width:48px;height:48px;pointer-events:none;';
+    el.innerHTML =
+      '<svg width="48" height="48" viewBox="0 0 48 48">' +
+        '<path d="M24 24 L12 7 A21 21 0 0 1 36 7 Z" fill="rgba(61,184,255,.34)"/>' +
+        '<circle cx="24" cy="24" r="7" fill="#3db8ff" stroke="#fff" stroke-width="2.6"/>' +
+      '</svg>';
+    return el;
+  }
+
+  function updateMarkerRotation() {
+    if (svMarker) svMarker.setRotation(svHeading != null ? svHeading : 0);
+  }
+
   function svImgUrl(w, h) {
     var q = SV_PROXY + '?mode=img&size=' + w + 'x' + h;
     if (svPano) {
@@ -1180,12 +1234,55 @@
     return q;
   }
 
-  function refreshSvImages() {
-    if (!elSvThumb.hidden) elSvThumb.src = svImgUrl(300, 180);
-    if (!elSvLightbox.hidden && !elSvLightboxImg.hidden) elSvLightboxImg.src = svImgUrl(640, 400);
+  /* ── 街景內移動軌跡（暫存於記憶體，重新整理即消失） ── */
+  var TRAIL_SRC = 'sv-trail';
+  var TRAIL_LAYER = 'sv-trail-line';
+  var trailSegs = []; // Array<Array<[lng,lat]>>，每次開燈箱新起一段
+
+  function ensureTrailLayer() {
+    if (!map.getSource(TRAIL_SRC)) {
+      map.addSource(TRAIL_SRC, {
+        type: 'geojson',
+        data: { type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: [] } }
+      });
+    }
+    if (!map.getLayer(TRAIL_LAYER)) {
+      map.addLayer({
+        id: TRAIL_LAYER,
+        type: 'line',
+        source: TRAIL_SRC,
+        paint: { 'line-color': '#00e5ff', 'line-width': 3.5, 'line-opacity': 0.9, 'line-dasharray': [1, 1.3] }
+      });
+    }
   }
 
-  /* 互動式街景的 Embed key：向 /api/sv 取一次（''=未設定→退回靜態放大圖） */
+  function updateTrail() {
+    if (!map || !map.getSource(TRAIL_SRC)) return;
+    var coords = trailSegs.filter(function (s) { return s.length >= 2; });
+    map.getSource(TRAIL_SRC).setData({
+      type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: coords }
+    });
+  }
+
+  function trailStart() {
+    if (map && state.styleReady) ensureTrailLayer();
+    trailSegs.push([]);
+  }
+
+  function trailAppend(lng, lat) {
+    var seg = trailSegs[trailSegs.length - 1];
+    if (!seg) { seg = []; trailSegs.push(seg); }
+    var last = seg[seg.length - 1];
+    if (last) {
+      var dm = Math.abs(lat - last[1]) * 111320 +
+               Math.abs(lng - last[0]) * 111320 * Math.cos(lat * Math.PI / 180);
+      if (dm < 1.5) return; // 原地微晃不記
+    }
+    seg.push([lng, lat]);
+    updateTrail();
+  }
+
+  /* 互動式街景用的前端 key：向 /api/sv 取一次（''=未設定→逐層退化） */
   var embedKey = null;
   function getEmbedKey() {
     if (embedKey !== null) return Promise.resolve(embedKey);
@@ -1195,39 +1292,169 @@
       .catch(function () { embedKey = ''; return embedKey; });
   }
 
+  /* ── 放大檢視三層 fallback：JS API 全景（走動/轉向同步回地圖）→ Embed iframe → 靜態圖 ── */
+  var pano = null;
+  var panoAuthFailed = false;
+  var mapsJsPromise = null;
+
+  // key 未開通 Maps JavaScript API 時 Google 會呼叫這個全域 callback → 退 iframe
+  window.gm_authFailure = function () {
+    panoAuthFailed = true;
+    if (!elSvLightbox.hidden && !elSvPano.hidden) {
+      elSvPano.hidden = true;
+      getEmbedKey().then(function (k) { if (k) showIframeLightbox(k); });
+    }
+  };
+
+  function loadMapsJs(key) {
+    if (window.google && window.google.maps && window.google.maps.StreetViewPanorama) {
+      return Promise.resolve(true);
+    }
+    if (mapsJsPromise) return mapsJsPromise;
+    mapsJsPromise = new Promise(function (resolve) {
+      window.__svPanoReady = function () { resolve(true); };
+      var s = document.createElement('script');
+      s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key) +
+        '&v=weekly&loading=async&callback=__svPanoReady';
+      s.onerror = function () { resolve(false); };
+      document.head.appendChild(s);
+    });
+    return mapsJsPromise;
+  }
+
+  function onPanoMove() {
+    if (!pano) return;
+    var p = pano.getPosition();
+    if (!p) return;
+    svLngLat = { lat: p.lat(), lng: p.lng() };
+    if (svMarker) svMarker.setLngLat([svLngLat.lng, svLngLat.lat]);
+    elSvCoord.textContent = '📍 ' + svLngLat.lat.toFixed(5) + ', ' + svLngLat.lng.toFixed(5);
+    trailAppend(svLngLat.lng, svLngLat.lat);
+  }
+
+  function onPanoPov() {
+    if (!pano) return;
+    var pov = pano.getPov();
+    svHeading = Math.round(((pov.heading % 360) + 360) % 360);
+    updateMarkerRotation();
+  }
+
+  function showPanoLightbox() {
+    elSvPano.hidden = false;
+    elSvLightboxFrame.hidden = true;
+    elSvLightboxImg.hidden = true;
+    var povH = svHeading != null ? svHeading : 0;
+    if (!pano) {
+      pano = new google.maps.StreetViewPanorama(elSvPano, {
+        pov: { heading: povH, pitch: 0 },
+        motionTracking: false,
+        addressControl: false,
+        fullscreenControl: true
+      });
+      pano.addListener('position_changed', onPanoMove);
+      pano.addListener('pov_changed', onPanoPov);
+      pano.addListener('pano_changed', function () { if (pano) svPano = pano.getPano() || svPano; });
+    }
+    if (svPano) pano.setPano(svPano);
+    else if (svLngLat) pano.setPosition({ lat: svLngLat.lat, lng: svLngLat.lng });
+    pano.setPov({ heading: povH, pitch: 0 });
+    trailStart();
+    setTimeout(function () { // hidden→shown 需重新量尺寸
+      if (window.google && google.maps && google.maps.event) google.maps.event.trigger(pano, 'resize');
+    }, 80);
+  }
+
+  function showIframeLightbox(k) {
+    var src = 'https://www.google.com/maps/embed/v1/streetview?key=' + encodeURIComponent(k);
+    if (svPano) src += '&pano=' + encodeURIComponent(svPano);
+    else if (svLngLat) src += '&location=' + svLngLat.lat + ',' + svLngLat.lng;
+    if (svHeading != null) src += '&heading=' + svHeading;
+    elSvLightboxFrame.src = src;
+    elSvLightboxFrame.hidden = false;
+    elSvPano.hidden = true;
+    elSvLightboxImg.hidden = true;
+  }
+
+  function showStaticLightbox() {
+    elSvLightboxImg.src = svImgUrl(640, 400);
+    elSvLightboxImg.hidden = false;
+    elSvPano.hidden = true;
+    elSvLightboxFrame.hidden = true;
+  }
+
   function openSvLightbox() {
+    // 燈箱右上「Google 地圖 ↗」：目前位置/方向的完整街景
+    var gUrl = 'https://www.google.com/maps/@?api=1&map_action=pano';
+    if (svPano) gUrl += '&pano=' + encodeURIComponent(svPano);
+    if (svLngLat) gUrl += '&viewpoint=' + svLngLat.lat + ',' + svLngLat.lng;
+    if (svHeading != null) gUrl += '&heading=' + svHeading;
+    elSvLightboxOpen.href = gUrl;
+
     getEmbedKey().then(function (k) {
-      if (k) {
-        var src = 'https://www.google.com/maps/embed/v1/streetview?key=' + encodeURIComponent(k);
-        if (svPano) src += '&pano=' + encodeURIComponent(svPano);
-        else if (svLngLat) src += '&location=' + svLngLat.lat + ',' + svLngLat.lng;
-        if (svHeading != null) src += '&heading=' + svHeading;
-        elSvLightboxFrame.src = src;
-        elSvLightboxFrame.hidden = false;
-        elSvLightboxImg.hidden = true;
-      } else {
-        elSvLightboxImg.src = svImgUrl(640, 400);
-        elSvLightboxImg.hidden = false;
-        elSvLightboxFrame.hidden = true;
-      }
       elSvLightbox.hidden = false;
+      if (!k) { showStaticLightbox(); return; }
+      loadMapsJs(k).then(function (ok) {
+        if (ok && !panoAuthFailed &&
+            window.google && window.google.maps && window.google.maps.StreetViewPanorama) {
+          showPanoLightbox();
+        } else {
+          showIframeLightbox(k);
+        }
+      });
     });
   }
 
   function closeSvLightbox() {
+    var wasOpen = !elSvLightbox.hidden;
     elSvLightbox.hidden = true;
     elSvLightboxFrame.src = 'about:blank'; // 停掉 iframe，避免背景繼續吃資源
+    if (wasOpen && !elSvThumb.hidden && svPano) {
+      // 縮圖跳到街景裡最後走到的位置與方向；方位量化 15° 提高快取命中
+      if (svHeading != null) svHeading = Math.round(svHeading / 15) * 15 % 360;
+      updateMarkerRotation();
+      elSvThumb.src = svImgUrl(300, 180);
+    }
   }
 
-  function rotateSv(delta) {
-    if (svHeading == null) svHeading = 0;
-    svHeading = (svHeading + delta + 360) % 360;
-    refreshSvImages();
+  /* 縮圖左右拖曳＝滑順旋轉方向：拖曳中只轉地圖上的視野錐（免費、即時），
+     放手才量化 15° 載一張新縮圖（1 次快取請求） */
+  var thumbDrag = { active: false, moved: false, startX: 0, startHeading: 0 };
+
+  function onThumbDown(ev) {
+    if (!svPano) return;
+    thumbDrag.active = true;
+    thumbDrag.moved = false;
+    thumbDrag.startX = ev.clientX;
+    thumbDrag.startHeading = svHeading != null ? svHeading : 0;
+    elSvThumb.setPointerCapture(ev.pointerId);
+  }
+
+  function onThumbMove(ev) {
+    if (!thumbDrag.active) return;
+    var dx = ev.clientX - thumbDrag.startX;
+    if (!thumbDrag.moved && Math.abs(dx) > 4) {
+      thumbDrag.moved = true;
+      elSvThumb.style.cursor = 'ew-resize';
+    }
+    if (!thumbDrag.moved) return;
+    svHeading = Math.round(((thumbDrag.startHeading + dx * 0.8) % 360 + 360) % 360);
+    updateMarkerRotation();
+  }
+
+  function onThumbUp() {
+    if (!thumbDrag.active) return;
+    thumbDrag.active = false;
+    elSvThumb.style.cursor = '';
+    if (thumbDrag.moved) {
+      svHeading = Math.round((svHeading || 0) / 15) * 15 % 360;
+      updateMarkerRotation();
+      elSvThumb.src = svImgUrl(300, 180);
+    }
   }
 
   function showSvCard(lngLat, bldg, road) {
     svLngLat = lngLat;
-    elSvCoord.innerHTML = '<strong>📍 ' + lngLat.lat.toFixed(5) + ', ' + lngLat.lng.toFixed(5) + '</strong>';
+    elSvCoord.textContent = '📍 ' + lngLat.lat.toFixed(5) + ', ' + lngLat.lng.toFixed(5);
     if (bldg) {
       var floors = Math.max(1, Math.round(bldg.h / 3)); // 每層約 3 m 估算
       var txt = '🏢 高約 ' + Math.round(bldg.h) + ' m（≈' + floors + ' 樓）';
@@ -1248,16 +1475,20 @@
     }
     elSvCard.hidden = false;
     if (!svMarker) {
-      svMarker = new maplibregl.Marker({ color: '#3db8ff' });
+      svMarker = new maplibregl.Marker({
+        element: makeSvMarkerEl(),
+        rotationAlignment: 'map',
+        pitchAlignment: 'map'
+      });
     }
     svMarker.setLngLat(lngLat).addTo(map);
+    updateMarkerRotation();
 
     // 縮圖：先查 metadata（免費）確認覆蓋，無街景就不發計費的圖片請求
     var t = ++svToken;
     elSvThumb.hidden = true;
     elSvThumb.removeAttribute('src');
     elSvNopano.hidden = true;
-    elSvRot.hidden = true;
     svPano = null;
     svHeading = null;
     fetch(SV_PROXY + '?mode=meta&location=' + lngLat.lat + ',' + lngLat.lng)
@@ -1267,12 +1498,12 @@
         if (d && d.status === 'OK') {
           svPano = d.pano_id || null;
           if (svPano && d.location) {
-            // 方位量化到 15° 一格：轉向手感不變，快取命中率大增
+            // 方位量化到 15° 一格：初始即面向點選處，快取命中率高
             svHeading = Math.round(bearingDeg(d.location, lngLat) / 15) * 15 % 360;
+            updateMarkerRotation();
           }
-          elSvThumb.src = svImgUrl(300, 180); // 2x 尺寸縮至 150x90 顯示，高解析
+          elSvThumb.src = svImgUrl(300, 180); // 2x 尺寸縮小顯示，高解析
           elSvThumb.hidden = false;
-          elSvRot.hidden = !svPano;
         } else {
           elSvNopano.hidden = false;
         }
@@ -1293,6 +1524,7 @@
     svHeading = null;
     svToken++;
     if (svMarker) svMarker.remove();
+    // 軌跡保留（暫存參考，重新整理才消失）
   }
 
   function wireUi() {
@@ -1312,21 +1544,16 @@
     btnRetry.addEventListener('click', function () {
       window.location.reload();
     });
-    btnSv.addEventListener('click', function () {
-      if (!svLngLat) return;
-      window.open(
-        'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + svLngLat.lat + ',' + svLngLat.lng,
-        '_blank',
-        'noopener'
-      );
-    });
     btnSvClose.addEventListener('click', hideSvCard);
+    elSvThumb.addEventListener('pointerdown', onThumbDown);
+    elSvThumb.addEventListener('pointermove', onThumbMove);
+    elSvThumb.addEventListener('pointerup', onThumbUp);
+    elSvThumb.addEventListener('pointercancel', onThumbUp);
     elSvThumb.addEventListener('click', function () {
+      if (thumbDrag.moved) { thumbDrag.moved = false; return; } // 拖曳結尾的 click 不開燈箱
       if (!svLngLat) return;
       openSvLightbox();
     });
-    btnSvLeft.addEventListener('click', function () { rotateSv(-45); });
-    btnSvRight.addEventListener('click', function () { rotateSv(45); });
     btnSvLightboxClose.addEventListener('click', closeSvLightbox);
     elSvLightbox.addEventListener('click', function (e) {
       if (e.target === elSvLightbox || e.target === elSvLightboxImg) closeSvLightbox();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>佳里 GIS — 資料管理 v1.0.2</title>
+<title>佳里 GIS — 資料管理 v1.0.3</title>
 <style>
 * { box-sizing: border-box; }
 :root {
@@ -104,7 +104,7 @@ td.actions button.del:hover { background:#fef0ee; border-color:var(--danger); co
 <div id="main">
   <header>
     <h1>佳里 GIS 資料管理</h1>
-    <span class="ver">v1.0.2</span>
+    <span class="ver">v1.0.3</span>
     <span class="spacer"></span>
     <button onclick="window.open('/','_blank')">前往 GIS 主頁</button>
     <button onclick="logout()">登出</button>
@@ -124,6 +124,7 @@ td.actions button.del:hover { background:#fef0ee; border-color:var(--danger); co
     <button id="exportOverlayBtn" onclick="doExport('csv', true)" style="display:none">匯出有整編紀錄</button>
   </div>
   <div class="table-wrap">
+    <div id="fluBar" style="display:none;background:var(--surface);padding:12px;border-radius:var(--radius);margin-top:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)"></div>
     <table id="dataTable">
       <thead></thead>
       <tbody></tbody>
@@ -193,8 +194,175 @@ const TABLES = {
       { key:'value',    label:'值 (JSON 或文字)', textarea:true },
       { key:'notes',    label:'備註' }
     ]
-  }
+  },
+  flu_contract: { label: '💉 流感合約', custom: true }
 };
+
+/* ══ 💉 流感合約分頁（v1.0.3）══
+   存於 kv_misc：key='flu:院所名'、category='flu'、value='af,ac,vf,vc' 逗號碼（空=未參加）。
+   主頁 /api/overlay 公開帶回後覆寫 FACILITY_DB 的 flu 標記。
+   ⚠️ key 的院所名必須與主頁 FACILITY_DB 名稱一字不差，才會套用到地圖。 */
+const FLU_TYPES = [['af','流感抗病毒'],['ac','新冠抗病毒'],['vf','流感疫苗'],['vc','新冠疫苗']];
+const FLU_DEFAULTS = [
+  ["佳里衛生所","af,ac,vf,vc"],
+  ["奇美醫療財團法人佳里奇美醫院","af,ac,vf,vc"],
+  ["馬博榮婦產專科診所","vf,vc"],
+  ["黃逸仁診所","af"],
+  ["佳安診所","af,ac,vf,vc"],
+  ["新生診所","vf,vc"],
+  ["以琳內科診所","af,vf"],
+  ["楊惠芬婦產科診所",""],
+  ["黃清相診所","af,ac,vf,vc"],
+  ["鴻慶診所",""],
+  ["金石小兒科診所","vf"],
+  ["賴建利小兒科診所",""],
+  ["黃永裕家醫科診所",""],
+  ["葉佳霖診所",""],
+  ["劉亞伯耳鼻喉科診所","af"],
+  ["泰好復健科診所",""],
+  ["佳元診所",""],
+  ["立新診所","af"],
+  ["張松盛小兒科診所",""],
+  ["人人診所",""],
+  ["宏和診所",""],
+  ["蘇稔然內科診所",""],
+  ["朝圍診所",""],
+  ["光復診所",""],
+  ["吳小兒科診所",""],
+  ["謝樂偉眼科診所","ac,vf,vc"],
+  ["吳志昶耳鼻喉科診所","af"],
+  ["凃尚言皮膚科",""],
+  ["鍾宏銘皮膚科診所",""],
+  ["汪骨科診所",""],
+  ["洪骨科診所",""],
+  ["茗亮楊宗茗復健科診所",""],
+  ["明如身心診所",""],
+  ["凱禾診所","vf,vc"],
+  ["陳內兒科診所",""],
+  ["李芳輝內小兒科診所","vf"],
+  ["王順珍外婦產科診所",""],
+  ["陳婦產科診所",""],
+  ["佳里吳婦產科診所",""],
+  ["莊嘉斐眼科診所",""],
+  ["顏忠信眼科診所",""],
+  ["信明眼科診所",""]
+];
+let _fluRows = [];   /* [{key,name,notes,set:Set,orig:string}] */
+
+function _fluCanon(set){ return ['af','ac','vf','vc'].filter(c => set.has(c)).join(','); }
+
+async function renderFluPanel() {
+  const thead = document.querySelector('#dataTable thead');
+  const tbody = document.querySelector('#dataTable tbody');
+  document.getElementById('pager').innerHTML = '';
+  thead.innerHTML = '<tr><th>醫事機構</th>' + FLU_TYPES.map(t=>`<th style="text-align:center">${t[1]}</th>`).join('') + '<th>狀態</th><th>操作</th></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" class="empty">載入中…</td></tr>';
+  const res = await fetch('/api/table/kv_misc?limit=500&offset=0&q=' + encodeURIComponent('flu:'));
+  if (res.status === 401) { location.reload(); return; }
+  const data = await res.json();
+  _fluRows = (data.rows || [])
+    .filter(r => String(r.key || '').startsWith('flu:'))
+    .map(r => {
+      const set = new Set(String(r.value || '').split(',').map(x => x.trim()).filter(c => ['af','ac','vf','vc'].includes(c)));
+      return { key: r.key, name: r.key.slice(4), notes: r.notes || '', set, orig: _fluCanon(set) };
+    })
+    .sort((a, b) => a.set.size - b.set.size || a.name.localeCompare(b.name, 'zh-Hant'));
+  renderFluBar();
+  if (!_fluRows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">尚未初始化 — 請按上方「⚡ 初始化 115 年名冊」把 42 家院所寫入資料庫</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _fluRows.map((r, i) => `<tr id="flu-tr-${i}">
+    <td>${esc(r.name)}</td>
+    ${FLU_TYPES.map(t => `<td style="text-align:center"><input type="checkbox" data-i="${i}" data-code="${t[0]}" ${r.set.has(t[0]) ? 'checked' : ''} style="width:17px;height:17px;cursor:pointer"></td>`).join('')}
+    <td id="flu-st-${i}">${fluStatus(r.set)}</td>
+    <td class="actions"><button class="del" data-delkey="${esc(r.key)}">刪除</button></td>
+  </tr>`).join('');
+  tbody.onclick = e => {
+    const del = e.target.closest('button.del');
+    if (del) { fluDelete(del.dataset.delkey); return; }
+  };
+  tbody.onchange = e => {
+    const cb = e.target;
+    if (cb.type !== 'checkbox' || cb.dataset.i === undefined) return;
+    const r = _fluRows[+cb.dataset.i];
+    if (cb.checked) r.set.add(cb.dataset.code); else r.set.delete(cb.dataset.code);
+    document.getElementById('flu-st-' + cb.dataset.i).innerHTML = fluStatus(r.set);
+    document.getElementById('flu-tr-' + cb.dataset.i).style.background = (_fluCanon(r.set) !== r.orig) ? '#fff8e1' : '';
+    renderFluBar();
+  };
+}
+
+function fluStatus(set) {
+  if (!set.size) return '<span class="badge seed">未參加</span>';
+  if (set.size === 4) return '<span class="badge admin">全參加</span>';
+  return `<span class="badge" style="background:#fff3e0;color:#e65100">參加${set.size}項</span>`;
+}
+
+function renderFluBar() {
+  const bar = document.getElementById('fluBar');
+  const dirty = _fluRows.filter(r => _fluCanon(r.set) !== r.orig).length;
+  const cnt = { af:0, ac:0, vf:0, vc:0 };
+  for (const r of _fluRows) r.set.forEach(c => cnt[c]++);
+  bar.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      ${_fluRows.length
+        ? `<button class="toolbar-like primary" onclick="fluSaveAll()" ${dirty ? '' : 'disabled'} style="padding:8px 14px;background:${dirty ? 'var(--blue)' : '#b8c4cf'};color:#fff;border:none;border-radius:6px;cursor:${dirty ? 'pointer' : 'not-allowed'};font-size:13px;font-weight:600">💾 儲存變更${dirty ? ' (' + dirty + ')' : ''}</button>
+           <button onclick="fluAdd()" style="padding:8px 12px;background:#fff;color:var(--blue);border:1px solid var(--blue);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">+ 新增院所</button>
+           <button onclick="fluSeed(true)" style="padding:8px 12px;background:#fff;color:var(--danger);border:1px solid var(--danger);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">↺ 重設為 115 年預設名冊</button>`
+        : `<button onclick="fluSeed(false)" style="padding:8px 14px;background:var(--blue);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">⚡ 初始化 115 年名冊（42 家）</button>`}
+      <span style="font-size:12px;color:var(--text2)">流感抗病毒 <b>${cnt.af}</b>｜新冠抗病毒 <b>${cnt.ac}</b>｜流感疫苗 <b>${cnt.vf}</b>｜新冠疫苗 <b>${cnt.vc}</b></span>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">勾選＝該院所已簽該類合約。儲存後主頁「💉 流感新冠」圖層重新整理即生效（最多延遲 1 分鐘）。新增院所名稱必須與主頁機構名稱一字不差；全新院所（地圖上沒有的）需另補主檔座標才會出現圖釘。</div>`;
+  bar.style.display = 'block';
+}
+
+async function fluSaveAll() {
+  const dirty = _fluRows.filter(r => _fluCanon(r.set) !== r.orig);
+  if (!dirty.length) return;
+  let ok = 0, fail = 0;
+  for (const r of dirty) {
+    const res = await fetch('/api/table/kv_misc/' + encodeURIComponent(r.key), {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: 'flu', value: _fluCanon(r.set), notes: r.notes })
+    });
+    if (res.ok) ok++; else fail++;
+  }
+  toast(fail ? `儲存 ${ok} 筆、失敗 ${fail} 筆` : `已儲存 ${ok} 筆`, fail ? 'err' : 'ok');
+  renderFluPanel();
+}
+
+async function fluAdd() {
+  const name = prompt('院所名稱（必須與主頁機構名稱一字不差）：');
+  if (!name || !name.trim()) return;
+  const res = await fetch('/api/table/kv_misc', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: 'flu:' + name.trim(), category: 'flu', value: '', notes: '' })
+  });
+  if (res.ok) { toast('已新增', 'ok'); renderFluPanel(); }
+  else toast('新增失敗', 'err');
+}
+
+async function fluDelete(key) {
+  if (!confirm('刪除 ' + key.slice(4) + ' 的合約設定？（主頁將改用內建預設值）')) return;
+  const res = await fetch('/api/table/kv_misc/' + encodeURIComponent(key), { method: 'DELETE' });
+  if (res.ok) { toast('已刪除', 'ok'); renderFluPanel(); }
+  else toast('刪除失敗', 'err');
+}
+
+async function fluSeed(isReset) {
+  if (isReset && !confirm('把 42 家院所全部重設回 115 年名冊預設值？（自行新增的其他院所不受影響）')) return;
+  let ok = 0, fail = 0;
+  for (const [name, val] of FLU_DEFAULTS) {
+    const res = await fetch('/api/table/kv_misc', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'flu:' + name, category: 'flu', value: val, notes: '115年流感/新冠合約' })
+    });
+    if (res.ok) ok++; else fail++;
+  }
+  toast(fail ? `寫入 ${ok} 筆、失敗 ${fail} 筆` : `完成：${ok} 筆`, fail ? 'err' : 'ok');
+  renderFluPanel();
+}
 
 let currentTable = 'old_to_new';
 let currentPage = 0;
@@ -260,8 +428,11 @@ function switchTab(name) {
   currentTable = name;
   currentPage = 0;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-  document.getElementById('exportOverlayBtn').style.display = TABLES[name].supportsOverlayExport ? 'inline-block' : 'none';
-  loadRows();
+  const isCustom = !!TABLES[name].custom;
+  document.querySelector('.toolbar').style.display = isCustom ? 'none' : 'flex';
+  document.getElementById('fluBar').style.display = 'none';
+  document.getElementById('exportOverlayBtn').style.display = (!isCustom && TABLES[name].supportsOverlayExport) ? 'inline-block' : 'none';
+  if (isCustom) { renderFluPanel(); } else { loadRows(); }
 }
 
 // ─ Load rows ─

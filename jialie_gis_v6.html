@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.853</title>
+<title>佳里 GIS v6.854</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5391,15 +5391,18 @@ function _fluComboKey(flu){
   const have = new Set((flu||'').split(',').map(x=>x.trim()).filter(Boolean));
   return ['af','ac','vf','vc'].filter(c=>have.has(c)).join(',');
 }
-const FLU_COMBO_COLORS = (()=>{
+/* v6.854：改可重算（admin 後台改合約 → overlay 覆寫後需重新指派組合色） */
+let FLU_COMBO_COLORS = {};
+function _fluRecomputeComboColors(){
   const fixed = {'af,ac,vf,vc':'#d81b60', '':'#90a4ae'}; /* 全參加=粉紅、未參加=灰 */
   const palette = ['#f57c00','#1565c0','#2e7d32','#6a1b9a','#00897b','#c62828','#3949ab','#5d4037','#00838f','#8e24aa'];
   const combos = new Set();
   for(const f of FACILITY_DB){ if(f.flu || f.t==='medical') combos.add(_fluComboKey(f.flu)); }
   const out = Object.assign({}, fixed);
   [...combos].filter(k=>!(k in fixed)).sort().forEach((k,i)=>{ out[k] = palette[i % palette.length]; });
-  return out;
-})();
+  FLU_COMBO_COLORS = out;
+}
+_fluRecomputeComboColors();
 let _fluAllMarkers = [];    /* [{m, combo}] 流感新冠圖層全部 marker */
 let _fluActiveCombo = null; /* null=全部；''=未參加；'af,vf'=特定組合 */
 function _fluToggleComboPanel(){
@@ -9440,6 +9443,14 @@ map.on('dblclick',function(e){
      否則 localStorage 舊快取先套用後，admin 已刪除的資料無法被較新的 fetch 結果移除，
      本 session 會一直殘留（village_info 為覆蓋型 merge、刪整里極罕見，不納入還原範圍） */
   let _undo = null;
+  /* v6.854：flu 覆寫目標選擇 — 同名多筆（如以琳 care+medical）只套 medical 那筆，
+     避免 flucov byAddr 合併時名稱重複 */
+  function _fluTarget(name){
+    if(typeof FACILITY_DB === 'undefined') return null;
+    const cands = FACILITY_DB.filter(f => f.n === name);
+    if(!cands.length) return null;
+    return cands.find(f => f.t === 'medical') || cands.find(f => f.flu !== undefined) || cands[0];
+  }
   function revertOverlay(){
     if(!_undo) return;
     if(typeof OLD_TO_NEW !== 'undefined'){
@@ -9457,13 +9468,21 @@ map.on('dblclick',function(e){
         if(i > -1) DOOR_DB.splice(i, 1);
       }
     }
+    /* v6.854：還原 flu 合約覆寫 */
+    if(_undo.flu){
+      for(const [name, prev] of Object.entries(_undo.flu)){
+        const fac = _fluTarget(name);
+        if(!fac) continue;
+        if(prev == null) delete fac.flu; else fac.flu = prev;
+      }
+    }
     _undo = null;
   }
 
   function applyOverlay(o){
     if(!o) return;
     revertOverlay();
-    const undo = { otn: {}, doorAdded: [], doorReplaced: [] };
+    const undo = { otn: {}, doorAdded: [], doorReplaced: [], flu: {} };
     if(o.old_to_new && typeof OLD_TO_NEW !== 'undefined'){
       let n = 0;
       for(const [k, v] of Object.entries(o.old_to_new)){
@@ -9490,6 +9509,31 @@ map.on('dblclick',function(e){
         }
       }
       if(added || replaced) console.log('[GIS-overlay] door_db: +' + added + ' added, ' + replaced + ' replaced');
+    }
+    /* v6.854：kv_misc 'flu:院所名' → 覆寫 FACILITY_DB 合約標記（admin 後台可年度重設） */
+    if(o.kv_misc && typeof FACILITY_DB !== 'undefined'){
+      let n = 0;
+      for(const [k, v] of Object.entries(o.kv_misc)){
+        if(typeof k !== 'string' || !k.startsWith('flu:')) continue;
+        const name = k.slice(4);
+        const fac = _fluTarget(name);
+        if(!fac){ console.warn('[GIS-overlay] flu 覆寫找不到院所:', name); continue; }
+        /* 只認合法代碼；其他字元一律濾除（空值＝未參加） */
+        const nv = String(v == null ? '' : v).split(',').map(x=>x.trim())
+          .filter(c=>['af','ac','vf','vc'].includes(c)).join(',');
+        if(!(name in undo.flu)) undo.flu[name] = (fac.flu === undefined) ? null : fac.flu;
+        if(nv) fac.flu = nv; else delete fac.flu;
+        n++;
+      }
+      if(n){
+        console.log('[GIS-overlay] flu contracts merged:', n);
+        if(typeof _fluRecomputeComboColors === 'function') _fluRecomputeComboColors();
+        /* 流感新冠圖層已開啟 → 關開重建套新色/新徽章（建置中則跳過，避免競態） */
+        if(typeof _facGroups !== 'undefined' && _facGroups.flucov &&
+           typeof _facGroupBuilding !== 'undefined' && !_facGroupBuilding.flucov){
+          Promise.resolve(toggleFacGroup('flucov')).then(()=>toggleFacGroup('flucov')).catch(()=>{});
+        }
+      }
     }
     _undo = undo;
     if(o.village_info && Array.isArray(o.village_info) && o.village_info.length){

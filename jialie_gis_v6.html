@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.851</title>
+<title>佳里 GIS v6.852</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -806,6 +806,10 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
 .vl-label{background:transparent;border:none;box-shadow:none;font-size:10px;font-weight:700;color:var(--blue);text-shadow:0 0 3px #fff,-1px 0 #fff,1px 0 #fff,0 1px #fff,0 -1px #fff;pointer-events:none;text-align:center;line-height:1.2}
 .tip-own{background:#fff;border:1px solid #cde;border-radius:8px;font-size:11px;padding:5px 10px;box-shadow:var(--shadow)}
 .leaflet-control-scale-line{font-size:13px!important;font-weight:700!important;padding:3px 8px!important;border-width:2px!important;border-top:none!important;color:#333!important}
+/* v6.852：流感新冠圖層開啟時，地圖右上角浮現「合約進度」下載鈕（Leaflet topright control） */
+.flucov-export-ctl button{background:#d81b60;border:none;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3);font-family:inherit;letter-spacing:.3px}
+.flucov-export-ctl button:hover{background:#ad1457}
+@media(max-width:1023px){.leaflet-top.leaflet-right .flucov-export-ctl{margin-top:54px}} /* 平板/手機避開置中搜尋列 */
 @media print{
   @page{size:A4 landscape;margin:6mm}
   body>*{display:none!important}
@@ -1682,7 +1686,6 @@ body[data-theme="dark"] #sv-floating-card .sv-card-coord{color:#a8b5c5}
     <button class="fac-grp-btn" id="fac-grp-pharmacy" onclick="toggleFacGroup('pharmacy')" >💊 藥局</button>
     <button class="fac-grp-btn" id="fac-grp-tcm"      onclick="toggleFacGroup('tcm')"      >🌿 中醫</button>
     <button class="fac-grp-btn" id="fac-grp-flucov"   onclick="toggleFacGroup('flucov')"   >💉 流感新冠</button>
-    <button class="fac-grp-btn" id="fac-grp-flucov-export" onclick="exportFluList()" title="匯出四類合約參加清單 CSV（未參加排前）">⬇ 合約清單</button>
   </div>
 </div>
 
@@ -5385,12 +5388,13 @@ function exportFluList(){
   const csv = '﻿' + rows.map(r => r.map(_csvCell).join(',')).join('\r\n'); // BOM 讓 Excel 認 UTF-8
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
-  a.download = '佳里區流感新冠合約院所清單.csv';
+  a.download = '佳里區流感新冠合約進度.csv';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
 }
 const _facGroups = {};
 const _facGroupBuilding = {};
+let _flucovExportCtl = null; /* v6.852：流感新冠圖層開啟時的右上角「合約進度」鈕 */
 
 function _toggleFacGrpPanel(){
   const panel = document.getElementById('fac-group-btns');
@@ -5407,6 +5411,7 @@ async function toggleFacGroup(gid){
   if(_facGroups[gid]){
     map.removeLayer(_facGroups[gid]);
     _facGroups[gid] = null;
+    if(gid==='flucov' && _flucovExportCtl){ map.removeControl(_flucovExportCtl); _flucovExportCtl=null; }
     if(btn){ btn.classList.remove('fon'); btn.innerHTML=cfg.label; }
     /* 自定義點重新渲染（回歸 _cptLayer 顯示） */
     if(typeof _renderCpts === 'function') _renderCpts();
@@ -5461,6 +5466,17 @@ async function toggleFacGroup(gid){
   }
   _facGroups[gid] = lg;
   lg.addTo(map);
+  /* v6.852：流感新冠圖層開啟 → 右上角浮現「合約進度」下載鈕；關閉時移除 */
+  if(gid==='flucov' && !_flucovExportCtl){
+    _flucovExportCtl = L.control({position:'topright'});
+    _flucovExportCtl.onAdd = function(){
+      const d = L.DomUtil.create('div','flucov-export-ctl');
+      d.innerHTML = '<button onclick="exportFluList()" title="匯出四類合約參加進度 CSV（未參加排前）">⬇ 合約進度</button>';
+      L.DomEvent.disableClickPropagation(d);
+      return d;
+    };
+    _flucovExportCtl.addTo(map);
+  }
   _facGroupBuilding[gid] = false;
   if(btn) btn.innerHTML = cfg.label;
   /* 重渲自定義點，隱藏已由 fac layer 顯示的同類別點（避免重複） */

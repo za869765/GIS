@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.852</title>
+<title>佳里 GIS v6.853</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -807,8 +807,18 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
 .tip-own{background:#fff;border:1px solid #cde;border-radius:8px;font-size:11px;padding:5px 10px;box-shadow:var(--shadow)}
 .leaflet-control-scale-line{font-size:13px!important;font-weight:700!important;padding:3px 8px!important;border-width:2px!important;border-top:none!important;color:#333!important}
 /* v6.852：流感新冠圖層開啟時，地圖右上角浮現「合約進度」下載鈕（Leaflet topright control） */
-.flucov-export-ctl button{background:#d81b60;border:none;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3);font-family:inherit;letter-spacing:.3px}
-.flucov-export-ctl button:hover{background:#ad1457}
+.flucov-export-ctl{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.flucov-export-ctl .flu-exp-btn{background:#d81b60;border:none;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3);font-family:inherit;letter-spacing:.3px}
+.flucov-export-ctl .flu-exp-btn:hover{background:#ad1457}
+/* v6.853：合約組合子按鈕 + 篩選面板 */
+.flucov-export-ctl .flu-combo-tg{background:#fff;border:1.5px solid #d81b60;color:#d81b60;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.2);font-family:inherit}
+.flucov-export-ctl .flu-combo-tg:hover{background:#fce4ec}
+#flu-combo-panel{background:rgba(255,255,255,.97);border:1px solid #ddd;border-radius:12px;padding:6px;box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:196px}
+.flu-combo-row{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:8px;cursor:pointer;font-weight:700;color:#333}
+.flu-combo-row:hover{background:#fce4ec}
+.flu-combo-row.on{background:#f8bbd0}
+.flu-dot{width:11px;height:11px;border-radius:50%;flex:none;border:1.5px solid #fff;box-shadow:0 0 3px rgba(0,0,0,.45)}
+.flu-cnt{color:#888;font-size:10px;margin-left:auto}
 @media(max-width:1023px){.leaflet-top.leaflet-right .flucov-export-ctl{margin-top:54px}} /* 平板/手機避開置中搜尋列 */
 @media print{
   @page{size:A4 landscape;margin:6mm}
@@ -5272,6 +5282,10 @@ function _facIcon(type){
     flucov_off: {c:'#90a4ae', e:'🏥'},
   };
   const {c, e} = cfg[type] || {c:'#555', e:'📍'};
+  return _pinIcon(c, e);
+}
+/* v6.853：通用圖釘產生器（_facIcon 與流感新冠組合色共用） */
+function _pinIcon(c, e){
   return L.divIcon({
     className:'',
     html:`<div style="position:relative;width:26px;height:34px">
@@ -5371,6 +5385,62 @@ function _fluBadgeHtml(flu, showAll){
   }).join('');
   return `<div style="margin-top:3px;line-height:1.6">${chips}</div>`;
 }
+/* ── v6.853：四類合約「搭配組合」各自配色 + 組合篩選面板 ── */
+const FLU_SHORT = {af:'流抗', ac:'冠抗', vf:'流苗', vc:'冠苗'};
+function _fluComboKey(flu){
+  const have = new Set((flu||'').split(',').map(x=>x.trim()).filter(Boolean));
+  return ['af','ac','vf','vc'].filter(c=>have.has(c)).join(',');
+}
+const FLU_COMBO_COLORS = (()=>{
+  const fixed = {'af,ac,vf,vc':'#d81b60', '':'#90a4ae'}; /* 全參加=粉紅、未參加=灰 */
+  const palette = ['#f57c00','#1565c0','#2e7d32','#6a1b9a','#00897b','#c62828','#3949ab','#5d4037','#00838f','#8e24aa'];
+  const combos = new Set();
+  for(const f of FACILITY_DB){ if(f.flu || f.t==='medical') combos.add(_fluComboKey(f.flu)); }
+  const out = Object.assign({}, fixed);
+  [...combos].filter(k=>!(k in fixed)).sort().forEach((k,i)=>{ out[k] = palette[i % palette.length]; });
+  return out;
+})();
+let _fluAllMarkers = [];    /* [{m, combo}] 流感新冠圖層全部 marker */
+let _fluActiveCombo = null; /* null=全部；''=未參加；'af,vf'=特定組合 */
+function _fluToggleComboPanel(){
+  const p = document.getElementById('flu-combo-panel');
+  const b = document.getElementById('flu-combo-toggle');
+  if(!p) return;
+  const open = p.style.display !== 'none';
+  p.style.display = open ? 'none' : 'block';
+  if(b) b.innerHTML = open ? '🎨 合約組合 ▾' : '🎨 合約組合 ▴';
+}
+function _fluFilterCombo(el){
+  const lg = _facGroups.flucov;
+  if(!lg) return;
+  const ck = el.dataset.ck;
+  _fluActiveCombo = (ck==='ALL') ? null : (_fluActiveCombo===ck ? null : ck);
+  for(const {m, combo} of _fluAllMarkers){
+    const show = _fluActiveCombo===null || combo===_fluActiveCombo;
+    if(show && !lg.hasLayer(m)) lg.addLayer(m);
+    if(!show && lg.hasLayer(m)) lg.removeLayer(m);
+  }
+  document.querySelectorAll('.flu-combo-row').forEach(r=>{
+    r.classList.toggle('on', _fluActiveCombo===null ? r.dataset.ck==='ALL' : r.dataset.ck===_fluActiveCombo);
+  });
+}
+function _fluComboPanelHtml(){
+  const cnt = {};
+  for(const {combo} of _fluAllMarkers) cnt[combo]=(cnt[combo]||0)+1;
+  const order = Object.keys(cnt).sort((a,b)=>{
+    if(a==='af,ac,vf,vc') return -1; if(b==='af,ac,vf,vc') return 1; /* 全參加最前 */
+    if(a==='') return 1; if(b==='') return -1;                       /* 未參加最後 */
+    return cnt[b]-cnt[a] || a.localeCompare(b);
+  });
+  const rows = order.map(k=>{
+    const inSet = new Set(k.split(',').filter(Boolean));
+    const chips = ['af','ac','vf','vc'].map(c=>
+      `<span style="display:inline-block;border-radius:4px;padding:0.5px 3px;font-size:9px;font-weight:700;margin-right:1px;background:${inSet.has(c)?FLU_BADGES[c][1]:'#eceff1'};color:${inSet.has(c)?'#fff':'#b0bec5'}">${FLU_SHORT[c]}</span>`
+    ).join('');
+    return `<div class="flu-combo-row" data-ck="${k}" onclick="_fluFilterCombo(this)"><span class="flu-dot" style="background:${FLU_COMBO_COLORS[k]||'#607d8b'}"></span>${chips}<span class="flu-cnt">(${cnt[k]})</span></div>`;
+  }).join('');
+  return `<div class="flu-combo-row on" data-ck="ALL" onclick="_fluFilterCombo(this)"><span class="flu-dot" style="background:#37474f"></span><span style="font-size:11px">全部</span><span class="flu-cnt">(${_fluAllMarkers.length})</span></div>` + rows;
+}
 /* v6.850：匯出流感/新冠合約清單 CSV（四類 ✔/✘ + 參加狀態，未參加排前供動員拜訪） */
 function exportFluList(){
   const list = FACILITY_DB.filter(f => f.flu || f.t==='medical')
@@ -5411,7 +5481,10 @@ async function toggleFacGroup(gid){
   if(_facGroups[gid]){
     map.removeLayer(_facGroups[gid]);
     _facGroups[gid] = null;
-    if(gid==='flucov' && _flucovExportCtl){ map.removeControl(_flucovExportCtl); _flucovExportCtl=null; }
+    if(gid==='flucov'){
+      if(_flucovExportCtl){ map.removeControl(_flucovExportCtl); _flucovExportCtl=null; }
+      _fluAllMarkers = []; _fluActiveCombo = null;
+    }
     if(btn){ btn.classList.remove('fon'); btn.innerHTML=cfg.label; }
     /* 自定義點重新渲染（回歸 _cptLayer 顯示） */
     if(typeof _renderCpts === 'function') _renderCpts();
@@ -5419,6 +5492,7 @@ async function toggleFacGroup(gid){
   }
   if(_facGroupBuilding[gid]) return;
   _facGroupBuilding[gid] = true;
+  if(gid==='flucov'){ _fluAllMarkers = []; _fluActiveCombo = null; } /* v6.853：重建前歸零 */
   if(btn){ btn.classList.add('fon'); btn.innerHTML='⌛ 載入…'; }
 
   const byAddr = new Map();
@@ -5441,16 +5515,23 @@ async function toggleFacGroup(gid){
     const dispName = names[0]||addr;
     const navLabel = dispName.replace(/'/g,"\\'");
     const navBtn = `<button class="nav-fac-btn" onclick="navFacTo(${coord[0]},${coord[1]},'${navLabel}')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>`+_streetviewBtnHtml(coord[0],coord[1]);
-    /* v6.850：流感新冠圖層 popup 四類合約 ✔/✘ 全顯示；圖釘三態
-       （全4項=粉紅💉 / 部分=橘💉 / 未參加=灰🏥） */
+    /* v6.850：流感新冠圖層 popup 四類合約 ✔/✘ 全顯示
+       v6.853：圖釘依「合約組合」配色（全參加=粉紅、未參加=灰、其餘組合各自一色） */
     const fluHtml = gid==='flucov' ? _fluBadgeHtml(flu, true) : _fluBadgeHtml(flu);
-    const _nFlu = flu ? flu.split(',').map(x=>x.trim()).filter(Boolean).length : 0;
     const label = names.map((n,i)=>
       `<b>${n}</b>${phones[i]?`<br><span style="font-size:11px;color:#555">☎ ${phones[i]}</span>`:''}`
     ).join('<br>') + `<br><span style="font-size:11px;color:#888">${addr}</span>` + fluHtml + navBtn;
-    L.marker(coord, {icon:_facIcon(gid==='flucov' ? (_nFlu===4 ? 'flucov' : _nFlu>0 ? 'flucov_part' : 'flucov_off') : t)})
-      .bindPopup(label, {maxWidth:220})
-      .addTo(lg);
+    let mkIcon;
+    if(gid==='flucov'){
+      const ck = _fluComboKey(flu);
+      mkIcon = _pinIcon(FLU_COMBO_COLORS[ck]||'#607d8b', ck ? '💉' : '🏥');
+      const mk = L.marker(coord, {icon:mkIcon}).bindPopup(label, {maxWidth:220}).addTo(lg);
+      _fluAllMarkers.push({m: mk, combo: ck});
+    } else {
+      L.marker(coord, {icon:_facIcon(t)})
+        .bindPopup(label, {maxWidth:220})
+        .addTo(lg);
+    }
   }
   /* 加入同類別的自定義地點 */
   if(typeof _cpts !== 'undefined'){
@@ -5471,8 +5552,11 @@ async function toggleFacGroup(gid){
     _flucovExportCtl = L.control({position:'topright'});
     _flucovExportCtl.onAdd = function(){
       const d = L.DomUtil.create('div','flucov-export-ctl');
-      d.innerHTML = '<button onclick="exportFluList()" title="匯出四類合約參加進度 CSV（未參加排前）">⬇ 合約進度</button>';
+      d.innerHTML = '<button class="flu-exp-btn" onclick="exportFluList()" title="匯出四類合約參加進度 CSV（未參加排前）">⬇ 合約進度</button>'
+        + '<button class="flu-combo-tg" id="flu-combo-toggle" onclick="_fluToggleComboPanel()" title="依合約搭配組合篩選院所">🎨 合約組合 ▾</button>'
+        + '<div id="flu-combo-panel" style="display:none">' + _fluComboPanelHtml() + '</div>';
       L.DomEvent.disableClickPropagation(d);
+      L.DomEvent.disableScrollPropagation(d);
       return d;
     };
     _flucovExportCtl.addTo(map);

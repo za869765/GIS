@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.848</title>
+<title>佳里 GIS v6.849</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5393,7 +5393,11 @@ async function toggleFacGroup(gid){
     if(!byAddr.has(fac.a)) byAddr.set(fac.a, {names:[], phones:[], t:fac.t});
     byAddr.get(fac.a).names.push(fac.n);
     byAddr.get(fac.a).phones.push(fac.p||'');
-    if(fac.flu) byAddr.get(fac.a).flu = fac.flu;
+    /* v6.849(Codex#1)：同址多合約機關 flu 取聯集，不覆寫 */
+    if(fac.flu){
+      const row = byAddr.get(fac.a);
+      row.flu = [...new Set([...(row.flu||'').split(','), ...fac.flu.split(',')].map(x=>x.trim()).filter(Boolean))].join(',');
+    }
   }
 
   const lg = L.layerGroup();
@@ -9443,7 +9447,9 @@ function _clampPanelIntoView(el){
   if(!wrap) return;
   try{
     const saved=JSON.parse(localStorage.getItem('leftToolsPos')||'null');
-    if(saved){ wrap.style.left=saved.left; wrap.style.top=saved.top; wrap.style.bottom='auto'; _clampPanelIntoView(wrap); }
+    /* v6.849(Codex#2)：left/top 都是有效數值才切 top 定位，避免 bottom 錨定被拔掉後懸空 */
+    const sl=parseFloat(saved&&saved.left), st=parseFloat(saved&&saved.top);
+    if(Number.isFinite(sl)&&Number.isFinite(st)){ wrap.style.left=sl+'px'; wrap.style.top=st+'px'; wrap.style.bottom='auto'; _clampPanelIntoView(wrap); }
   }catch(e){}
   window.addEventListener('resize',()=>{ if(wrap.style.top) _clampPanelIntoView(wrap); });
   let sx,sy,sl,st,dragging=false;
@@ -9493,7 +9499,9 @@ function _clampPanelIntoView(el){
   // 還原上次位置（v6.847：夾回視窗內，同 left-tools 修法）
   try{
     const s=JSON.parse(localStorage.getItem('ctrlPanelPos')||'null');
-    if(s){ panel.style.left=s.left||'14px'; panel.style.top=s.top; panel.style.bottom='auto'; _clampPanelIntoView(panel); }
+    /* v6.849(Codex#2)：同 left-tools，數值有效才還原 */
+    const sl=parseFloat(s&&s.left), st=parseFloat(s&&s.top);
+    if(Number.isFinite(sl)&&Number.isFinite(st)){ panel.style.left=sl+'px'; panel.style.top=st+'px'; panel.style.bottom='auto'; _clampPanelIntoView(panel); }
   }catch{}
   window.addEventListener('resize',()=>{ if(panel.style.top) _clampPanelIntoView(panel); });
 

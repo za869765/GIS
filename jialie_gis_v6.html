@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.847</title>
+<title>佳里 GIS v6.848</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -298,9 +298,11 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
   display:flex;flex-direction:column;gap:4px;
 }
 
-/* 機關圖層卡（可拖曳，點空白處移動） */
+/* 機關圖層卡（可拖曳，點空白處移動）
+   v6.848：座標卡 v6.845 常駐後蓋住本卡（同左下角、z 600>550）→
+   垂直堆疊：比例尺/縮放(角落) → 座標卡(106px) → 本卡(184px)，z 提到 610 */
 #left-tools{
-  position:fixed;left:14px;bottom:calc(var(--panel-h) + 14px + env(safe-area-inset-bottom,0px));z-index:550;
+  position:fixed;left:14px;bottom:calc(var(--panel-h) + 184px + env(safe-area-inset-bottom,0px));z-index:610;
   display:flex;flex-direction:column;gap:6px;user-select:none;touch-action:none;
   background:rgba(255,255,255,.92);border:1px solid var(--border2);border-radius:12px;
   padding:8px 8px 6px;box-shadow:var(--shadow);cursor:grab;
@@ -741,6 +743,8 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
   /* 手機：機構圖層預設收合，透過 ＋圖層 展開 */
   #left-tools #fac-group-btns{display:none;}
   #fac-grp-toggle{display:block !important;}
+  /* 手機：疊在常駐座標卡上方（座標卡 bottom:panel-h+12、高約55px） */
+  #left-tools{bottom:calc(var(--panel-h) + 80px + env(safe-area-inset-bottom,0px));}
 }
 #map-search-input{
   flex:1;border:none;outline:none;font-size:14px;
@@ -1488,13 +1492,13 @@ body[data-theme="dark"] #vil-info-panel .bar-female::before,body[data-theme="dar
 /* ═══════════════════════════════════════════
    v6.828 街景 mini-card 三端響應式 (桌機/平板/手機)
 ═══════════════════════════════════════════ */
-#sv-floating-card{position:fixed;left:14px;bottom:14px;z-index:600;background:rgba(255,255,255,.96);border:1px solid #ccc;border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.25);display:none;flex-direction:column;gap:8px;font-family:'Noto Sans TC',sans-serif;min-width:180px;max-width:240px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#sv-floating-card{position:fixed;left:14px;bottom:106px;z-index:600;background:rgba(255,255,255,.96);border:1px solid #ccc;border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.25);display:none;flex-direction:column;gap:8px;font-family:'Noto Sans TC',sans-serif;min-width:180px;max-width:240px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 #sv-floating-card .sv-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 #sv-floating-card .sv-card-title{font-size:11px;color:#888;font-weight:600}
 #sv-floating-card .sv-card-coord{font-size:11px;color:#555;font-family:monospace;word-break:break-all}
 /* 平板 768-1023 */
 @media(min-width:768px) and (max-width:1023px){
-  #sv-floating-card{min-width:200px;max-width:280px;padding:11px 13px;left:16px;bottom:16px}
+  #sv-floating-card{min-width:200px;max-width:280px;padding:11px 13px;left:16px;bottom:106px}
 }
 /* 手機 <768 — 常駐緊湊小卡，浮在底部抽屜之上 */
 @media(max-width:767px){

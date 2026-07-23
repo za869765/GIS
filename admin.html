@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>佳里 GIS — 資料管理 v1.0.3</title>
+<title>佳里 GIS — 資料管理 v1.0.4</title>
 <style>
 * { box-sizing: border-box; }
 :root {
@@ -104,7 +104,7 @@ td.actions button.del:hover { background:#fef0ee; border-color:var(--danger); co
 <div id="main">
   <header>
     <h1>佳里 GIS 資料管理</h1>
-    <span class="ver">v1.0.3</span>
+    <span class="ver">v1.0.4</span>
     <span class="spacer"></span>
     <button onclick="window.open('/','_blank')">前往 GIS 主頁</button>
     <button onclick="logout()">登出</button>
@@ -317,19 +317,32 @@ function renderFluBar() {
   bar.style.display = 'block';
 }
 
+/* v1.0.4(Codex#3)：逐筆 try/catch 容錯 — 網路中斷不再靜默中止；
+   成功列即時清除 dirty，失敗列保持黃底標記可直接再按儲存重試 */
 async function fluSaveAll() {
   const dirty = _fluRows.filter(r => _fluCanon(r.set) !== r.orig);
   if (!dirty.length) return;
   let ok = 0, fail = 0;
   for (const r of dirty) {
-    const res = await fetch('/api/table/kv_misc/' + encodeURIComponent(r.key), {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category: 'flu', value: _fluCanon(r.set), notes: r.notes })
-    });
-    if (res.ok) ok++; else fail++;
+    try {
+      const res = await fetch('/api/table/kv_misc/' + encodeURIComponent(r.key), {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: 'flu', value: _fluCanon(r.set), notes: r.notes })
+      });
+      if (res.ok) { ok++; r.orig = _fluCanon(r.set); } else fail++;
+    } catch (_) { fail++; }
   }
-  toast(fail ? `儲存 ${ok} 筆、失敗 ${fail} 筆` : `已儲存 ${ok} 筆`, fail ? 'err' : 'ok');
-  renderFluPanel();
+  if (fail) {
+    toast(`儲存 ${ok} 筆、失敗 ${fail} 筆（失敗列保持標記，可再按儲存重試）`, 'err');
+    _fluRows.forEach((r, i) => {
+      const tr = document.getElementById('flu-tr-' + i);
+      if (tr) tr.style.background = (_fluCanon(r.set) !== r.orig) ? '#fff8e1' : '';
+    });
+    renderFluBar();
+  } else {
+    toast(`已儲存 ${ok} 筆`, 'ok');
+    renderFluPanel();
+  }
 }
 
 async function fluAdd() {
@@ -353,14 +366,17 @@ async function fluDelete(key) {
 async function fluSeed(isReset) {
   if (isReset && !confirm('把 42 家院所全部重設回 115 年名冊預設值？（自行新增的其他院所不受影響）')) return;
   let ok = 0, fail = 0;
+  /* v1.0.4(Codex#3)：逐筆 try/catch；寫入具冪等性，失敗可整批重按補齊 */
   for (const [name, val] of FLU_DEFAULTS) {
-    const res = await fetch('/api/table/kv_misc', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: 'flu:' + name, category: 'flu', value: val, notes: '115年流感/新冠合約' })
-    });
-    if (res.ok) ok++; else fail++;
+    try {
+      const res = await fetch('/api/table/kv_misc', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'flu:' + name, category: 'flu', value: val, notes: '115年流感/新冠合約' })
+      });
+      if (res.ok) ok++; else fail++;
+    } catch (_) { fail++; }
   }
-  toast(fail ? `寫入 ${ok} 筆、失敗 ${fail} 筆` : `完成：${ok} 筆`, fail ? 'err' : 'ok');
+  toast(fail ? `寫入 ${ok} 筆、失敗 ${fail} 筆（可直接再按一次補齊）` : `完成：${ok} 筆`, fail ? 'err' : 'ok');
   renderFluPanel();
 }
 

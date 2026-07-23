@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.854</title>
+<title>佳里 GIS v6.855</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -5468,6 +5468,7 @@ function exportFluList(){
 const _facGroups = {};
 const _facGroupBuilding = {};
 let _flucovExportCtl = null; /* v6.852：流感新冠圖層開啟時的右上角「合約進度」鈕 */
+let _fluNeedsRebuild = false; /* v6.855(Codex#1)：overlay 於建置中更新合約 → 建置完成後補重建 */
 
 function _toggleFacGrpPanel(){
   const panel = document.getElementById('fac-group-btns');
@@ -5568,6 +5569,12 @@ async function toggleFacGroup(gid){
   if(btn) btn.innerHTML = cfg.label;
   /* 重渲自定義點，隱藏已由 fac layer 顯示的同類別點（避免重複） */
   if(typeof _renderCpts === 'function') _renderCpts();
+  /* v6.855(Codex#1)：建置期間 overlay 更新過合約 → 完成後補重建一次，
+     避免前半舊合約/後半新合約的混合圖層永久殘留 */
+  if(gid==='flucov' && _fluNeedsRebuild && _facGroups.flucov){
+    _fluNeedsRebuild = false;
+    Promise.resolve(toggleFacGroup('flucov')).then(()=>toggleFacGroup('flucov')).catch(()=>{});
+  }
 }
 
 function applyGeoResult(lat,lng,source,method){
@@ -9452,7 +9459,7 @@ map.on('dblclick',function(e){
     return cands.find(f => f.t === 'medical') || cands.find(f => f.flu !== undefined) || cands[0];
   }
   function revertOverlay(){
-    if(!_undo) return;
+    if(!_undo) return false;
     if(typeof OLD_TO_NEW !== 'undefined'){
       for(const [k, prev] of Object.entries(_undo.otn)){
         if(prev === null) delete OLD_TO_NEW[k]; else OLD_TO_NEW[k] = prev;
@@ -9468,20 +9475,24 @@ map.on('dblclick',function(e){
         if(i > -1) DOOR_DB.splice(i, 1);
       }
     }
-    /* v6.854：還原 flu 合約覆寫 */
+    /* v6.854：還原 flu 合約覆寫；v6.855(Codex#2)：回報有無還原過，
+       讓「合約列全刪」的 revert-only 情境也能觸發重算/重建 */
+    let fluReverted = false;
     if(_undo.flu){
       for(const [name, prev] of Object.entries(_undo.flu)){
         const fac = _fluTarget(name);
         if(!fac) continue;
         if(prev == null) delete fac.flu; else fac.flu = prev;
+        fluReverted = true;
       }
     }
     _undo = null;
+    return fluReverted;
   }
 
   function applyOverlay(o){
     if(!o) return;
-    revertOverlay();
+    const fluReverted = revertOverlay(); /* v6.855(Codex#2) */
     const undo = { otn: {}, doorAdded: [], doorReplaced: [], flu: {} };
     if(o.old_to_new && typeof OLD_TO_NEW !== 'undefined'){
       let n = 0;
@@ -9511,8 +9522,8 @@ map.on('dblclick',function(e){
       if(added || replaced) console.log('[GIS-overlay] door_db: +' + added + ' added, ' + replaced + ' replaced');
     }
     /* v6.854：kv_misc 'flu:院所名' → 覆寫 FACILITY_DB 合約標記（admin 後台可年度重設） */
+    let fluMerged = 0;
     if(o.kv_misc && typeof FACILITY_DB !== 'undefined'){
-      let n = 0;
       for(const [k, v] of Object.entries(o.kv_misc)){
         if(typeof k !== 'string' || !k.startsWith('flu:')) continue;
         const name = k.slice(4);
@@ -9523,14 +9534,17 @@ map.on('dblclick',function(e){
           .filter(c=>['af','ac','vf','vc'].includes(c)).join(',');
         if(!(name in undo.flu)) undo.flu[name] = (fac.flu === undefined) ? null : fac.flu;
         if(nv) fac.flu = nv; else delete fac.flu;
-        n++;
+        fluMerged++;
       }
-      if(n){
-        console.log('[GIS-overlay] flu contracts merged:', n);
-        if(typeof _fluRecomputeComboColors === 'function') _fluRecomputeComboColors();
-        /* 流感新冠圖層已開啟 → 關開重建套新色/新徽章（建置中則跳過，避免競態） */
-        if(typeof _facGroups !== 'undefined' && _facGroups.flucov &&
-           typeof _facGroupBuilding !== 'undefined' && !_facGroupBuilding.flucov){
+    }
+    /* v6.855(Codex#2)：本次有 merge「或」revert 還原過（合約列被全刪）都要重算重建 */
+    if(fluMerged || fluReverted){
+      console.log('[GIS-overlay] flu contracts merged:', fluMerged, fluReverted ? '(含還原)' : '');
+      if(typeof _fluRecomputeComboColors === 'function') _fluRecomputeComboColors();
+      if(typeof _facGroups !== 'undefined' && _facGroups.flucov){
+        if(typeof _facGroupBuilding !== 'undefined' && _facGroupBuilding.flucov){
+          _fluNeedsRebuild = true; /* v6.855(Codex#1)：建置中 → 完成後補重建 */
+        } else {
           Promise.resolve(toggleFacGroup('flucov')).then(()=>toggleFacGroup('flucov')).catch(()=>{});
         }
       }

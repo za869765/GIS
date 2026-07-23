@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.849</title>
+<title>佳里 GIS v6.850</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1673,7 +1673,8 @@ body[data-theme="dark"] #sv-floating-card .sv-card-coord{color:#a8b5c5}
     <button class="fac-grp-btn" id="fac-grp-community" onclick="toggleFacGroup('community')">🏘 活動中心</button>
     <button class="fac-grp-btn" id="fac-grp-temple"    onclick="toggleFacGroup('temple')"   >⛩ 宮廟</button>
     <button class="fac-grp-btn" id="fac-grp-other"     onclick="toggleFacGroup('other')"    >🔖 其他</button>
-    <button class="fac-grp-btn" id="fac-grp-medical"  onclick="toggleFacGroup('medical')"  >🏥 醫療</button>
+    <!-- v6.850：醫療與流感新冠名單重疊，暫隱藏醫療鈕（功能保留），以 💉流感新冠 為主 -->
+    <button class="fac-grp-btn" id="fac-grp-medical"  onclick="toggleFacGroup('medical')" style="display:none">🏥 醫療</button>
     <button class="fac-grp-btn" id="fac-grp-dental"   onclick="toggleFacGroup('dental')"   >🦷 牙醫</button>
     <button class="fac-grp-btn" id="fac-grp-nursery"  onclick="toggleFacGroup('nursery')"  >🍼 托嬰中心</button>
     <button class="fac-grp-btn" id="fac-grp-kinder"   onclick="toggleFacGroup('kinder')"   >🧒 幼兒園</button>
@@ -1681,6 +1682,7 @@ body[data-theme="dark"] #sv-floating-card .sv-card-coord{color:#a8b5c5}
     <button class="fac-grp-btn" id="fac-grp-pharmacy" onclick="toggleFacGroup('pharmacy')" >💊 藥局</button>
     <button class="fac-grp-btn" id="fac-grp-tcm"      onclick="toggleFacGroup('tcm')"      >🌿 中醫</button>
     <button class="fac-grp-btn" id="fac-grp-flucov"   onclick="toggleFacGroup('flucov')"   >💉 流感新冠</button>
+    <button class="fac-grp-btn" id="fac-grp-flucov-export" onclick="exportFluList()" title="匯出四類合約參加清單 CSV（未參加排前）">⬇ 合約清單</button>
   </div>
 </div>
 
@@ -5263,6 +5265,8 @@ function _facIcon(type){
     pharmacy:   {c:'#00897b', e:'💊'},
     tcm:        {c:'#558b2f', e:'🌿'},
     flucov:     {c:'#d81b60', e:'💉'},
+    flucov_part:{c:'#f57c00', e:'💉'},
+    flucov_off: {c:'#90a4ae', e:'🏥'},
   };
   const {c, e} = cfg[type] || {c:'#555', e:'📍'};
   return L.divIcon({
@@ -5345,20 +5349,45 @@ const FAC_GROUPS = {
   gogoro:    {label:'🔋 Gogoro換電', types:['gogoro']},
   pharmacy:  {label:'💊 藥局',     types:['pharmacy']},
   tcm:       {label:'🌿 中醫',     types:['tcm']},
-  flucov:    {label:'💉 流感新冠', types:[], match:f=>!!f.flu},
+  /* v6.850：流感新冠圖層含未參加西醫（灰標），完整取代醫療圖層（醫療鈕暫隱藏） */
+  flucov:    {label:'💉 流感新冠', types:[], match:f=>!!f.flu || f.t==='medical'},
 };
 /* 流感/新冠合約徽章（af=流感抗病毒 ac=新冠抗病毒 vf=流感疫苗 vc=新冠疫苗） */
 const FLU_BADGES = {
   af:['流感抗病毒','#e65100'], ac:['新冠抗病毒','#6a1b9a'],
   vf:['流感疫苗','#1565c0'],   vc:['新冠疫苗','#2e7d32'],
 };
-function _fluBadgeHtml(flu){
-  if(!flu) return '';
-  const chips = flu.split(',').map(c=>{
-    const b = FLU_BADGES[c.trim()];
-    return b ? `<span style="display:inline-block;background:${b[1]};color:#fff;border-radius:6px;padding:1.5px 6px;font-size:10px;font-weight:700;margin:2px 3px 0 0">${b[0]}</span>` : '';
+function _fluBadgeHtml(flu, showAll){
+  const have = new Set((flu||'').split(',').map(x=>x.trim()).filter(Boolean));
+  if(!have.size && !showAll) return '';
+  const chips = Object.keys(FLU_BADGES).filter(c=>showAll||have.has(c)).map(c=>{
+    const b = FLU_BADGES[c], on = have.has(c);
+    return on
+      ? `<span style="display:inline-block;background:${b[1]};color:#fff;border-radius:6px;padding:1.5px 6px;font-size:10px;font-weight:700;margin:2px 3px 0 0">${b[0]} ✔</span>`
+      : `<span style="display:inline-block;background:#eceff1;color:#90a4ae;border-radius:6px;padding:1.5px 6px;font-size:10px;font-weight:700;margin:2px 3px 0 0">${b[0]} ✘</span>`;
   }).join('');
-  return chips ? `<div style="margin-top:3px;line-height:1.6">${chips}</div>` : '';
+  return `<div style="margin-top:3px;line-height:1.6">${chips}</div>`;
+}
+/* v6.850：匯出流感/新冠合約清單 CSV（四類 ✔/✘ + 參加狀態，未參加排前供動員拜訪） */
+function exportFluList(){
+  const list = FACILITY_DB.filter(f => f.flu || f.t==='medical')
+    .map(f => {
+      const have = new Set((f.flu||'').split(',').map(x=>x.trim()).filter(Boolean));
+      return {f, have, n: have.size};
+    })
+    .sort((a,b) => a.n - b.n || a.f.n.localeCompare(b.f.n, 'zh-Hant'));
+  const rows = [['醫事機構','電話','地址','流感抗病毒','新冠抗病毒','流感疫苗','新冠疫苗','參加狀態']];
+  for(const {f, have, n} of list){
+    rows.push([f.n, f.p||'', f.a,
+      have.has('af')?'✔':'', have.has('ac')?'✔':'', have.has('vf')?'✔':'', have.has('vc')?'✔':'',
+      n===0 ? '未參加' : n===4 ? '全參加' : `參加${n}項`]);
+  }
+  const csv = '﻿' + rows.map(r => r.map(_csvCell).join(',')).join('\r\n'); // BOM 讓 Excel 認 UTF-8
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  a.download = '佳里區流感新冠合約院所清單.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
 }
 const _facGroups = {};
 const _facGroupBuilding = {};
@@ -5407,10 +5436,14 @@ async function toggleFacGroup(gid){
     const dispName = names[0]||addr;
     const navLabel = dispName.replace(/'/g,"\\'");
     const navBtn = `<button class="nav-fac-btn" onclick="navFacTo(${coord[0]},${coord[1]},'${navLabel}')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>`+_streetviewBtnHtml(coord[0],coord[1]);
+    /* v6.850：流感新冠圖層 popup 四類合約 ✔/✘ 全顯示；圖釘三態
+       （全4項=粉紅💉 / 部分=橘💉 / 未參加=灰🏥） */
+    const fluHtml = gid==='flucov' ? _fluBadgeHtml(flu, true) : _fluBadgeHtml(flu);
+    const _nFlu = flu ? flu.split(',').map(x=>x.trim()).filter(Boolean).length : 0;
     const label = names.map((n,i)=>
       `<b>${n}</b>${phones[i]?`<br><span style="font-size:11px;color:#555">☎ ${phones[i]}</span>`:''}`
-    ).join('<br>') + `<br><span style="font-size:11px;color:#888">${addr}</span>` + _fluBadgeHtml(flu) + navBtn;
-    L.marker(coord, {icon:_facIcon(gid==='flucov' ? 'flucov' : t)})
+    ).join('<br>') + `<br><span style="font-size:11px;color:#888">${addr}</span>` + fluHtml + navBtn;
+    L.marker(coord, {icon:_facIcon(gid==='flucov' ? (_nFlu===4 ? 'flucov' : _nFlu>0 ? 'flucov_part' : 'flucov_off') : t)})
       .bindPopup(label, {maxWidth:220})
       .addTo(lg);
   }

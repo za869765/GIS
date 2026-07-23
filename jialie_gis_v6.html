@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.846</title>
+<title>佳里 GIS v6.847</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1674,6 +1674,9 @@ body[data-theme="dark"] #sv-floating-card .sv-card-coord{color:#a8b5c5}
     <button class="fac-grp-btn" id="fac-grp-nursery"  onclick="toggleFacGroup('nursery')"  >🍼 托嬰中心</button>
     <button class="fac-grp-btn" id="fac-grp-kinder"   onclick="toggleFacGroup('kinder')"   >🧒 幼兒園</button>
     <button class="fac-grp-btn" id="fac-grp-gogoro"   onclick="toggleFacGroup('gogoro')"   >🔋 Gogoro換電</button>
+    <button class="fac-grp-btn" id="fac-grp-pharmacy" onclick="toggleFacGroup('pharmacy')" >💊 藥局</button>
+    <button class="fac-grp-btn" id="fac-grp-tcm"      onclick="toggleFacGroup('tcm')"      >🌿 中醫</button>
+    <button class="fac-grp-btn" id="fac-grp-flucov"   onclick="toggleFacGroup('flucov')"   >💉 流感新冠</button>
   </div>
 </div>
 
@@ -4897,6 +4900,40 @@ const MANUAL_COORDS = {
   '仁愛路307號':      [23.153543171636915, 120.17922039138580],
   '埔頂5-1號':        [23.143998034839456, 120.15801955945722],
   '安南路546號':      [23.157570948273456, 120.17173526804937],
+  // 流感/新冠合約整合名冊補充（v6.847，座標取自門牌DB精確門牌）
+  '進學路163之1號':   [23.163845, 120.177499],
+  '建中街111號':      [23.158282, 120.175828],
+  '光復路130號':      [23.158833, 120.175023],
+  '文化路302號':      [23.163265, 120.174461],
+  '光復路165號':      [23.159220, 120.174652],
+  '光復路196號':      [23.160665, 120.174912],
+  '光復路205號':      [23.160297, 120.174549],
+  '文化路235號':      [23.162976, 120.176285],
+  '中山路189號':      [23.158553, 120.176917],
+  '光復路391號':      [23.164961, 120.174747],
+  '延平路317號':      [23.161972, 120.178123],
+  '新生路58號':       [23.161299, 120.180059],
+  '延平路236號':      [23.159282, 120.178716],
+  '義民街245號':      [23.161216, 120.174430],
+  '光復路176號':      [23.160226, 120.174877],
+  '延平路128號':      [23.156525, 120.179128],
+  '光復路71號':       [23.157068, 120.174927],
+  '光復路379號':      [23.164678, 120.174671],
+  '新生路342號':      [23.160047, 120.174349],
+  '光復路258號':      [23.162494, 120.174924],
+  '延平路45號':       [23.154899, 120.179195],
+  '延平路76號':       [23.155070, 120.179462],
+  '中山路180號':      [23.158809, 120.177256],
+  '延平路357號':      [23.162869, 120.178069],
+  '延平路403號':      [23.164575, 120.177977],
+  '新生路80號':       [23.161060, 120.179437],
+  '文化路207號':      [23.162969, 120.177148],
+  '延平路364號':      [23.162423, 120.178421],
+  '中山路292巷3號':   [23.160922, 120.177055],
+  '文化路150號':      [23.163362, 120.178865],
+  '中山路19號':       [23.154655, 120.177882],
+  '延平路342號':      [23.161933, 120.178427],
+  '新生路43號':       [23.161107, 120.180438],
 };
 
 async function gotoAddr(addr){
@@ -4940,7 +4977,7 @@ const FACILITY_DB = [
   {n:'財稅局佳里分局',          a:'忠孝路25號',         t:'gov'},
   {n:'佳里地政事務所',          a:'中山路417號',        t:'gov'},
   {n:'佳里戶政事務所',          a:'忠孝路17號',         t:'gov'},
-  {n:'佳里衛生所',              a:'進學路159號',        t:'gov'},
+  {n:'佳里衛生所',              a:'進學路159號',        t:'gov', p:'7224106', flu:'af,ac,vf,vc'},
   {n:'警察局佳里分局',          a:'忠孝路7號',          t:'gov'},
   {n:'佳里派出所',              a:'忠孝路7號',          t:'gov'},
   {n:'佳興派出所',              a:'佳里興441號',        t:'gov'},
@@ -5095,23 +5132,23 @@ const FACILITY_DB = [
   {n:'雷恩行宮',              a:'後庄一街230號',          t:'temple'},
   {n:'佳福寺',               a:'營頂里102號',            t:'temple'},
   // 醫療院所
-  {n:'奇美醫療財團法人佳里奇美醫院', a:'佳里興606號',    t:'medical', p:'7263333'},
-  {n:'馬博榮婦產專科診所',           a:'佳北路1號',      t:'medical', p:'7236110'},
-  {n:'黃逸仁診所',                   a:'光復路145號',    t:'medical', p:'7220076'},
-  {n:'佳安診所',                     a:'中山路188號',    t:'medical', p:'7237768'},
-  {n:'新生診所',                     a:'新生路272號',    t:'medical', p:'7223122'},
-  {n:'以琳內科診所',                 a:'建南街161號',    t:'medical', p:'7211102'},
+  {n:'奇美醫療財團法人佳里奇美醫院', a:'佳里興606號',    t:'medical', p:'7263333', flu:'af,ac,vf,vc'},
+  {n:'馬博榮婦產專科診所',           a:'佳北路1號',      t:'medical', p:'7236110', flu:'vf,vc'},
+  {n:'黃逸仁診所',                   a:'光復路145號',    t:'medical', p:'7220076', flu:'af'},
+  {n:'佳安診所',                     a:'中山路188號',    t:'medical', p:'7237768', flu:'af,ac,vf,vc'},
+  {n:'新生診所',                     a:'新生路272號',    t:'medical', p:'7223122', flu:'vf,vc'},
+  {n:'以琳內科診所',                 a:'建南街161號',    t:'medical', p:'7211102', flu:'af,vf'},
   {n:'楊惠芬婦產科診所',             a:'和平街118號',    t:'medical', p:'7220000'},
-  {n:'黃清相診所',                   a:'延平路72號2樓',  t:'medical', p:'7215777'},
+  {n:'黃清相診所',                   a:'延平路72號2樓',  t:'medical', p:'7215777', flu:'af,ac,vf,vc'},
   {n:'鴻慶診所',                     a:'仁愛路343號',    t:'medical', p:'7216636'},
-  {n:'金石小兒科診所',               a:'中山路113號',    t:'medical', p:'7213897'},
+  {n:'金石小兒科診所',               a:'中山路113號',    t:'medical', p:'7213897', flu:'vf'},
   {n:'賴建利小兒科診所',             a:'延平路280號',    t:'medical', p:'7212233'},
   {n:'黃永裕家醫科診所',             a:'光復路226號',    t:'medical', p:'7220220'},
   {n:'葉佳霖診所',                   a:'光復路313號',    t:'medical', p:'7227875'},
-  {n:'劉亞伯耳鼻喉科診所',           a:'延平路353號',    t:'medical', p:'7236765'},
+  {n:'劉亞伯耳鼻喉科診所',           a:'延平路353號',    t:'medical', p:'7236765', flu:'af'},
   {n:'泰好復健科診所',               a:'進學路298號',    t:'medical', p:'7228858'},
   {n:'佳元診所',                     a:'新生路297號',    t:'medical', p:'7238181'},
-  {n:'立新診所',                     a:'新生路87號',     t:'medical', p:'7213260'},
+  {n:'立新診所',                     a:'新生路87號',     t:'medical', p:'7213260', flu:'af'},
   {n:'張松盛小兒科診所',             a:'延平路225號',    t:'medical', p:'7234215'},
   {n:'人人診所',                     a:'自由街110號',    t:'medical', p:'7228895'},
   {n:'宏和診所',                     a:'光復路25號',     t:'medical', p:'7232335'},
@@ -5119,19 +5156,41 @@ const FACILITY_DB = [
   {n:'朝圍診所',                     a:'文化路255號',    t:'medical', p:'7224123'},
   {n:'光復診所',                     a:'中山路398號',    t:'medical', p:'7234656'},
   {n:'吳小兒科診所',                 a:'中山路355號',    t:'medical', p:'7222986'},
-  {n:'謝樂偉眼科診所',               a:'文化路205號',    t:'medical', p:'7234303'},
-  {n:'吳志昶耳鼻喉科診所',           a:'延平路356號',    t:'medical', p:'7235182'},
+  {n:'謝樂偉眼科診所',               a:'文化路205號',    t:'medical', p:'7234303', flu:'ac,vf,vc'},
+  {n:'吳志昶耳鼻喉科診所',           a:'延平路356號',    t:'medical', p:'7235182', flu:'af'},
   {n:'凃尚言皮膚科',                 a:'延平路401號',    t:'medical', p:'7236996'},
   {n:'鍾宏銘皮膚科診所',             a:'光復路160號',    t:'medical', p:'067236387'},
   {n:'汪骨科診所',                   a:'延平路47號',     t:'medical', p:'7233305'},
   {n:'洪骨科診所',                   a:'中山路201號',    t:'medical', p:'7237088'},
   {n:'茗亮楊宗茗復健科診所',         a:'文化路445號',    t:'medical', p:'7222005'},
+  // 醫療院所補充（v6.847，來源：115年流感/新冠合約整合名冊）
+  {n:'明如身心診所',                 a:'進學路163之1號', t:'medical', p:'7225656'},
+  {n:'凱禾診所',                     a:'建中街111號',    t:'medical', p:'7224713', flu:'vf,vc'},
+  {n:'陳內兒科診所',                 a:'光復路130號',    t:'medical', p:'7229820'},
+  {n:'李芳輝內小兒科診所',           a:'文化路302號',    t:'medical', p:'7221568', flu:'vf'},
+  {n:'王順珍外婦產科診所',           a:'光復路165號',    t:'medical', p:'7223431'},
+  {n:'陳婦產科診所',                 a:'光復路196號',    t:'medical', p:'7220111'},
+  {n:'佳里吳婦產科診所',             a:'光復路205號',    t:'medical', p:'7223802'},
+  {n:'莊嘉斐眼科診所',               a:'文化路235號',    t:'medical', p:'7225158'},
+  {n:'顏忠信眼科診所',               a:'中山路189號',    t:'medical', p:'7213233'},
+  {n:'信明眼科診所',                 a:'光復路391號',    t:'medical', p:'7228999'},
   // 牙醫診所
   {n:'光裕牙醫診所',  a:'文化路335號',  t:'dental', p:'7212342'},
   {n:'康橋牙醫診所',  a:'延平路274號',  t:'dental', p:'7233333'},
   {n:'新安牙醫診所',  a:'博愛街165號',  t:'dental', p:'7215266'},
   {n:'遠東牙醫診所',  a:'光復路236號',  t:'dental', p:'7238333'},
   {n:'御品牙醫診所',  a:'中山路233號',  t:'dental', p:'7212780'},
+  // 牙醫診所補充（v6.847，來源：115年流感/新冠合約整合名冊）
+  {n:'佳田牙醫診所',    a:'延平路317號',  t:'dental', p:'7213888'},
+  {n:'康平牙醫診所',    a:'新生路58號',   t:'dental', p:'7222019'},
+  {n:'光遠牙醫診所',    a:'延平路236號',  t:'dental', p:'7233420'},
+  {n:'黃達人牙醫診所',  a:'義民街245號',  t:'dental', p:'7225125'},
+  {n:'佳南牙醫診所',    a:'光復路176號',  t:'dental', p:'7233321'},
+  {n:'聖康牙醫診所',    a:'延平路128號',  t:'dental', p:'7227429'},
+  {n:'林信成牙醫診所',  a:'光復路71號',   t:'dental', p:'7235609'},
+  {n:'佳群牙醫診所',    a:'光復路379號',  t:'dental', p:'7213278'},
+  {n:'巧力牙醫診所',    a:'新生路342號',  t:'dental', p:'7215458'},
+  {n:'黃宗偉牙醫診所',  a:'光復路258號',  t:'dental', p:'7212255'},
   // Gogoro 換電站
   {n:'Gogoro 全聯佳里中山店站',       a:'中山路452號',   t:'gogoro'},
   {n:'Gogoro 佳里國小廣停二停車場站', a:'文化路359號',   t:'gogoro'},
@@ -5163,6 +5222,22 @@ const FACILITY_DB = [
   {n:'仁愛國小附幼',       a:'仁愛路307號',           t:'kinder', p:'7222227'},
   {n:'通興國小附幼',       a:'埔頂5-1號',             t:'kinder', p:'7873531'},
   {n:'伯利恆幼兒園',       a:'安南路546號',           t:'kinder', p:'7215005'},
+  // 藥局（v6.847，來源：115年流感/新冠合約整合名冊）
+  {n:'延平藥局(汪骨科)',       a:'延平路45號',      t:'pharmacy', p:'7236185'},
+  {n:'延興藥局(黃清相)',       a:'延平路76號',      t:'pharmacy', p:'7238544'},
+  {n:'佳心藥局(佳安)',         a:'中山路180號',     t:'pharmacy', p:'7226626'},
+  {n:'明星藥局(明如)',         a:'進學路163之1號',  t:'pharmacy', p:'7220505'},
+  {n:'家名藥局(劉亞伯)',       a:'延平路357號',     t:'pharmacy', p:'7236695'},
+  {n:'星興藥局',               a:'延平路403號',     t:'pharmacy', p:'7236993'},
+  {n:'新生藥局(立新診所)',     a:'新生路80號',      t:'pharmacy', p:'7224563'},
+  {n:'賀康藥局(謝樂偉診所)',   a:'文化路207號',     t:'pharmacy', p:'7221447'},
+  // 中醫診所（v6.847，來源：115年流感/新冠合約整合名冊）
+  {n:'大安中醫診所',           a:'延平路364號',     t:'tcm', p:'7226602'},
+  {n:'順隆中醫診所',           a:'中山路292巷3號',  t:'tcm', p:'7229200'},
+  {n:'陳奇聲中醫診所',         a:'文化路150號',     t:'tcm', p:'7224591'},
+  {n:'許峰城中醫診所',         a:'中山路19號',      t:'tcm', p:'7222286'},
+  {n:'佳心中醫診所',           a:'延平路342號',     t:'tcm', p:'7236789'},
+  {n:'慈祥中醫診所',           a:'新生路43號',      t:'tcm', p:'7238666'},
 ];
 
 function _facIcon(type){
@@ -5181,6 +5256,9 @@ function _facIcon(type){
     nursery:    {c:'#e91e8c', e:'🍼'},
     kinder:     {c:'#f39c12', e:'🧒'},
     gogoro:     {c:'#00c853', e:'🔋'},
+    pharmacy:   {c:'#00897b', e:'💊'},
+    tcm:        {c:'#558b2f', e:'🌿'},
+    flucov:     {c:'#d81b60', e:'💉'},
   };
   const {c, e} = cfg[type] || {c:'#555', e:'📍'};
   return L.divIcon({
@@ -5261,7 +5339,23 @@ const FAC_GROUPS = {
   nursery:   {label:'🍼 托嬰中心', types:['nursery']},
   kinder:    {label:'🧒 幼兒園',   types:['kinder']},
   gogoro:    {label:'🔋 Gogoro換電', types:['gogoro']},
+  pharmacy:  {label:'💊 藥局',     types:['pharmacy']},
+  tcm:       {label:'🌿 中醫',     types:['tcm']},
+  flucov:    {label:'💉 流感新冠', types:[], match:f=>!!f.flu},
 };
+/* 流感/新冠合約徽章（af=流感抗病毒 ac=新冠抗病毒 vf=流感疫苗 vc=新冠疫苗） */
+const FLU_BADGES = {
+  af:['流感抗病毒','#e65100'], ac:['新冠抗病毒','#6a1b9a'],
+  vf:['流感疫苗','#1565c0'],   vc:['新冠疫苗','#2e7d32'],
+};
+function _fluBadgeHtml(flu){
+  if(!flu) return '';
+  const chips = flu.split(',').map(c=>{
+    const b = FLU_BADGES[c.trim()];
+    return b ? `<span style="display:inline-block;background:${b[1]};color:#fff;border-radius:6px;padding:1.5px 6px;font-size:10px;font-weight:700;margin:2px 3px 0 0">${b[0]}</span>` : '';
+  }).join('');
+  return chips ? `<div style="margin-top:3px;line-height:1.6">${chips}</div>` : '';
+}
 const _facGroups = {};
 const _facGroupBuilding = {};
 
@@ -5291,14 +5385,15 @@ async function toggleFacGroup(gid){
 
   const byAddr = new Map();
   for(const fac of FACILITY_DB){
-    if(!cfg.types.includes(fac.t)) continue;
+    if(!(cfg.match ? cfg.match(fac) : cfg.types.includes(fac.t))) continue;
     if(!byAddr.has(fac.a)) byAddr.set(fac.a, {names:[], phones:[], t:fac.t});
     byAddr.get(fac.a).names.push(fac.n);
     byAddr.get(fac.a).phones.push(fac.p||'');
+    if(fac.flu) byAddr.get(fac.a).flu = fac.flu;
   }
 
   const lg = L.layerGroup();
-  for(const [addr, {names, phones, t}] of byAddr){
+  for(const [addr, {names, phones, t, flu}] of byAddr){
     const coord = await _resolveFacCoord(addr);
     if(!coord) continue;
     const dispName = names[0]||addr;
@@ -5306,8 +5401,8 @@ async function toggleFacGroup(gid){
     const navBtn = `<button class="nav-fac-btn" onclick="navFacTo(${coord[0]},${coord[1]},'${navLabel}')" style="display:block;width:100%;margin-top:7px;background:#27ae60;border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;border-radius:10px;padding:5px">🧭 導航到此</button>`+_streetviewBtnHtml(coord[0],coord[1]);
     const label = names.map((n,i)=>
       `<b>${n}</b>${phones[i]?`<br><span style="font-size:11px;color:#555">☎ ${phones[i]}</span>`:''}`
-    ).join('<br>') + `<br><span style="font-size:11px;color:#888">${addr}</span>${navBtn}`;
-    L.marker(coord, {icon:_facIcon(t)})
+    ).join('<br>') + `<br><span style="font-size:11px;color:#888">${addr}</span>` + _fluBadgeHtml(flu) + navBtn;
+    L.marker(coord, {icon:_facIcon(gid==='flucov' ? 'flucov' : t)})
       .bindPopup(label, {maxWidth:220})
       .addTo(lg);
   }
@@ -9327,13 +9422,26 @@ map.on('dblclick',function(e){
 
 <script>
 /* ── 機關圖層卡拖曳（點空白處移動） ── */
+/* v6.847：還原儲存位置時夾回視窗內。拖曳後視窗大小/縮放比例改變，
+   舊座標可能落在視窗外 → 面板永遠看不到（「圖層不見了」根因）。 */
+function _clampPanelIntoView(el){
+  if(!el || el.style.display==='none') return;
+  const r = el.getBoundingClientRect();
+  if(!r.width && !r.height) return;
+  let L = parseFloat(el.style.left); if(isNaN(L)) L = r.left;
+  let T = parseFloat(el.style.top);  if(isNaN(T)) T = r.top;
+  const cl = Math.max(4, Math.min(window.innerWidth  - r.width  - 4, L));
+  const ct = Math.max(4, Math.min(window.innerHeight - r.height - 4, T));
+  if(cl!==L || ct!==T){ el.style.left=cl+'px'; el.style.top=ct+'px'; el.style.bottom='auto'; }
+}
 (function(){
   const wrap = document.getElementById('left-tools');
   if(!wrap) return;
   try{
     const saved=JSON.parse(localStorage.getItem('leftToolsPos')||'null');
-    if(saved){ wrap.style.left=saved.left; wrap.style.top=saved.top; wrap.style.bottom='auto'; }
+    if(saved){ wrap.style.left=saved.left; wrap.style.top=saved.top; wrap.style.bottom='auto'; _clampPanelIntoView(wrap); }
   }catch(e){}
+  window.addEventListener('resize',()=>{ if(wrap.style.top) _clampPanelIntoView(wrap); });
   let sx,sy,sl,st,dragging=false;
   function ds(cx,cy){ const r=wrap.getBoundingClientRect(); sx=cx;sy=cy;sl=r.left;st=r.top;dragging=false; wrap.style.bottom='auto';wrap.style.top=st+'px';wrap.style.left=sl+'px'; }
   function dm(cx,cy){ const dx=cx-sx,dy=cy-sy; if(!dragging&&Math.abs(dx)<5&&Math.abs(dy)<5)return; dragging=true; wrap.style.cursor='grabbing'; wrap.style.left=Math.max(4,Math.min(window.innerWidth-wrap.offsetWidth-4,sl+dx))+'px'; wrap.style.top=Math.max(4,Math.min(window.innerHeight-wrap.offsetHeight-4,st+dy))+'px'; }
@@ -9378,11 +9486,12 @@ map.on('dblclick',function(e){
   });
   document.body.appendChild(panel);
 
-  // 還原上次位置
+  // 還原上次位置（v6.847：夾回視窗內，同 left-tools 修法）
   try{
     const s=JSON.parse(localStorage.getItem('ctrlPanelPos')||'null');
-    if(s){ panel.style.left=s.left||'14px'; panel.style.top=s.top; panel.style.bottom='auto'; }
+    if(s){ panel.style.left=s.left||'14px'; panel.style.top=s.top; panel.style.bottom='auto'; _clampPanelIntoView(panel); }
   }catch{}
+  window.addEventListener('resize',()=>{ if(panel.style.top) _clampPanelIntoView(panel); });
 
   let sx,sy,sl,st,dragging=false;
   function ds(cx,cy){ const r=panel.getBoundingClientRect(); sx=cx;sy=cy;sl=r.left;st=r.top;dragging=false; panel.style.bottom='auto';panel.style.top=st+'px';panel.style.left=sl+'px'; }

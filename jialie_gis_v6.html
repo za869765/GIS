@@ -822,6 +822,9 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
 @media(max-width:1023px){.leaflet-top.leaflet-right .flucov-export-ctl{margin-top:54px}} /* 平板/手機避開置中搜尋列 */
 @media print{
   @page{size:A4 landscape;margin:6mm}
+  /* 強制列印背景色/背景圖：Chrome 列印對話框「背景圖形」預設不勾，
+     不加這行的話 圓圈填色、門牌點、里界色塊 全部印不出來（圖磚是 <img> 不受影響）。 */
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body>*{display:none!important}
   #map{display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;right:0!important}
   .leaflet-control-attribution,.leaflet-control-zoom{display:none!important}
@@ -6425,8 +6428,22 @@ function printRadiusArea(){
   // 2. 等 transition，再 invalidateSize（不做 fitBounds，讓使用者自行調整視角）
   setTimeout(()=>{
     map.invalidateSize({animate:false});
-    // 3. 等圖磚完全載入後列印
-    setTimeout(()=>{ window.print(); }, 600);
+    // 3. 真的等圖磚載完才列印（原本死等 600ms，收側欄後地圖加寬 340px、
+    //    要抓一整排新圖磚，600ms 常常不夠 → 列印預覽整頁空白）
+    const t0 = Date.now();
+    (function waitTiles(){
+      const imgs = [...document.querySelectorAll('.leaflet-tile-pane img')];
+      const done = imgs.filter(i=>i.complete && i.naturalWidth>0).length;
+      const elapsed = Date.now() - t0;
+      if(imgs.length>0 && done===imgs.length){
+        window.print();
+      } else if(elapsed > 5000){
+        console.warn('[GIS 列印] 圖磚等待逾時 5s：'+imgs.length+' 張 / 已載入 '+done+' → 仍列印');
+        window.print();
+      } else {
+        setTimeout(waitTiles, 100);
+      }
+    })();
   }, 300);
 }
 

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.855</title>
+<title>佳里 GIS v6.856</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -826,7 +826,9 @@ body.pt-edit-mode #vil-stat-row{display:none!important}
      不加這行的話 圓圈填色、門牌點、里界色塊 全部印不出來（圖磚是 <img> 不受影響）。 */
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body>*{display:none!important}
-  #map{display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;right:0!important}
+  #map{display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;right:0!important;perspective:none!important}
+  /* 消滅合成層誘因：perspective/will-change 都會把子層推上 GPU，列印會整層丟棄 */
+  #map *{will-change:auto!important;backface-visibility:visible!important}
   .leaflet-control-attribution,.leaflet-control-zoom{display:none!important}
   #left-tools,#ctrl-panel,#topbar,#sheet,#sheet-toggle-btn,#print-btn-wrap,#roadbar,#fab,#gps-btn,#aerial-3d-btn,#nav-bar,#nav-panel,#nav-backdrop,#leg-drawer,#leg-backdrop,#legend-desktop,#follow-banner{display:none!important}
   .leaflet-popup,.leaflet-tooltip{display:none!important}
@@ -6401,6 +6403,33 @@ function _updatePrintBtn(){
     }
   } catch(e) { /* init 期間變數尚未宣告，忽略 */ }
 }
+
+/* v6.856：Chrome「真實列印」會丟棄 GPU 合成層（translate3d / will-change 產生的
+   compositor layer）→ Leaflet 圖磚與各 pane 全在合成層上 → 預覽整片空白，
+   而畫面上看起來一切正常（headless PDF 走軟體繪製測不出此問題）。
+   解法：beforeprint 把 #map 內所有帶 3D transform 的元素改寫成等值 2D matrix
+   （位置完全相同、但不再是合成層），afterprint 逐一還原。涵蓋 🖨 鈕與 Ctrl+P。 */
+let _printTransformBackup = null;
+window.addEventListener('beforeprint', ()=>{
+  try{
+    _printTransformBackup = [];
+    document.querySelectorAll('#map, #map *').forEach(el=>{
+      const inlineT = el.style.transform || '';
+      const computedT = getComputedStyle(el).transform;
+      if(computedT && computedT !== 'none' && (computedT.includes('matrix3d') || inlineT.includes('3d(') || inlineT.includes('translateZ'))){
+        const m = new DOMMatrix(computedT);
+        _printTransformBackup.push([el, inlineT]);
+        el.style.transform = 'matrix('+m.a+','+m.b+','+m.c+','+m.d+','+m.e+','+m.f+')';
+      }
+    });
+  }catch(err){ console.warn('[GIS 列印] transform 降維失敗：', err); }
+});
+window.addEventListener('afterprint', ()=>{
+  if(_printTransformBackup){
+    _printTransformBackup.forEach(([el,t])=>{ el.style.transform = t; });
+    _printTransformBackup = null;
+  }
+});
 
 function printRadiusArea(){
   if(!_radiusCircle) return;

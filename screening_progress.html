@@ -1,0 +1,128 @@
+<!DOCTYPE html><html lang="zh-Hant-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>佳里區成人篩檢進度圖</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500&display=swap">
+</head><body><style>
+:root{--paper:#f5f7f4;--ink:#17232a;--ink2:#4d5d66;--line:#d6ddd8;--card:#ffffff;--acc:#0e7a68;--acc-ink:#0a5a4d;--fill-lo:#e6eee9;--fill-hi:#0e7a68;--track:#e4e9e5;--school:#c9651b}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paper:#121a1c;--ink:#e8eeea;--ink2:#9fb0a9;--line:#2a3a3c;--card:#182326;--acc:#3fbfa6;--acc-ink:#7fdcc8;--fill-lo:#213033;--fill-hi:#3fbfa6;--track:#26363a;--school:#f0a15a}}
+:root[data-theme="dark"]{--paper:#121a1c;--ink:#e8eeea;--ink2:#9fb0a9;--line:#2a3a3c;--card:#182326;--acc:#3fbfa6;--acc-ink:#7fdcc8;--fill-lo:#213033;--fill-hi:#3fbfa6;--track:#26363a;--school:#f0a15a}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;padding:0 20px;padding-block:28px 40px;font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:18px}
+h1{font-size:26px;font-weight:900;margin:0;letter-spacing:.02em;text-wrap:balance}
+.sub{color:var(--ink2);font-size:13px;margin-top:4px}
+.kpis{display:flex;gap:22px;flex-wrap:wrap}
+.kpi{display:flex;flex-direction:column;gap:2px}
+.kpi b{font-family:"IBM Plex Mono",monospace;font-size:24px;font-weight:500;line-height:1;color:var(--acc-ink)}
+.kpi span{font-size:11px;letter-spacing:.08em;color:var(--ink2)}
+.grid{display:grid;grid-template-columns:minmax(300px,560px) minmax(320px,1fr);gap:22px;align-items:start}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.map{background:var(--card);border:1px solid var(--line);padding:10px}
+.map svg{width:100%;height:auto;display:block}
+.vil{stroke:var(--paper);stroke-width:1.2}
+.vil:hover{filter:brightness(1.08)}
+.vlab{font-size:11px;font-weight:700;fill:var(--ink);pointer-events:none;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}
+.vpct{font-size:10px;font-family:"IBM Plex Mono",monospace;fill:var(--ink2);pointer-events:none;paint-order:stroke;stroke:var(--card);stroke-width:3px}
+.sch{fill:var(--school);stroke:var(--card);stroke-width:1.5}
+.slab{font-size:9.5px;fill:var(--school);font-weight:700;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}
+.legend{display:flex;gap:16px;align-items:center;font-size:11.5px;color:var(--ink2);margin-top:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:12px;vertical-align:-2px;margin-right:5px}
+.ramp{display:inline-block;width:70px;height:10px;background:linear-gradient(90deg,var(--fill-lo),var(--fill-hi));vertical-align:-1px;margin:0 5px}
+.bars{display:grid;grid-template-columns:4.2em 1fr 10.5em;gap:7px 10px;align-items:center;font-size:13px}
+.bars .h{font-size:11px;letter-spacing:.08em;color:var(--ink2);border-bottom:1px solid var(--line);padding-bottom:5px}
+.name{font-weight:700}
+.track{height:14px;background:var(--track);position:relative}
+.fill{position:absolute;top:0;bottom:0;left:0;background:var(--acc)}
+.num{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink2);white-space:nowrap;text-align:right}
+.num b{color:var(--ink);font-weight:500}
+.note{margin-top:14px;font-size:12px;color:var(--ink2);line-height:1.6}
+.note b{color:var(--ink)}
+.foot{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 28px;font-size:12px;color:var(--ink2);border-top:1px solid var(--line);padding-top:12px;line-height:1.6}
+.foot b{color:var(--ink)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.chip{border:1px solid var(--line);padding:1px 8px;font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+</style>
+<div class="wrap">
+<header>
+ <div><h1>佳里區成人篩檢進度圖</h1><div class="sub">115 年社區整合性篩檢 · 篩檢紀錄截至 115/09/06 · 對象＝30 歲以上設籍人口（戶政司 115 年 7 月）</div></div>
+ <div class="kpis">
+  <div class="kpi"><b>877</b><span>已篩檢</span></div>
+  <div class="kpi"><b>826</b><span>設籍佳里</span></div>
+  <div class="kpi"><b>43,463</b><span>30 歲以上人口</span></div>
+  <div class="kpi"><b>1.9%</b><span>全區涵蓋率</span></div>
+ </div>
+</header>
+<div class="grid">
+ <div class="map">
+  <svg viewBox="0 0 560 819" role="img" aria-label="佳里區各里篩檢涵蓋率地圖">
+   <path class="vil" d="M380.0,474.2L397.3,518.3L335.6,542.3L358.0,570.2L356.4,571.3L355.7,571.3L355.2,571.6L349.5,572.5L306.7,602.6L280.2,605.4L279.8,604.7L283.3,561.7L278.1,540.5L266.0,510.8L265.1,504.4L265.1,504.2L258.2,474.4L304.1,467.8L313.6,470.8L324.9,481.1L331.1,492.7L380.0,474.2Z" style="fill:color-mix(in oklab, var(--fill-hi) 83%, var(--fill-lo))"><title>鎮山里：122 人，涵蓋率 2.6%</title></path>
+   <path class="vil" d="M380.0,474.2L331.1,492.7L324.9,481.1L313.6,470.8L304.1,467.8L258.2,474.4L254.0,445.4L269.1,442.2L287.6,433.8L291.6,439.7L299.9,439.7L296.1,427.6L326.8,439.3L336.3,442.5L333.2,451.6L372.2,453.4L380.0,474.2Z" style="fill:color-mix(in oklab, var(--fill-hi) 100%, var(--fill-lo))"><title>忠仁里：76 人，涵蓋率 3.2%</title></path>
+   <path class="vil" d="M372.2,453.4L333.2,451.6L336.3,442.5L326.8,439.3L329.2,434.2L330.1,408.6L336.0,402.0L340.1,372.1L322.6,369.8L324.2,355.6L336.5,359.7L344.3,341.9L351.2,342.8L356.1,335.3L361.8,314.7L316.9,320.9L315.2,304.2L317.6,299.4L315.7,280.0L306.7,274.0L308.8,269.0L338.2,270.6L339.8,255.1L361.1,254.2L383.1,256.4L411.7,256.9L427.8,280.2L437.0,297.1L397.5,307.2L401.1,343.7L397.7,367.5L407.9,366.1L429.2,368.9L427.3,417.1L410.5,416.6L416.7,435.6L416.0,435.8L371.5,449.8L372.2,453.4Z" style="fill:color-mix(in oklab, var(--fill-hi) 68%, var(--fill-lo))"><title>民安里：31 人，涵蓋率 2.0%</title></path>
+   <path class="vil" d="M462.3,165.5L484.1,173.5L482.6,223.8L467.0,224.0L463.7,246.2L454.3,242.1L445.0,251.9L424.0,250.1L408.9,251.9L411.7,256.9L383.1,256.4L361.1,254.2L362.8,246.6L355.0,240.9L356.8,226.7L350.9,221.5L354.0,209.1L359.4,207.8L365.8,181.7L359.7,177.4L364.4,166.6L381.9,147.9L385.7,148.1L399.9,149.0L427.5,157.3L440.8,163.4L462.3,165.5Z" style="fill:color-mix(in oklab, var(--fill-hi) 28%, var(--fill-lo))"><title>佳化里：9 人，涵蓋率 0.5%</title></path>
+   <path class="vil" d="M326.8,439.3L296.1,427.6L299.9,439.7L291.6,439.7L287.6,433.8L269.1,442.2L254.0,445.4L253.0,435.6L238.1,437.7L238.6,422.3L238.9,414.4L264.2,416.4L299.2,415.5L330.1,408.6L329.2,434.2L326.8,439.3Z" style="fill:color-mix(in oklab, var(--fill-hi) 66%, var(--fill-lo))"><title>東寧里：36 人，涵蓋率 1.9%</title></path>
+   <path class="vil" d="M79.7,434.0L79.7,433.5L75.7,415.5L77.4,403.6L90.8,402.5L102.2,405.0L117.1,403.8L118.7,398.8L113.5,388.8L127.3,389.0L132.7,384.4L134.6,364.3L147.6,365.0L164.1,359.5L167.7,369.8L178.6,357.9L159.6,353.1L157.8,341.7L173.8,338.3L185.9,353.8L215.9,346.5L218.5,356.1L239.3,402.0L238.9,414.4L238.6,422.3L162.0,425.3L79.7,434.0Z" style="fill:color-mix(in oklab, var(--fill-hi) 71%, var(--fill-lo))"><title>安西里：103 人，涵蓋率 2.1%</title></path>
+   <path class="vil" d="M306.7,274.0L315.7,280.0L317.6,299.4L315.2,304.2L316.9,320.9L361.8,314.7L356.1,335.3L351.2,342.8L344.3,341.9L336.5,359.7L324.2,355.6L322.6,369.8L340.1,372.1L336.0,402.0L330.1,408.6L299.2,415.5L264.2,416.4L238.9,414.4L239.3,402.0L218.5,356.1L215.9,346.5L210.5,323.9L211.4,309.9L232.7,306.7L260.8,326.8L262.0,307.6L274.8,307.9L274.3,275.9L306.7,274.0Z" style="fill:color-mix(in oklab, var(--fill-hi) 80%, var(--fill-lo))"><title>六安里：86 人，涵蓋率 2.5%</title></path>
+   <path class="vil" d="M258.2,474.4L265.1,504.2L265.1,504.4L237.7,503.5L233.7,514.9L219.2,503.7L214.0,489.5L210.5,456.2L221.1,451.6L238.1,448.6L238.1,437.7L253.0,435.6L254.0,445.4L258.2,474.4Z" style="fill:color-mix(in oklab, var(--fill-hi) 80%, var(--fill-lo))"><title>建南里：90 人，涵蓋率 2.4%</title></path>
+   <path class="vil" d="M75.7,415.5L52.8,401.6L15.2,392.9L15.2,380.5L20.4,363.2L32.4,340.1L14.0,329.3L14.9,323.2L39.5,318.1L34.3,311.1L31.3,286.6L41.2,284.6L59.4,286.2L74.5,290.0L85.6,296.4L95.8,296.7L113.3,302.6L119.5,310.4L120.6,328.2L130.1,345.1L136.0,346.3L134.6,364.3L132.7,384.4L127.3,389.0L113.5,388.8L118.7,398.8L117.1,403.8L102.2,405.0L90.8,402.5L77.4,403.6L75.7,415.5Z" style="fill:color-mix(in oklab, var(--fill-hi) 36%, var(--fill-lo))"><title>下營里：12 人，涵蓋率 0.8%</title></path>
+   <path class="vil" d="M385.7,148.1L381.9,147.9L364.4,166.6L359.7,177.4L343.1,161.2L327.1,162.5L314.0,156.8L311.4,163.9L237.0,143.8L237.4,142.0L239.3,133.5L245.0,100.8L254.5,79.1L264.9,52.4L261.6,30.9L256.1,14.0L315.2,36.4L311.0,45.5L315.9,51.0L310.0,54.2L315.5,67.0L329.4,65.2L340.5,57.0L347.9,40.7L360.2,42.6L367.0,43.9L365.8,61.3L380.0,63.8L383.8,95.1L410.3,89.4L416.4,99.2L422.1,123.2L409.1,130.5L385.7,148.1Z" style="fill:color-mix(in oklab, var(--fill-hi) 33%, var(--fill-lo))"><title>營溪里：6 人，涵蓋率 0.7%</title></path>
+   <path class="vil" d="M212.1,761.9L197.0,748.7L184.2,750.3L190.4,796.9L166.3,800.1L135.5,804.6L137.2,773.1L145.0,762.6L121.8,743.9L106.0,740.4L90.8,747.7L66.3,753.5L67.7,720.3L55.1,719.9L44.7,715.5L45.0,681.9L42.6,669.4L44.3,656.8L78.3,653.4L94.6,654.3L89.9,650.6L88.5,633.0L80.4,605.6L80.7,582.3L88.7,561.7L93.4,538.2L113.8,512.2L116.1,502.3L160.1,503.5L172.9,509.9L175.3,537.7L160.8,539.6L203.6,585.0L214.7,591.7L227.5,607.2L235.8,610.4L279.8,604.7L280.2,605.4L277.9,637.8L232.2,639.9L235.3,697.9L236.7,757.8L212.1,761.9Z" style="fill:color-mix(in oklab, var(--fill-hi) 61%, var(--fill-lo))"><title>塭內里：41 人，涵蓋率 1.8%</title></path>
+   <path class="vil" d="M361.1,254.2L339.8,255.1L338.2,270.6L308.8,269.0L306.7,274.0L274.3,275.9L270.8,272.7L273.1,239.8L255.4,241.1L253.8,248.5L247.1,248.9L206.2,239.3L207.4,230.4L207.4,230.2L207.4,229.9L209.1,198.6L212.1,183.1L217.3,174.0L217.8,173.5L234.1,150.9L237.0,143.8L311.4,163.9L314.0,156.8L327.1,162.5L343.1,161.2L359.7,177.4L365.8,181.7L359.4,207.8L354.0,209.1L350.9,221.5L356.8,226.7L355.0,240.9L362.8,246.6L361.1,254.2Z" style="fill:color-mix(in oklab, var(--fill-hi) 45%, var(--fill-lo))"><title>佳興里：21 人，涵蓋率 1.1%</title></path>
+   <path class="vil" d="M116.1,502.3L116.6,499.1L171.2,463.9L201.5,460.5L210.5,456.2L214.0,489.5L219.2,503.7L233.7,514.9L237.7,503.5L265.1,504.4L266.0,510.8L278.1,540.5L283.3,561.7L279.8,604.7L235.8,610.4L227.5,607.2L214.7,591.7L203.6,585.0L160.8,539.6L175.3,537.7L172.9,509.9L160.1,503.5L116.1,502.3Z" style="fill:color-mix(in oklab, var(--fill-hi) 48%, var(--fill-lo))"><title>南勢里：53 人，涵蓋率 1.3%</title></path>
+   <path class="vil" d="M116.6,499.1L119.2,471.5L103.1,479.9L102.4,463.3L79.7,465.3L79.7,434.7L79.7,434.0L162.0,425.3L238.6,422.3L238.1,437.7L238.1,448.6L221.1,451.6L210.5,456.2L201.5,460.5L171.2,463.9L116.6,499.1Z" style="fill:color-mix(in oklab, var(--fill-hi) 65%, var(--fill-lo))"><title>文新里：80 人，涵蓋率 1.9%</title></path>
+   <path class="vil" d="M482.6,223.8L525.0,240.5L538.2,241.8L537.3,254.4L544.8,255.3L543.2,299.6L538.9,331.9L531.1,332.5L539.4,337.6L541.5,355.4L545.1,360.9L546.0,388.3L526.8,387.4L523.8,392.6L511.7,396.1L520.5,410.2L529.7,435.4L535.6,446.6L509.6,452.5L495.6,436.7L483.1,432.9L465.8,422.8L448.6,420.1L448.1,426.2L418.6,435.1L416.7,435.6L410.5,416.6L427.3,417.1L429.2,368.9L407.9,366.1L397.7,367.5L401.1,343.7L397.5,307.2L437.0,297.1L427.8,280.2L411.7,256.9L408.9,251.9L424.0,250.1L445.0,251.9L454.3,242.1L463.7,246.2L467.0,224.0L482.6,223.8Z" style="fill:color-mix(in oklab, var(--fill-hi) 55%, var(--fill-lo))"><title>子龍里：32 人，涵蓋率 1.5%</title></path>
+   <path class="vil" d="M74.5,290.0L76.2,283.6L66.7,263.5L55.1,251.4L62.0,245.5L62.5,229.5L70.3,229.5L70.0,221.0L96.5,222.6L97.5,219.0L123.7,245.0L132.9,243.2L140.0,255.8L151.6,252.8L153.0,257.1L190.6,250.5L201.5,243.2L207.4,230.4L206.2,239.3L247.1,248.9L253.8,248.5L255.4,241.1L273.1,239.8L270.8,272.7L274.3,275.9L274.8,307.9L262.0,307.6L260.8,326.8L232.7,306.7L211.4,309.9L210.5,323.9L215.9,346.5L185.9,353.8L173.8,338.3L157.8,341.7L159.6,353.1L178.6,357.9L167.7,369.8L164.1,359.5L147.6,365.0L134.6,364.3L136.0,346.3L130.1,345.1L120.6,328.2L119.5,310.4L113.3,302.6L95.8,296.7L85.6,296.4L74.5,290.0Z" style="fill:color-mix(in oklab, var(--fill-hi) 54%, var(--fill-lo))"><title>海澄里：28 人，涵蓋率 1.5%</title></path>
+   <text class="vlab" x="318.9" y="526.8" text-anchor="middle">鎮山里</text><text class="vpct" x="318.9" y="538.8" text-anchor="middle">2.6%</text>
+   <text class="vlab" x="315.7" y="459.9" text-anchor="middle">忠仁里</text><text class="vpct" x="315.7" y="471.9" text-anchor="middle">3.2%</text>
+   <text class="vlab" x="373.0" y="350.6" text-anchor="middle">民安里</text><text class="vpct" x="373.0" y="362.6" text-anchor="middle">2.0%</text>
+   <text class="vlab" x="415.7" y="204.4" text-anchor="middle">佳化里</text><text class="vpct" x="415.7" y="216.4" text-anchor="middle">0.5%</text>
+   <text class="vlab" x="283.7" y="426.3" text-anchor="middle">東寧里</text><text class="vpct" x="283.7" y="438.3" text-anchor="middle">1.9%</text>
+   <text class="vlab" x="168.0" y="395.0" text-anchor="middle">安西里</text><text class="vpct" x="168.0" y="407" text-anchor="middle">2.1%</text>
+   <text class="vlab" x="282.8" y="351.9" text-anchor="middle">六安里</text><text class="vpct" x="282.8" y="363.9" text-anchor="middle">2.5%</text>
+   <text class="vlab" x="237.2" y="476.1" text-anchor="middle">建南里</text><text class="vpct" x="237.2" y="488.1" text-anchor="middle">2.4%</text>
+   <text class="vlab" x="74.3" y="350.1" text-anchor="middle">下營里</text><text class="vpct" x="74.3" y="362.1" text-anchor="middle">0.8%</text>
+   <text class="vlab" x="321.6" y="103.3" text-anchor="middle">營溪里</text><text class="vpct" x="321.6" y="115.3" text-anchor="middle">0.7%</text>
+   <text class="vlab" x="151.8" y="655.6" text-anchor="middle">塭內里</text><text class="vpct" x="151.8" y="667.6" text-anchor="middle">1.8%</text>
+   <text class="vlab" x="286.6" y="209.1" text-anchor="middle">佳興里</text><text class="vpct" x="286.6" y="221.1" text-anchor="middle">1.1%</text>
+   <text class="vlab" x="217.2" y="536.0" text-anchor="middle">南勢里</text><text class="vpct" x="217.2" y="548" text-anchor="middle">1.3%</text>
+   <text class="vlab" x="153.9" y="449.3" text-anchor="middle">文新里</text><text class="vpct" x="153.9" y="461.3" text-anchor="middle">1.9%</text>
+   <text class="vlab" x="478.2" y="333.5" text-anchor="middle">子龍里</text><text class="vpct" x="478.2" y="345.5" text-anchor="middle">1.5%</text>
+   <text class="vlab" x="168.7" y="286.6" text-anchor="middle">海澄里</text><text class="vpct" x="168.7" y="298.6" text-anchor="middle">1.5%</text>
+   <circle class="sch" cx="219.4" cy="414.5" r="5"><title>佳里國小</title></circle><text class="slab" x="226.4" y="418.5">佳里國小</text>
+   <circle class="sch" cx="272.5" cy="501.6" r="5"><title>仁愛國小</title></circle><text class="slab" x="279.5" y="505.6">仁愛國小</text>
+   <circle class="sch" cx="373.2" cy="208.8" r="5"><title>佳興國小</title></circle><text class="slab" x="380.2" y="212.8">佳興國小</text>
+   <circle class="sch" cx="71.6" cy="295.3" r="5"><title>延平國小</title></circle><text class="slab" x="78.6" y="299.3">延平國小</text>
+   <circle class="sch" cx="164.8" cy="728.7" r="5"><title>塭內國小</title></circle><text class="slab" x="171.8" y="732.7">塭內國小</text>
+   <circle class="sch" cx="441.8" cy="332.6" r="5"><title>子龍國小</title></circle><text class="slab" x="448.8" y="336.6">子龍國小</text>
+   <circle class="sch" cx="106.9" cy="573.2" r="5"><title>通興國小</title></circle><text class="slab" x="113.9" y="577.2">通興國小</text>
+   <circle class="sch" cx="293.1" cy="449.4" r="5"><title>信義國小</title></circle><text class="slab" x="300.1" y="453.4">信義國小</text>
+  </svg>
+  <div class="legend"><span>涵蓋率 低<span class="ramp"></span>高</span><span><i style="background:var(--school);border-radius:50%"></i>國小（8 所）</span></div>
+ </div>
+ <div>
+  <div class="bars">
+   <div class="h">里別</div><div class="h">篩檢人數 ÷ 30 歲以上人口</div><div class="h" style="text-align:right">人數 / 對象</div>
+   <div class="name">忠仁里</div><div class="track" title="3.2%"><div class="fill" style="width:100.0%"></div></div><div class="num"><b>76</b> / 2,368 · 3.2%</div>
+   <div class="name">鎮山里</div><div class="track" title="2.6%"><div class="fill" style="width:79.5%"></div></div><div class="num"><b>122</b> / 4,779 · 2.6%</div>
+   <div class="name">六安里</div><div class="track" title="2.5%"><div class="fill" style="width:76.6%"></div></div><div class="num"><b>86</b> / 3,499 · 2.5%</div>
+   <div class="name">建南里</div><div class="track" title="2.4%"><div class="fill" style="width:76.2%"></div></div><div class="num"><b>90</b> / 3,681 · 2.4%</div>
+   <div class="name">安西里</div><div class="track" title="2.1%"><div class="fill" style="width:65.8%"></div></div><div class="num"><b>103</b> / 4,878 · 2.1%</div>
+   <div class="name">民安里</div><div class="track" title="2.0%"><div class="fill" style="width:62.6%"></div></div><div class="num"><b>31</b> / 1,542 · 2.0%</div>
+   <div class="name">東寧里</div><div class="track" title="1.9%"><div class="fill" style="width:59.9%"></div></div><div class="num"><b>36</b> / 1,872 · 1.9%</div>
+   <div class="name">文新里</div><div class="track" title="1.9%"><div class="fill" style="width:59.4%"></div></div><div class="num"><b>80</b> / 4,196 · 1.9%</div>
+   <div class="name">塭內里</div><div class="track" title="1.8%"><div class="fill" style="width:54.6%"></div></div><div class="num"><b>41</b> / 2,338 · 1.8%</div>
+   <div class="name">子龍里</div><div class="track" title="1.5%"><div class="fill" style="width:47.4%"></div></div><div class="num"><b>32</b> / 2,103 · 1.5%</div>
+   <div class="name">海澄里</div><div class="track" title="1.5%"><div class="fill" style="width:45.9%"></div></div><div class="num"><b>28</b> / 1,899 · 1.5%</div>
+   <div class="name">南勢里</div><div class="track" title="1.3%"><div class="fill" style="width:39.2%"></div></div><div class="num"><b>53</b> / 4,218 · 1.3%</div>
+   <div class="name">佳興里</div><div class="track" title="1.1%"><div class="fill" style="width:35.1%"></div></div><div class="num"><b>21</b> / 1,865 · 1.1%</div>
+   <div class="name">下營里</div><div class="track" title="0.8%"><div class="fill" style="width:24.9%"></div></div><div class="num"><b>12</b> / 1,502 · 0.8%</div>
+   <div class="name">營溪里</div><div class="track" title="0.7%"><div class="fill" style="width:21.1%"></div></div><div class="num"><b>6</b> / 888 · 0.7%</div>
+   <div class="name">佳化里</div><div class="track" title="0.5%"><div class="fill" style="width:15.3%"></div></div><div class="num"><b>9</b> / 1,835 · 0.5%</div>
+  </div>
+  <div class="note">另有 <b>外區 40 人</b>、<b>地址待確認 11 人</b> 未計入各里。進度條以最高里別（忠仁里 3.2%）為滿格。</div>
+ </div>
+</div>
+<div class="foot">
+ <div><b>篩檢場次</b><div class="chips"><span class="chip">115/05/16 · 279 人</span><span class="chip">115/06/06 · 207 人</span><span class="chip">115/09/05 · 217 人</span><span class="chip">115/09/06 · 174 人</span></div></div>
+ <div><b>受檢者年齡</b><div class="chips"><span class="chip">30–39 · 52</span><span class="chip">40–64 · 485</span><span class="chip">65+ · 340</span><span class="chip">女 507 / 男 370</span></div></div>
+ <div><b>里別歸屬</b> 依門牌座標落在現行里界判定；地址寫舊里名（區山里、高鄰數安西里等）者依現行里界重歸。里界：內政部 taiwan-atlas；人口：戶政司 ODRP014。</div>
+</div>
+</div></body></html>

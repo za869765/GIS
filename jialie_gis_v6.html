@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1b4f72">
-<title>佳里 GIS v6.856</title>
+<title>佳里 GIS v6.857</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -2516,10 +2516,10 @@ function openJiali3D(){
 }
 
 // 離線時顯示灰色底圖
-// CartoDB Voyager — 免 Referer，支援繁中路名，適合 GAS/file 環境
-const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
-  attribution:'',
-  subdomains:'abcd', maxNativeZoom:19, maxZoom:21, minZoom:10,
+// OpenStreetMap 標準磚（2026-09-15 CARTO 光柵磚改強制 API key，浮水印 API KEY REQUIRED，故換 OSM；sw.js TILES 本就快取 tile.openstreetmap.org）
+const tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxNativeZoom:19, maxZoom:21, minZoom:10,
   errorTileUrl:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="%23f0ede8"/><text x="128" y="134" font-size="13" text-anchor="middle" fill="%23bbb">離線</text></svg>'
 }).addTo(map);
 map.attributionControl.setPrefix('此地圖為佳里區衛生所 內部使用 僅供參考');

@@ -10,7 +10,7 @@
    - ASSET（cache-first + 背景回填）：程式庫、本地大資料 JS、jiali_3d.html。首次造訪後可離線。
    - TILES（cache-first）：僅攔截 OpenStreetMap 標準磚（tile.openstreetmap.org / 含 '.tile.'），
      也就是「離線磚塊下載」工具預下載或地圖請求的那些 OSM 磚；離線只能命中先前載過的磚。
-   注意：主頁預設底圖為 CartoDB(basemaps.cartocdn.com)，3D 頁的 OpenFreeMap 向量樣式與
+   注意：主頁預設底圖 v6.857 起為 OSM 標準磚(tile.openstreetmap.org；CARTO 改強制 API key)，3D 頁的 OpenFreeMap 向量樣式與
    Esri 衛星影像，本 SW 都「不」攔截、不快取，仍需網路，且不違反各家圖資使用條款。
 
    本地資源用 new URL('檔名', self.location.href) 相對 sw.js 位置解析，
